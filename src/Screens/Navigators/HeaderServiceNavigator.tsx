@@ -7,6 +7,7 @@ import ReportsScreen from "../ReportsScreen";
 import TotalExpensesScreen from "../TotalExpensesScreen";
 import "react-native-reanimated";
 import { FuelExpensesScreen } from "../FuelExpensesScreen";
+import { InsuranceExpenseScreen } from "../InsuranceExpenseScreen";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -14,7 +15,7 @@ export const HeaderServiceNavigator = () => {
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator
-                initialRouteName={"TotalExpensesScreen"}
+                initialRouteName={"ReportsScreen"}
                 screenOptions={{
                     tabBarStyle: { backgroundColor: "#E8E8E8" },
                     tabBarActiveTintColor: "#00AFCF",
@@ -24,8 +25,8 @@ export const HeaderServiceNavigator = () => {
                 }}
             >
                 <Tab.Screen
-                    name="TotalExpensesScreen"
-                    component={TotalExpensesScreen}
+                    name="ReportsScreen"
+                    component={ReportsScreen}
                     options={{ title: "Total" }}
                 />
 
@@ -35,15 +36,15 @@ export const HeaderServiceNavigator = () => {
                     options={{ title: "Fuel Epx" }}
                 />
                 <Tab.Screen
-                    name="da"
-                    component={ReminderScreen}
-                    options={{ title: "Refueling" }}
+                    name="ServiceExpensesScreen"
+                    component={ServiceExpenseScreen}
+                    options={{ title: "Service Exp" }}
                 />
 
                 <Tab.Screen
-                    name="da1"
-                    component={FuelExpensesScreen}
-                    options={{ title: "Refueling" }}
+                    name="InsuranceExpenseScreen"
+                    component={InsuranceExpenseScreen}
+                    options={{ title: "Insurance Exp" }}
                 />
             </Tab.Navigator>
         </View>

@@ -1,12 +1,12 @@
 import { View, Text, StyleSheet, Dimensions, Pressable } from "react-native";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { ProfileContext } from "../providers/ProfileDataProvider";
-import { BarChart } from "react-native-chart-kit";
 import { DateType } from "react-native-ui-datepicker";
 import { Fuel_Expenses } from "../../types/fuel_expenses";
 import { parseMMDDYYYY } from "../utils/parseMMDDYYYY";
 import { Ionicons } from "@expo/vector-icons";
 import { DateTimePickerModal } from "./DateTimePickerModal";
+import { BarChart } from "react-native-chart-kit";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -25,13 +25,39 @@ const chartConfig = {
 
 export const FuelExpensesScreen = () => {
     const { fuelExpenses } = useContext(ProfileContext);
-    const [selectedFuelType, setSelectedFuelType] = useState(null);
 
-    const date = new Date(); // Get current date & time
+    // Get a date object for the current time
+    const now = new Date();
+    const oneMonthAgo = new Date(now);
+    oneMonthAgo.setDate(1); // Prevent day overflow
+    oneMonthAgo.setMonth(now.getMonth() - 1);
+
+    // Optional: set back the day to what it was, if valid
+    const lastDayOfPrevMonth = new Date(
+        oneMonthAgo.getFullYear(),
+        oneMonthAgo.getMonth() + 1,
+        0
+    ).getDate();
+    oneMonthAgo.setDate(Math.min(now.getDate(), lastDayOfPrevMonth));
+
+    const dueDate = new Date();
     const userLocale = Intl.DateTimeFormat().resolvedOptions().locale; // Auto-detect user locale
+    // Get a date object for the current time
+
+    oneMonthAgo.setDate(1); // Prevent day overflow
+    oneMonthAgo.setMonth(now.getMonth() - 1);
+
+    oneMonthAgo.setDate(Math.min(now.getDate(), lastDayOfPrevMonth));
 
     // Format Date (User's Locale)
-    const formattedDate = date.toLocaleDateString(userLocale, {
+    const formattedDate = oneMonthAgo.toLocaleDateString(userLocale, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    });
+
+    // Format Date (User's Locale)
+    const formattedDueDate = dueDate.toLocaleDateString(userLocale, {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -41,94 +67,124 @@ export const FuelExpensesScreen = () => {
         useState(false);
     const [selectedDate, setSelectedDate] = useState<DateType>(formattedDate);
     const [selectedDueDate, setSelectedDueDate] =
-        useState<DateType>(formattedDate);
+        useState<DateType>(formattedDueDate);
 
     const [selectedDateTime, setSelectedDateTime] = useState<DateType>();
     const [modalVisible, setModalVisible] = useState(false);
 
-    function filterByDateRange(
-        data: Fuel_Expenses[],
-        startDate: DateType,
-        endDate: DateType
-    ): Fuel_Expenses[] {
-        // @ts-ignore
-        const start = parseMMDDYYYY(startDate);
-        // @ts-ignore
-        const end = parseMMDDYYYY(endDate);
+    const [chartdata, setChartData] = useState<any[]>([]);
 
-        return data.filter((entry) => {
+    const [totalCost, setTotalCost] = useState<number>(0);
+    const [minTotalCost, SetMinTotalCost] = useState<number>(0);
+    const [maxTotalCost, setMaxTotalCost] = useState<number>(0);
+    const [avgTotalCost, setAvgTotalCost] = useState<number>(0);
+    const [totalDistance, setTotalDistance] = useState<number>(0);
+    const [startDistance, setStartDistance] = useState<number>(0);
+    const [endDistance, setEndDistance] = useState<number>(0);
+
+    const [filteredFuelExpenses, setFilteredFuelExpenses] = useState<
+        Fuel_Expenses[]
+    >([]);
+
+    useEffect(() => {
+        if (fuelExpenses) {
+            setChartData([]);
+            setFilteredFuelExpenses([]);
+            setTotalCost(0);
+
             // @ts-ignore
-            const entryDate = new Date(entry.date);
-            return entryDate >= start && entryDate <= end;
-        });
-    }
+            const start = parseMMDDYYYY(selectedDate);
+            // @ts-ignore
+            const end = parseMMDDYYYY(selectedDueDate);
 
-    // If data is loading
-    if (!fuelExpenses) {
-        return (
-            <View style={{ padding: 20, alignItems: "center" }}>
-                <Text style={{ fontSize: 16, color: "#555" }}>
-                    Loading fuel expenses...
-                </Text>
-            </View>
-        );
-    }
+            const filteredFuelExpenses = fuelExpenses.filter(
+                (entry: Fuel_Expenses) => {
+                    // @ts-ignore
+                    const entryDate = new Date(entry.date);
+                    if (entryDate >= start && entryDate <= end) {
+                        return entry;
+                    }
+                }
+            );
 
-    // If no data
-    if (fuelExpenses.length === 0) {
-        return (
-            <View style={{ padding: 20, alignItems: "center" }}>
-                <Text style={{ fontSize: 16, color: "#555" }}>
-                    No fuel expenses recorded yet.
-                </Text>
-            </View>
-        );
-    }
+            const fuelTotalCost = filteredFuelExpenses.map(
+                (entry: Fuel_Expenses) => {
+                    return { date: entry.date, total_cost: entry.total_cost };
+                }
+            );
 
-    // Filtered fuel expenses based on selected fuel type
-    const filteredFuelExpenses = filterByDateRange(
-        fuelExpenses ? fuelExpenses : [],
-        selectedDate,
-        selectedDueDate
-    );
+            setTotalCost(
+                fuelTotalCost.reduce(
+                    // @ts-ignore
+                    (accumulator, currentValue) =>
+                        accumulator + Number(currentValue.total_cost),
+                    0
+                )
+            );
 
-    // Format dates for X-Axis
-    const formattedLabels = filteredFuelExpenses.map((expense) =>
-        expense.date
-            ? new Date(expense.date).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-              })
-            : "Unknown"
-    );
+            const sortedFuelExpensesTotalCost = filteredFuelExpenses.sort(
+                // @ts-ignore
+                (a, b) => a.total_cost - b.total_cost
+            );
 
-    // Get total cost data
-    const totalCosts = filteredFuelExpenses.map(
-        (expense) => expense.total_cost || 0
-    );
+            if (sortedFuelExpensesTotalCost.length > 0) {
+                SetMinTotalCost(
+                    // @ts-ignore
+                    sortedFuelExpensesTotalCost[
+                        sortedFuelExpensesTotalCost.length - 1
+                    ].total_cost
+                );
+                setMaxTotalCost(
+                    // @ts-ignore
+                    sortedFuelExpensesTotalCost[0].total_cost
+                );
+                setAvgTotalCost((minTotalCost + maxTotalCost) / 2);
+
+                const sortedDistanceSum = fuelExpenses.sort(
+                    // @ts-ignore
+                    (a, b) => b.odometer - a.odometer
+                );
+                const minDistance = Number(
+                    sortedDistanceSum[sortedDistanceSum.length - 1].odometer
+                );
+                const maxDistance = Number(sortedDistanceSum[0].odometer);
+                const totalDistanceSum = maxDistance - minDistance;
+
+                // setAvgDistance
+                setTotalDistance(totalDistanceSum);
+                setStartDistance(minDistance);
+                setEndDistance(maxDistance);
+            } else {
+                setMaxTotalCost(0);
+                setAvgTotalCost(0);
+                setTotalDistance(0);
+                setStartDistance(0);
+                setEndDistance(0);
+            }
+        }
+    }, [selectedDate, selectedDueDate]);
 
     // Memoized chart data
     const chartData = useMemo(
         () => ({
-            labels: formattedLabels,
-            datasets: [{ data: totalCosts }],
+            labels: filteredFuelExpenses.map(
+                (entry) =>
+                    // @ts-ignore
+                    new Date(entry.date).toLocaleDateString("en-GB") // or use your locale
+            ),
+            datasets: [
+                {
+                    data: filteredFuelExpenses.map((entry) =>
+                        Number(entry.total_cost || 0)
+                    ),
+                },
+            ],
         }),
         [filteredFuelExpenses]
     );
 
     return (
-        <View
-            style={{
-                padding: 20,
-                backgroundColor: "#FFF",
-                borderRadius: 20,
-                shadowColor: "#000",
-                shadowOpacity: 0.1,
-                shadowOffset: { width: 0, height: 3 },
-                shadowRadius: 10,
-                elevation: 5,
-            }}
-        >
+        <View style={styles.expensesContainer}>
             {/* Title */}
             <Text
                 style={{
@@ -214,7 +270,7 @@ export const FuelExpensesScreen = () => {
             <BarChart
                 data={chartData}
                 width={screenWidth - 40}
-                height={250}
+                height={300}
                 yAxisLabel="€"
                 chartConfig={chartConfig}
                 showBarTops={true}
@@ -225,13 +281,77 @@ export const FuelExpensesScreen = () => {
                     elevation: 3, // Slight shadow effect
                 }}
             />
+
+            {/* Balance Section */}
+            <View style={styles.sections}>
+                <Text style={styles.sectionTitle}>Cost</Text>
+
+                <View style={styles.innerSection}>
+                    <View style={styles.column}>
+                        <Text>Min Cost</Text>
+                        <Text style={[styles.columnRightWithBorder]}>
+                            {maxTotalCost.toFixed(2)} €
+                        </Text>
+                    </View>
+                    <View style={styles.column}>
+                        <Text>Max Cost</Text>
+                        <Text style={[styles.columnRightWithBorder]}>
+                            {minTotalCost.toFixed(2)} €
+                        </Text>
+                    </View>
+                    <View style={styles.column}>
+                        <Text>Avg. Cost</Text>
+                        <Text style={[styles.columnRightWithBorder]}>
+                            {avgTotalCost.toFixed(2)} €
+                        </Text>
+                    </View>
+                    <View style={styles.column}>
+                        <Text style={styles.redText}>Total price</Text>
+                        <Text>{totalCost.toFixed(2)} €</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Distance Section */}
+            <View style={styles.sections}>
+                <Text style={styles.sectionTitle}>Distance</Text>
+
+                <View style={styles.innerSection}>
+                    <View style={styles.column}>
+                        <Text>Start Distance</Text>
+                        <Text style={[styles.columnRightWithBorder]}>
+                            {startDistance} km
+                        </Text>
+                    </View>
+                    <View style={styles.column}>
+                        <Text>End Distance</Text>
+                        <Text style={[styles.columnRightWithBorder]}>
+                            {endDistance} km
+                        </Text>
+                    </View>
+                    <View style={styles.column}>
+                        <Text style={styles.redText}>Total Distance</Text>
+                        <Text>{totalDistance} km</Text>
+                    </View>
+                </View>
+            </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
+    expensesContainer: {
+        padding: 20,
+        backgroundColor: "#FFF",
+        borderRadius: 20,
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 3 },
+        shadowRadius: 10,
+        elevation: 5,
+        flex: 1,
+    },
     /// date picker
-
     dateTimeWrapper: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -275,5 +395,42 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#555",
         marginLeft: 8,
+    },
+    ////////
+    sections: {
+        backgroundColor: "white",
+        padding: 10,
+        marginBottom: 10,
+        borderRadius: 5,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: "bold",
+        marginBottom: 5,
+        color: "#00AFCF",
+    },
+    column: {
+        flex: 1,
+        height: 54,
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingTop: 4,
+        paddingBottom: 4,
+        borderBottomWidth: 1,
+        borderBottomColor: "#c4c0c0",
+    },
+    innerSection: {
+        marginTop: 8,
+        flexDirection: "row",
+        flexGrow: 1,
+    },
+    columnRightWithBorder: {
+        borderRightWidth: 1,
+        borderRightColor: "#c4c0c0",
+        // paddingHorizontal: 24,
+        paddingRight: 12,
+    },
+    redText: {
+        color: "red",
     },
 });
