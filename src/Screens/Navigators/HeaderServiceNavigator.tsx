@@ -9,6 +9,7 @@ import "react-native-reanimated";
 import { FuelExpensesScreen } from "../FuelExpensesScreen";
 import { InsuranceExpenseScreen } from "../InsuranceExpenseScreen";
 import { ServiceExpensesScreen } from "../ServiceExpensesScreen";
+import { InsuranceExpensesScreen } from "../InsuranceExpensesScreen";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -43,8 +44,8 @@ export const HeaderServiceNavigator = () => {
                 />
 
                 <Tab.Screen
-                    name="InsuranceExpenseScreen"
-                    component={InsuranceExpenseScreen}
+                    name="InsuranceExpensesScreen"
+                    component={InsuranceExpensesScreen}
                     options={{ title: "Insurance Exp" }}
                 />
             </Tab.Navigator>
