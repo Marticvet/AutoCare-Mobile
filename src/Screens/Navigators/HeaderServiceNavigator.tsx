@@ -8,6 +8,7 @@ import TotalExpensesScreen from "../TotalExpensesScreen";
 import "react-native-reanimated";
 import { FuelExpensesScreen } from "../FuelExpensesScreen";
 import { InsuranceExpenseScreen } from "../InsuranceExpenseScreen";
+import { ServiceExpensesScreen } from "../ServiceExpensesScreen";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -37,7 +38,7 @@ export const HeaderServiceNavigator = () => {
                 />
                 <Tab.Screen
                     name="ServiceExpensesScreen"
-                    component={ServiceExpenseScreen}
+                    component={ServiceExpensesScreen}
                     options={{ title: "Service Exp" }}
                 />
 
