@@ -73,7 +73,7 @@ export const FuelExpensesScreen = () => {
     const [modalVisible, setModalVisible] = useState(false);
 
     const [chartdata, setChartData] = useState<any[]>([]);
-
+    
     const [totalCost, setTotalCost] = useState<number>(0);
     const [minTotalCost, SetMinTotalCost] = useState<number>(0);
     const [maxTotalCost, setMaxTotalCost] = useState<number>(0);
@@ -113,6 +113,7 @@ export const FuelExpensesScreen = () => {
                 }
             );
 
+            setFilteredFuelExpenses(fuelTotalCost);
             setTotalCost(
                 fuelTotalCost.reduce(
                     // @ts-ignore
