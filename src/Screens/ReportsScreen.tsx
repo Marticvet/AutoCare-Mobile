@@ -369,13 +369,13 @@ const ReportsScreen = () => {
                             <View style={styles.column}>
                                 <Text>Min Cost</Text>
                                 <Text style={[styles.columnRightWithBorder]}>
-                                    {maxTotalCost.toFixed(2)} €
+                                    {minTotalCost.toFixed(2)} €
                                 </Text>
                             </View>
                             <View style={styles.column}>
                                 <Text>Max Cost</Text>
                                 <Text style={[styles.columnRightWithBorder]}>
-                                    {minTotalCost.toFixed(2)} €
+                                    {maxTotalCost.toFixed(2)} €
                                 </Text>
                             </View>
                             <View style={styles.column}>

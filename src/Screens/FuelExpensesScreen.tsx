@@ -7,6 +7,8 @@ import { parseMMDDYYYY } from "../utils/parseMMDDYYYY";
 import { Ionicons } from "@expo/vector-icons";
 import { DateTimePickerModal } from "./DateTimePickerModal";
 import { BarChart } from "react-native-chart-kit";
+import React from "react";
+import { ChartData } from "../../types/chart_data";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -72,8 +74,11 @@ export const FuelExpensesScreen = () => {
     const [selectedDateTime, setSelectedDateTime] = useState<DateType>();
     const [modalVisible, setModalVisible] = useState(false);
 
-    const [chartdata, setChartData] = useState<any[]>([]);
-    
+    const [chartdata, setChartData] = useState<ChartData>({
+        labels: [],
+        datasets: [{ data: [] }],
+    });
+
     const [totalCost, setTotalCost] = useState<number>(0);
     const [minTotalCost, SetMinTotalCost] = useState<number>(0);
     const [maxTotalCost, setMaxTotalCost] = useState<number>(0);
@@ -82,14 +87,12 @@ export const FuelExpensesScreen = () => {
     const [startDistance, setStartDistance] = useState<number>(0);
     const [endDistance, setEndDistance] = useState<number>(0);
 
-    const [filteredFuelExpenses, setFilteredFuelExpenses] = useState<
-        Fuel_Expenses[]
-    >([]);
-
     useEffect(() => {
         if (fuelExpenses) {
-            setChartData([]);
-            setFilteredFuelExpenses([]);
+            setChartData({
+                labels: [],
+                datasets: [{ data: [] }],
+            });
             setTotalCost(0);
 
             // @ts-ignore
@@ -101,88 +104,81 @@ export const FuelExpensesScreen = () => {
                 (entry: Fuel_Expenses) => {
                     // @ts-ignore
                     const entryDate = new Date(entry.date);
-                    if (entryDate >= start && entryDate <= end) {
-                        return entry;
-                    }
+                    return entryDate >= start && entryDate <= end;
                 }
             );
 
-            const fuelTotalCost = filteredFuelExpenses.map(
-                (entry: Fuel_Expenses) => {
-                    return { date: entry.date, total_cost: entry.total_cost };
-                }
+            // Sort by date (important for proper X-axis in chart)
+            const fuelTotalCost = filteredFuelExpenses
+                .map((entry: Fuel_Expenses) => ({
+                    date: entry.date,
+                    total_cost: entry.total_cost,
+                    odometer: entry.odometer,
+                }))
+                .sort(
+                    (a, b) =>
+                        // @ts-ignore
+                        new Date(a.date).getTime() - new Date(b.date).getTime()
+                );
+
+            // Set chart data (by sorted date)
+            setChartData({
+                labels: fuelTotalCost.map((entry) =>
+                    // @ts-ignore
+                    new Date(entry.date).toLocaleDateString("en-GB")
+                ),
+                datasets: [
+                    {
+                        data: fuelTotalCost.map((entry) =>
+                            Number(entry.total_cost || 0)
+                        ),
+                    },
+                ],
+            });
+
+            const total = fuelTotalCost.reduce(
+                (acc, curr) => acc + Number(curr.total_cost),
+                0
             );
+            setTotalCost(total);
 
-            setFilteredFuelExpenses(fuelTotalCost);
-            setTotalCost(
-                fuelTotalCost.reduce(
-                    // @ts-ignore
-                    (accumulator, currentValue) =>
-                        accumulator + Number(currentValue.total_cost),
-                    0
-                )
-            );
-
-            const sortedFuelExpensesTotalCost = filteredFuelExpenses.sort(
-                // @ts-ignore
-                (a, b) => a.total_cost - b.total_cost
-            );
-
-            if (sortedFuelExpensesTotalCost.length > 0) {
-                SetMinTotalCost(
-                    // @ts-ignore
-                    sortedFuelExpensesTotalCost[
-                        sortedFuelExpensesTotalCost.length - 1
-                    ].total_cost
+            // Cost stats
+            if (fuelTotalCost.length > 0) {
+                const sortedByCost = [...fuelTotalCost].sort(
+                    (a, b) => Number(a.total_cost) - Number(b.total_cost)
                 );
-                setMaxTotalCost(
-                    // @ts-ignore
-                    sortedFuelExpensesTotalCost[0].total_cost
-                );
-                setAvgTotalCost((minTotalCost + maxTotalCost) / 2);
 
-                const sortedDistanceSum = fuelExpenses.sort(
-                    // @ts-ignore
-                    (a, b) => b.odometer - a.odometer
-                );
-                const minDistance = Number(
-                    sortedDistanceSum[sortedDistanceSum.length - 1].odometer
-                );
-                const maxDistance = Number(sortedDistanceSum[0].odometer);
-                const totalDistanceSum = maxDistance - minDistance;
+                const min = sortedByCost[0].total_cost ?? 0;
+                const max =
+                    sortedByCost[sortedByCost.length - 1].total_cost ?? 0;
 
-                // setAvgDistance
-                setTotalDistance(totalDistanceSum);
-                setStartDistance(minDistance);
-                setEndDistance(maxDistance);
+                SetMinTotalCost(min);
+                setMaxTotalCost(max);
+                setAvgTotalCost((min + max) / 2);
+
+                const sortedByOdometer = [...fuelTotalCost].sort(
+                    (a, b) => Number(a.odometer) - Number(b.odometer)
+                );
+
+                const minOdo = Number(sortedByOdometer[0]?.odometer) ?? 0;
+                const maxOdo =
+                    Number(
+                        sortedByOdometer[sortedByOdometer.length - 1]?.odometer
+                    ) ?? 0;
+
+                setStartDistance(minOdo);
+                setEndDistance(maxOdo);
+                setTotalDistance(maxOdo - minOdo);
             } else {
+                SetMinTotalCost(0);
                 setMaxTotalCost(0);
                 setAvgTotalCost(0);
-                setTotalDistance(0);
                 setStartDistance(0);
                 setEndDistance(0);
+                setTotalDistance(0);
             }
         }
     }, [selectedDate, selectedDueDate]);
-
-    // Memoized chart data
-    const chartData = useMemo(
-        () => ({
-            labels: filteredFuelExpenses.map(
-                (entry) =>
-                    // @ts-ignore
-                    new Date(entry.date).toLocaleDateString("en-GB") // or use your locale
-            ),
-            datasets: [
-                {
-                    data: filteredFuelExpenses.map((entry) =>
-                        Number(entry.total_cost || 0)
-                    ),
-                },
-            ],
-        }),
-        [filteredFuelExpenses]
-    );
 
     return (
         <View style={styles.expensesContainer}>
@@ -267,75 +263,97 @@ export const FuelExpensesScreen = () => {
                 />
             </View>
 
-            {/* Bar Chart */}
-            <BarChart
-                data={chartData}
-                width={screenWidth - 40}
-                height={300}
-                yAxisLabel="€"
-                chartConfig={chartConfig}
-                showBarTops={true}
-                verticalLabelRotation={30} // Rotate labels to prevent overlap
-                style={{
-                    borderRadius: 16,
-                    marginVertical: 10,
-                    elevation: 3, // Slight shadow effect
-                }}
-            />
-
-            {/* Balance Section */}
-            <View style={styles.sections}>
-                <Text style={styles.sectionTitle}>Cost</Text>
-
-                <View style={styles.innerSection}>
-                    <View style={styles.column}>
-                        <Text>Min Cost</Text>
-                        <Text style={[styles.columnRightWithBorder]}>
-                            {maxTotalCost.toFixed(2)} €
+            <View style={styles.chartContainer}>
+                {/* Bar Chart */}
+                {chartdata.labels && chartdata.labels.length > 0 ? (
+                    // @ts-ignore
+                    <BarChart
+                        data={chartdata}
+                        width={screenWidth - 40}
+                        height={300}
+                        yAxisLabel="€"
+                        chartConfig={chartConfig}
+                        showBarTops={true}
+                        verticalLabelRotation={30} // Rotate labels to prevent overlap
+                        style={{
+                            borderRadius: 16,
+                            marginVertical: 10,
+                            elevation: 3, // Slight shadow effect
+                        }}
+                    />
+                ) : (
+                    <View style={styles.chartPlaceholder}>
+                        <Ionicons
+                            name="information-circle-outline"
+                            size={40}
+                            color="#aaa"
+                        />
+                        <Text style={styles.chartPlaceholderText}>
+                            No expense data available for the selected range.
                         </Text>
                     </View>
-                    <View style={styles.column}>
-                        <Text>Max Cost</Text>
-                        <Text style={[styles.columnRightWithBorder]}>
-                            {minTotalCost.toFixed(2)} €
-                        </Text>
-                    </View>
-                    <View style={styles.column}>
-                        <Text>Avg. Cost</Text>
-                        <Text style={[styles.columnRightWithBorder]}>
-                            {avgTotalCost.toFixed(2)} €
-                        </Text>
-                    </View>
-                    <View style={styles.column}>
-                        <Text style={styles.redText}>Total price</Text>
-                        <Text>{totalCost.toFixed(2)} €</Text>
-                    </View>
-                </View>
+                )}
             </View>
 
-            {/* Distance Section */}
-            <View style={styles.sections}>
-                <Text style={styles.sectionTitle}>Distance</Text>
+            {chartdata.labels && chartdata.labels.length > 0 && (
+                <React.Fragment>
+                    {/* Balance Section */}
+                    <View style={styles.sections}>
+                        <Text style={styles.sectionTitle}>Cost</Text>
 
-                <View style={styles.innerSection}>
-                    <View style={styles.column}>
-                        <Text>Start Distance</Text>
-                        <Text style={[styles.columnRightWithBorder]}>
-                            {startDistance} km
-                        </Text>
+                        <View style={styles.innerSection}>
+                            <View style={styles.column}>
+                                <Text>Min Cost</Text>
+                                <Text style={[styles.columnRightWithBorder]}>
+                                    {minTotalCost.toFixed(2)} €
+                                </Text>
+                            </View>
+                            <View style={styles.column}>
+                                <Text>Max Cost</Text>
+                                <Text style={[styles.columnRightWithBorder]}>
+                                    {maxTotalCost.toFixed(2)} €
+                                </Text>
+                            </View>
+                            <View style={styles.column}>
+                                <Text>Avg. Cost</Text>
+                                <Text style={[styles.columnRightWithBorder]}>
+                                    {avgTotalCost.toFixed(2)} €
+                                </Text>
+                            </View>
+                            <View style={styles.column}>
+                                <Text style={styles.redText}>Total price</Text>
+                                <Text>{totalCost.toFixed(2)} €</Text>
+                            </View>
+                        </View>
                     </View>
-                    <View style={styles.column}>
-                        <Text>End Distance</Text>
-                        <Text style={[styles.columnRightWithBorder]}>
-                            {endDistance} km
-                        </Text>
+
+                    {/* Distance Section */}
+                    <View style={styles.sections}>
+                        <Text style={styles.sectionTitle}>Distance</Text>
+
+                        <View style={styles.innerSection}>
+                            <View style={styles.column}>
+                                <Text>Start Distance</Text>
+                                <Text style={[styles.columnRightWithBorder]}>
+                                    {startDistance} km
+                                </Text>
+                            </View>
+                            <View style={styles.column}>
+                                <Text>End Distance</Text>
+                                <Text style={[styles.columnRightWithBorder]}>
+                                    {endDistance} km
+                                </Text>
+                            </View>
+                            <View style={styles.column}>
+                                <Text style={styles.redText}>
+                                    Total Distance
+                                </Text>
+                                <Text>{totalDistance} km</Text>
+                            </View>
+                        </View>
                     </View>
-                    <View style={styles.column}>
-                        <Text style={styles.redText}>Total Distance</Text>
-                        <Text>{totalDistance} km</Text>
-                    </View>
-                </View>
-            </View>
+                </React.Fragment>
+            )}
         </View>
     );
 };
@@ -433,5 +451,27 @@ const styles = StyleSheet.create({
     },
     redText: {
         color: "red",
+    },
+    // chart
+    chartPlaceholder: {
+        height: 260,
+        width: "90%",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+        backgroundColor: "#fff",
+        borderRadius: 10,
+        marginHorizontal: 16,
+        marginVertical: 16,
+    },
+
+    chartPlaceholderText: {
+        marginTop: 12,
+        fontSize: 16,
+        color: "#777",
+        textAlign: "center",
+    },
+    chartContainer: {
+        width: "100%",
     },
 });
