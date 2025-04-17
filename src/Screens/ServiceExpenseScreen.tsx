@@ -233,6 +233,7 @@ const ServiceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -266,6 +267,7 @@ const ServiceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -291,6 +293,7 @@ const ServiceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -317,6 +320,7 @@ const ServiceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -342,6 +346,7 @@ const ServiceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -386,6 +391,7 @@ const ServiceExpenseScreen = () => {
                                 style={[styles.input, styles.notesInput]}
                                 multiline
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>

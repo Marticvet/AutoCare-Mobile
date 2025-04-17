@@ -135,8 +135,8 @@ const ReminderScreen = () => {
                                     serviceTypeRef.current?.focus()
                                 }
                                 style={styles.input}
-                    clearButtonMode={'always'}
-
+                                clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         ) : (
                             <TextInput
@@ -151,8 +151,8 @@ const ReminderScreen = () => {
                                     serviceTypeRef.current?.focus()
                                 }
                                 style={styles.input}
-                    clearButtonMode={'always'}
-
+                                clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         )}
                     </View>
@@ -236,8 +236,7 @@ const ReminderScreen = () => {
                                 // @ts-ignore
                                 odometerRef.current?.focus()
                             }
-                    clearButtonMode={'always'}
-
+                            clearButtonMode={"always"}
                         />
                     </View>
 
@@ -273,8 +272,7 @@ const ReminderScreen = () => {
                                     // @ts-ignore
                                     dateRef.current?.focus()
                                 }
-                    clearButtonMode={'always'}
-
+                                clearButtonMode={"always"}
                             />
                         ) : (
                             <View style={styles.amountPeriodInputContainer}>
@@ -289,8 +287,7 @@ const ReminderScreen = () => {
                                         // @ts-ignore
                                         dateRef.current?.focus()
                                     }
-                    clearButtonMode={'always'}
-
+                                    clearButtonMode={"always"}
                                 />
 
                                 <TextInput
@@ -304,8 +301,7 @@ const ReminderScreen = () => {
                                         // @ts-ignore
                                         dateRef.current?.focus()
                                     }
-                    clearButtonMode={'always'}
-
+                                    clearButtonMode={"always"}
                                 />
                             </View>
                         )}
@@ -333,8 +329,8 @@ const ReminderScreen = () => {
                             }
                             style={[styles.input, styles.notesInput]}
                             multiline
-                    clearButtonMode={'always'}
-
+                            clearButtonMode={"always"}
+                            placeholderTextColor="#888"
                         />
                     </View>
                 </View>

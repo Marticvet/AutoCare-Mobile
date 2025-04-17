@@ -219,6 +219,7 @@ export const InsuranceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -245,6 +246,7 @@ export const InsuranceExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -289,6 +291,7 @@ export const InsuranceExpenseScreen = () => {
                                 style={[styles.input, styles.notesInput]}
                                 multiline
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>

@@ -24,7 +24,7 @@ const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
 
 const MyTheme = {
-    dark: true,
+    dark: false,
     colors: {
         primary: "white",
         background: "white",

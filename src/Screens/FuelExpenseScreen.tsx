@@ -302,6 +302,7 @@ export const FuelExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -326,6 +327,7 @@ export const FuelExpenseScreen = () => {
                             }
                             style={styles.fuelInputs}
                             clearButtonMode={"always"}
+                            placeholderTextColor="#888"
                         />
                         <TextInput
                             ref={totalCostRef}
@@ -339,6 +341,7 @@ export const FuelExpenseScreen = () => {
                             }
                             style={styles.fuelInputs}
                             clearButtonMode={"always"}
+                            placeholderTextColor="#888"
                         />
                         <TextInput
                             ref={litresRef}
@@ -352,6 +355,7 @@ export const FuelExpenseScreen = () => {
                             }
                             style={styles.fuelInputs}
                             clearButtonMode={"always"}
+                            placeholderTextColor="#888"
                         />
                     </View>
 
@@ -409,6 +413,7 @@ export const FuelExpenseScreen = () => {
                                 }
                                 style={styles.input}
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -435,6 +440,7 @@ export const FuelExpenseScreen = () => {
                                 style={styles.input}
                                 clearButtonMode={"always"}
                                 editable={false}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>
@@ -479,6 +485,7 @@ export const FuelExpenseScreen = () => {
                                 style={[styles.input, styles.notesInput]}
                                 multiline
                                 clearButtonMode={"always"}
+                                placeholderTextColor="#888"
                             />
                         </View>
                     </View>

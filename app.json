@@ -4,24 +4,26 @@
     "slug": "AutoCare-Mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/favicon.png",
+    "icon": "./assets/AutoCareIcon.png",
     "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.marticvet.AutoCareMobile"
+      "bundleIdentifier": "com.marticvet.AutoCareMobile",
+      "userInterfaceStyle": "light"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/favicon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/AutoCareIcon.png",
+        "backgroundColor": "#ffffff",
+        "userInterfaceStyle": "light"
       },
       "package": "com.marticvet.AutoCareMobile"
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/AutoCareIcon.png"
     },
     "plugins": [],
     "experiments": {
