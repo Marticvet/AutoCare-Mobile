@@ -3,7 +3,7 @@ import { useRoute } from "@react-navigation/native";
 import { SafeAreaView, StyleSheet, View, StatusBar } from "react-native";
 import ServiceExpenseScreen from "../ServiceExpenseScreen";
 import ReminderScreen from "../ReminderScreen";
-import ReportsScreen from "../ReportsScreen";
+import ReportsScreen from "../TotalExpensesScreen";
 import TotalExpensesScreen from "../TotalExpensesScreen";
 import "react-native-reanimated";
 import { FuelExpensesScreen } from "../FuelExpensesScreen";

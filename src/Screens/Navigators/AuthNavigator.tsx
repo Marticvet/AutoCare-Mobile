@@ -3,7 +3,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import QueryProvider from "../../providers/QueryProvider";
 import AddVehicleScreen from "../AddVehicleScreen";
 import VehicleDetailScreen from "../VehicleDetailScreen";
-import ReportsScreen from "../ReportsScreen";
+import ReportsScreen from "../TotalExpensesScreen";
 import ServiceScreen from "../ServiceExpenseScreen";
 import ReminderScreen from "../ReminderScreen";
 import HomeScreen from "../HomeScreen"; // if needed

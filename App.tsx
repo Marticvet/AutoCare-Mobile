@@ -13,7 +13,7 @@ import SidebarNavigator from "./src/Screens/Navigators/SidebarNavigator";
 import BottomNavigator from "./src/Screens/Navigators/BottomNavigator";
 import ServiceExpensesScreen from "./src/Screens/ServiceExpenseScreen";
 import ReminderScreen from "./src/Screens/ReminderScreen";
-import ReportsScreen from "./src/Screens/ReportsScreen";
+import ReportsScreen from "./src/Screens/TotalExpensesScreen";
 import { InsuranceExpenseScreen } from "./src/Screens/InsuranceExpenseScreen";
 import ServiceExpenseScreen from "./src/Screens/ServiceExpenseScreen";
 import { FuelExpenseScreen } from "./src/Screens/FuelExpenseScreen";
