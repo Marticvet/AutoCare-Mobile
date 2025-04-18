@@ -36,7 +36,7 @@ const normalizeToLocalDate = (date: Date) => {
 };
 
 const ReportsScreen = () => {
-    const { expenses } = useContext(ProfileContext);
+    const { expenses, userProfile } = useContext(ProfileContext);
 
     // Get a date object for the current time
     const now = new Date();
@@ -88,13 +88,11 @@ const ReportsScreen = () => {
     const [startDistance, setStartDistance] = useState<number>(0);
     const [endDistance, setEndDistance] = useState<number>(0);
 
-    const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);
-
     useEffect(() => {
+
         if (expenses) {
             setChartData([]);
             setTotalCost(0);
-            setFilteredExpenses([]);
             SetMinTotalCost(0);
             setMaxTotalCost(0);
             setAvgTotalCost(0);
