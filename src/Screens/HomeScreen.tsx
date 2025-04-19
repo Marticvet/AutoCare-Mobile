@@ -1,34 +1,77 @@
+import React, { useContext, useEffect, useRef } from "react";
 import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     Dimensions,
+    Animated,
+    FlatList,
 } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
-import { useContext } from "react";
-import React from "react";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import HomeScreenDropdown from "./HomeScreenDropdown";
-import Carousel from "react-native-reanimated-carousel";
 
 const { width } = Dimensions.get("window");
 
-const ITEM_WIDTH = width * 0.8;
+const ITEM_WIDTH = width * 0.75;
 const ITEM_HEIGHT = 200;
+const ITEM_SPACER = (width - ITEM_WIDTH) / 2;
 
-function HomeScreen() {
+const HomeScreen = () => {
     const navigation = useNavigation();
-    const { selectedVehicle, vehicles, userProfile } = useContext(ProfileContext);
+    const { selectedVehicle, vehicles, userProfile } =
+        useContext(ProfileContext);
 
-    function navigateTo() {
-        // @ts-ignore
-        navigation.navigate("ReminderScreen");
-    }
+    const scrollX = useRef(new Animated.Value(0)).current;
+    const flatListRef = useRef<FlatList>(null);
+
+    // Repeat data to fake infinite loop
+    const cloneCount = 3;
+    const centerClone = Array(cloneCount).fill(vehicles).flat();
+
+    const repeatedData = [
+        { type: "spacer-left", key: "spacer-left" },
+        ...centerClone.map((item, index) => ({
+            ...item,
+            key: `${item.id}-${index}`,
+            type: "card",
+        })),
+        { type: "spacer-right", key: "spacer-right" },
+    ];
+
+    const scrollToMiddleIndex = Math.floor(repeatedData.length / 2);
+
+    useEffect(() => {
+        if (vehicles && vehicles.length > 0) {
+            setTimeout(() => {
+                flatListRef.current?.scrollToIndex({
+                    index: scrollToMiddleIndex,
+                    animated: false,
+                });
+            }, 50);
+        }
+    }, [vehicles]);
+
+    const handleScrollEnd = (e) => {
+        const offsetX = e.nativeEvent.contentOffset.x;
+        const currentIndex = Math.round(offsetX / ITEM_WIDTH);
+
+        if (vehicles) {
+            if (
+                currentIndex <= vehicles.length / 2 ||
+                currentIndex >= repeatedData.length - vehicles.length / 2
+            ) {
+                flatListRef.current?.scrollToIndex({
+                    index: scrollToMiddleIndex,
+                    animated: false,
+                });
+            }
+        }
+    };
 
     return (
-        <ScrollView contentContainerStyle={styles.container} nestedScrollEnabled={true}>
+        <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>
                     Welcome Back, {userProfile?.first_name}!
@@ -55,23 +98,59 @@ function HomeScreen() {
                 <Text style={styles.sectionTitle}>Your Vehicles</Text>
             </View>
 
-            {vehicles && vehicles.length === 0 && (
-                <Text>No available vehicles...</Text>
-            )}
+            {/* Animated FlatList */}
+            <Animated.FlatList
+                ref={flatListRef}
+                data={repeatedData}
+                keyExtractor={(item) => item.key}
+                horizontal
+                snapToInterval={ITEM_WIDTH}
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                scrollEventThrottle={16}
+                onMomentumScrollEnd={handleScrollEnd}
+                onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                    { useNativeDriver: true }
+                )}
+                getItemLayout={(_, index) => ({
+                    length: ITEM_WIDTH,
+                    offset: ITEM_WIDTH * index,
+                    index,
+                })}
+                renderItem={({ item, index }) => {
+                    if (item.type?.includes("spacer")) {
+                        return <View style={{ width: ITEM_SPACER }} />;
+                    }
 
-            {vehicles && vehicles.length > 0 && (
-                <Carousel
-                    loop
-                    width={width * 0.85} // full screen
-                    height={ITEM_HEIGHT}
-                    style={{ marginTop: 12}}
-                    data={vehicles}
-                    scrollAnimationDuration={400}
-                    mode="parallax"
-                    modeConfig={{}}
-                    renderItem={({ item }) => (
+                    const inputRange = [
+                        (index - 2) * ITEM_WIDTH,
+                        (index - 1) * ITEM_WIDTH,
+                        index * ITEM_WIDTH,
+                        (index + 1) * ITEM_WIDTH,
+                        (index + 2) * ITEM_WIDTH,
+                    ];
+
+                    const scale = scrollX.interpolate({
+                        inputRange,
+                        outputRange: [0.85, 1, 0.85, 0, 0], // 👈 bump these values
+                        extrapolate: "clamp",
+                    });
+
+                    const opacity = scrollX.interpolate({
+                        inputRange,
+                        outputRange: [0.85, 1, 0.85, 0, 0], // 👈 bump these values
+                        extrapolate: "clamp",
+                    });
+
+                    return (
                         <View style={styles.cardWrapper}>
-                            <View style={styles.card}>
+                            <Animated.View
+                                style={[
+                                    styles.card,
+                                    { transform: [{ scale }], opacity },
+                                ]}
+                            >
                                 <Text style={styles.title}>
                                     🚗 {item.vehicle_brand} {item.vehicle_model}
                                 </Text>
@@ -79,24 +158,28 @@ function HomeScreen() {
                                 <Text>Next Service:</Text>
                                 <Text>Insurance Expires:</Text>
                                 <Text>Last Tire Change:</Text>
-                            </View>
+                            </Animated.View>
                         </View>
-                    )}
-                />
-            )}
-        </ScrollView>
+                    );
+                }}
+            />
+        </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
-        flexGrow: 1,
-        padding: 16,
+        flex: 1,
+        paddingTop: 48,
+        backgroundColor: "#f3f3f3",
     },
     dropdownContainer: {
         marginBottom: 20,
+        paddingHorizontal: 16,
     },
-    contentContainer: {},
+    contentContainer: {
+        paddingHorizontal: 16,
+    },
     infoText: {
         fontSize: 18,
         color: "#333",
@@ -105,13 +188,16 @@ const styles = StyleSheet.create({
         width: "100%",
         height: 64,
         justifyContent: "center",
+        paddingHorizontal: 16,
         marginBottom: 12,
     },
     headerTitle: {
         fontSize: 24,
+        fontWeight: "bold",
     },
     headerSubtitle: {
         fontSize: 16,
+        color: "#666",
     },
     sectionTitle: {
         fontSize: 18,
@@ -121,16 +207,15 @@ const styles = StyleSheet.create({
     },
     cardWrapper: {
         width: ITEM_WIDTH,
-        alignSelf: "center", // ✅ Center inside full-width carousel
-        // justifyContent: "center"
+        justifyContent: "center",
+        alignItems: "center",
     },
     card: {
-        width: "95%",
-        height: 200,
+        width: ITEM_WIDTH,
+        height: ITEM_HEIGHT,
         borderRadius: 16,
         backgroundColor: "#fff",
         padding: 16,
-        marginHorizontal: 8,
         justifyContent: "center",
         shadowColor: "#000",
         shadowOpacity: 0.1,
