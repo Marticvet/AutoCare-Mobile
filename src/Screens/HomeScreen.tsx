@@ -52,6 +52,7 @@ const HomeScreen = () => {
         }
     }, [vehicles]);
 
+    // @ts-ignore
     const handleScrollEnd = (e) => {
         const offsetX = e.nativeEvent.contentOffset.x;
         const currentIndex = Math.round(offsetX / ITEM_WIDTH);
@@ -137,9 +138,9 @@ const HomeScreen = () => {
                         extrapolate: "clamp",
                     });
 
-                    const opacity = scrollX.interpolate({
+                    const translateY = scrollX.interpolate({
                         inputRange,
-                        outputRange: [0.85, 1, 0.85, 0, 0], // 👈 bump these values
+                        outputRange: [12, 6, 0, 6, 12],
                         extrapolate: "clamp",
                     });
 
@@ -148,7 +149,7 @@ const HomeScreen = () => {
                             <Animated.View
                                 style={[
                                     styles.card,
-                                    { transform: [{ scale }], opacity },
+                                    { transform: [{ scale }, { translateY }] },
                                 ]}
                             >
                                 <Text style={styles.title}>
@@ -206,9 +207,11 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
     cardWrapper: {
+        marginTop: 48,
         width: ITEM_WIDTH,
-        justifyContent: "center",
-        alignItems: "center",
+        ////// this makes the carouse in the middle
+        // justifyContent: "center",
+        // alignItems: "center",
     },
     card: {
         width: ITEM_WIDTH,
