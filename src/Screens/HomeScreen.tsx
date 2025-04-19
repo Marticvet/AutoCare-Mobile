@@ -8,23 +8,31 @@ import {
     ScrollView,
     Alert,
     ActivityIndicator,
+    Animated,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import React from "react";
-import { useAuth } from "../providers/AuthProvider";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import HomeScreenDropdown from "./HomeScreenDropdown";
 
+import { Dimensions } from "react-native";
+
+const { width } = Dimensions.get("window");
+// const ITEM_WIDTH = 280;
+const ITEM_WIDTH = 250;
+const ITEM_SPACING = 24;
+const SNAP_INTERVAL = ITEM_WIDTH + ITEM_SPACING;
+const SIDE_SPACING = (Dimensions.get("window").width - ITEM_WIDTH) / 2;
+
 function HomeScreen() {
     const navigation = useNavigation();
+    const scrollX = useRef(new Animated.Value(0)).current;
 
     // Retrieve the values provided by ProfileDataProvider
-    const {
-        selectedVehicle,
-        vehicles,
-    } = useContext(ProfileContext);
+    const { selectedVehicle, vehicles, userProfile } =
+        useContext(ProfileContext);
 
     function navigateTo() {
         // @ts-ignore
@@ -36,6 +44,14 @@ function HomeScreen() {
             contentContainerStyle={styles.container}
             nestedScrollEnabled={true}
         >
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>
+                    Welcome Back, {userProfile?.first_name}!
+                </Text>
+                <Text style={styles.headerSubtitle}>
+                    Keep track of your car's health
+                </Text>
+            </View>
             {/* Dropdown at the top */}
             <View style={styles.dropdownContainer}>
                 <HomeScreenDropdown
@@ -44,14 +60,82 @@ function HomeScreen() {
                     placeholder="Select your vehicle"
                 />
             </View>
-
             {/* Rest of your screen */}
             <View style={styles.contentContainer}>
                 <Text style={styles.infoText}>
                     Selected Vehicle: {selectedVehicle?.id}
                 </Text>
+                <Text style={styles.sectionTitle}>Your Vehicles</Text>
+
                 {/* Other components, such as pickers or buttons, can go here */}
             </View>
+
+            {vehicles && vehicles.length === 0 && (
+                <Text>No available vehicles...</Text>
+            )}
+
+            {vehicles && vehicles.length > 0 && (
+                <Animated.FlatList
+                    data={vehicles}
+                    keyExtractor={(item) => item.id.toString()}
+                    horizontal
+                    snapToInterval={ITEM_WIDTH + ITEM_SPACING}
+                    decelerationRate="fast"
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: SIDE_SPACING }}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: true }
+                    )}
+                    scrollEventThrottle={16}
+                    renderItem={({ item, index }) => {
+                        const inputRange = [
+                            (index - 1) * (ITEM_WIDTH + ITEM_SPACING),
+                            index * (ITEM_WIDTH + ITEM_SPACING),
+                            (index + 1) * (ITEM_WIDTH + ITEM_SPACING),
+                        ];
+
+                        const scale = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [0.92, 1, 0.92],
+                            extrapolate: "clamp",
+                        });
+
+                        const opacity = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [0.7, 1, 0.7],
+                            extrapolate: "clamp",
+                        });
+
+                        return (
+                            <TouchableOpacity
+                                style={{
+                                    width: ITEM_WIDTH,
+                                    marginRight: ITEM_SPACING,
+                                }}
+                            >
+                                <Animated.View
+                                    style={[
+                                        styles.card,
+                                        { transform: [{ scale }], opacity },
+                                    ]}
+                                >
+                                    <Text style={styles.heading}>
+                                        🚘 {item.vehicle_brand}{" "}
+                                        {item.vehicle_model}
+                                    </Text>
+                                    <Text>
+                                        Odometer: {item.current_mileage} km
+                                    </Text>
+                                    <Text>Next Service:</Text>
+                                    <Text>Insurance Expires:</Text>
+                                    <Text>Last Tire Change:</Text>
+                                </Animated.View>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
+            )}
         </ScrollView>
     );
 }
@@ -60,7 +144,7 @@ const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
         padding: 16,
-        backgroundColor: "#f5f5f5",
+        // backgroundColor: "#f5f5f5",
     },
     dropdownContainer: {
         marginBottom: 20,
@@ -71,6 +155,65 @@ const styles = StyleSheet.create({
     infoText: {
         fontSize: 18,
         color: "#333",
+    },
+    /////////
+    card: {
+        backgroundColor: "#FFF",
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    heading: {
+        fontSize: 18,
+        fontWeight: "bold",
+        marginBottom: 10,
+        color: "#00AFCF",
+    },
+    ////// user info
+    header: {
+        width: "100%",
+        height: 64,
+        justifyContent: "center",
+        marginBottom: 12,
+    },
+    headerTitle: {
+        fontSize: 24,
+    },
+    headerSubtitle: {
+        fontSize: 16,
+    },
+    listContainer: {
+        paddingVertical: 10,
+    },
+
+    ////// scroll
+    vehiclesScrollContainer: {
+        marginTop: 24,
+        height: 300,
+        backgroundColor: "red",
+    },
+    vehiclesContainer: {
+        flexDirection: "row",
+        alignItems: "flex-start", // optional
+        justifyContent: "center",
+    },
+    vehicleContainer: {
+        // width: 280,
+        width: 250,
+        marginRight: 24,
+        // height: 150
+        height: 300,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#333",
+        marginVertical: 10,
     },
 });
 
@@ -220,18 +363,6 @@ contentContainerStyle={styles.vehicleContainerScrollView}
 >
 </ScrollView> */
 }
-
-// function quickActionHandler(buttonTxt: string, vehicleId: number | null) {
-//     if (buttonTxt === "Add Vehicle") {
-//         // @ts-ignore
-//         navigation.navigate("AddVehicleScreen");
-//     } else if (buttonTxt === "Get Vehicle By Id") {
-//         // @ts-ignore
-//         navigation.navigate("GetVehicleById", {
-//             vehicleId: vehicleId,
-//         });
-//     }
-// }
 
 // header: {
 //     marginBottom: 20,
