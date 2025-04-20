@@ -17,6 +17,8 @@ import { Loader } from "./Loader";
 import { useNavigation } from "@react-navigation/native";
 import AddVehicleScreen from "./AddVehicleScreen";
 import { ProfileContext } from "../providers/ProfileDataProvider";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
 
 const VehicleDetailScreen = ({ route }: any) => {
     const navigation = useNavigation();
@@ -77,7 +79,15 @@ const VehicleDetailScreen = ({ route }: any) => {
                 <Text style={styles.value}>{vehicle.vehicle_model}</Text>
 
                 <Text style={styles.label}>Car Type</Text>
-                <Text style={styles.value}>{vehicle.vehicle_car_type}</Text>
+                <Text style={styles.value}>
+                    {vehicle.vehicle_car_type}{" "}
+                    <MaterialCommunityIcons
+                        // @ts-ignore
+                        name={vehicleTypeIcons[vehicle.vehicle_car_type]}
+                        size={24}
+                        color="black"
+                    />
+                </Text>
 
                 <Text style={styles.label}>License Plate</Text>
                 <Text style={styles.value}>

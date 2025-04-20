@@ -11,6 +11,8 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import HomeScreenDropdown from "./HomeScreenDropdown";
+import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
@@ -159,8 +161,16 @@ const HomeScreen = () => {
                                     });
                                 }}
                             >
+                                <MaterialCommunityIcons
+                                    // @ts-ignore
+                                    name={
+                                        vehicleTypeIcons[item.vehicle_car_type]
+                                    }
+                                    size={24}
+                                    color="black"
+                                />
                                 <Text style={styles.title}>
-                                    🚗 {item.vehicle_brand} {item.vehicle_model}
+                                    {item.vehicle_brand} {item.vehicle_model}
                                 </Text>
                                 <Text>Odometer: {item.current_mileage} km</Text>
                                 <Text>Next Service:</Text>
