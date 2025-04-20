@@ -1,5 +1,13 @@
 import React, { useContext, useState } from "react";
-import { View, Text, StyleSheet, Modal, Alert } from "react-native";
+import {
+    View,
+    Text,
+    StyleSheet,
+    Modal,
+    Alert,
+    TouchableOpacity,
+    ScrollView,
+} from "react-native";
 import {
     useDeleteVehicle,
     useVehicle,
@@ -16,9 +24,7 @@ const VehicleDetailScreen = ({ route }: any) => {
     const { userProfile } = useContext(ProfileContext);
 
     const { mutate: deleteVehicle } = useDeleteVehicle();
-    const { mutate: updateVehicle } = useUpdateVehicle();
 
-    // ✅ Fetch vehicle only when `userProfile?.id` and vehicleId is available
     const {
         data: vehicle,
         isLoading,
@@ -26,120 +32,84 @@ const VehicleDetailScreen = ({ route }: any) => {
     } = useVehicle(userProfile?.id || "", vehicleId);
     const [modalVisible, setModalVisible] = useState(false);
 
-    if (isLoading) {
-        return <Loader />;
-    }
-
+    if (isLoading) return <Loader />;
     if (error) {
         Alert.alert("Error", error.message);
-        console.error("Supabase Fetch Error:", error);
-        return; // Prevent further execution
+        return;
     }
 
-    function editVehicleDetailsHandler() {
-        if (!vehicle || !vehicleId || !userProfile?.id) {
-            console.error("🚨 Missing required values. Cannot update vehicle.");
-            return;
-        }
+    const handleEdit = () => {
+        // @ts-ignore
+        navigation.navigate("EditVehicleScreen", { vehicle: vehicle });
+    };
 
-        updateVehicle(
+    const handleDelete = () => {
+        Alert.alert("Delete Vehicle", "Are you sure?", [
+            { text: "Cancel", style: "cancel" },
             {
-                vehicle,
-                vehicleId,
-                userId: userProfile?.id,
-            },
-            {
-                onSuccess: () => {
-                    console.log("✅ Vehicle updated successfully!");
-                    navigation.goBack(); // ✅ Navigate back after update
-                },
-                onError: (error) => {
-                    console.error("🚨 Error updating vehicle:", error);
-                },
-            }
-        );
-    }
+                text: "Delete",
+                style: "destructive",
+                onPress: () => {
+                    if (!userProfile?.id) return;
 
-    async function deleteVehicleHandler() {
-        Alert.alert(
-            "Delete Vehicle",
-            "Are you sure you want to delete this vehicle?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    onPress: () => {
-                        if (!userProfile?.id) {
-                            console.error(
-                                "🚨 User ID is missing. Cannot delete vehicle."
-                            );
-                            return;
+                    deleteVehicle(
+                        { vehicleId, userId: userProfile.id },
+                        {
+                            onSuccess: () => navigation.goBack(),
+                            onError: (error) =>
+                                console.error("Error deleting vehicle:", error),
                         }
-
-                        deleteVehicle(
-                            { vehicleId, userId: userProfile?.id }, // ✅ Now passing userProfile?.id as a parameter
-                            {
-                                onSuccess: () => {
-                                    navigation.goBack();
-
-                                    console.log(
-                                        "✅ Vehicle deleted successfully!"
-                                    );
-                                    // Optionally navigate back or refresh the list
-                                },
-                                onError: (error) => {
-                                    console.error(
-                                        "🚨 Error deleting vehicle:",
-                                        error
-                                    );
-                                },
-                            }
-                        );
-                    },
-                    style: "destructive",
+                    );
                 },
-            ]
-        );
-    }
+            },
+        ]);
+    };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Vehicle Details</Text>
-            <View style={styles.vehicleContainer}>
-                <Text style={styles.vehicle}>
-                    Vehicle Brand: {vehicle.vehicle_brand}
+        <ScrollView contentContainerStyle={styles.container}>
+            <Text style={styles.title}>Vehicle Information</Text>
+
+            <View style={styles.card}>
+                <Text style={styles.label}>Brand</Text>
+                <Text style={styles.value}>{vehicle.vehicle_brand}</Text>
+
+                <Text style={styles.label}>Model</Text>
+                <Text style={styles.value}>{vehicle.vehicle_model}</Text>
+
+                <Text style={styles.label}>Car Type</Text>
+                <Text style={styles.value}>{vehicle.vehicle_car_type}</Text>
+
+                <Text style={styles.label}>License Plate</Text>
+                <Text style={styles.value}>
+                    {vehicle.vehicle_license_plate || "—"}
                 </Text>
-                <Text style={styles.vehicle}>
-                    Vehicle Type: {vehicle.vehicle_car_type}
-                </Text>
-                <Text style={styles.vehicle}>
-                    Vehicle License Plate: {vehicle.vehicle_license_plate}
-                </Text>
-                <Text style={styles.vehicle}>
-                    Vehicle Model: {vehicle.vehicle_model}
-                </Text>
-                <Text style={styles.vehicle}>
-                    Vehicle Model Year: {vehicle.vehicle_model_year}
-                </Text>
-                <Text style={styles.vehicle}>
-                    Vehicle Year Of Manufacture:{" "}
+
+                <Text style={styles.label}>Model Year</Text>
+                <Text style={styles.value}>{vehicle.vehicle_model_year}</Text>
+
+                <Text style={styles.label}>Year of Manufacture</Text>
+                <Text style={styles.value}>
                     {vehicle.vehicle_year_of_manufacture}
                 </Text>
+
+                <Text style={styles.label}>Current Mileage</Text>
+                <Text style={styles.value}>{vehicle.current_mileage} km</Text>
             </View>
 
-            <View style={styles.detailsButtonContainer}>
-                <Text style={styles.detailButton}>Add Details</Text>
-                <Text
-                    style={styles.detailButton}
-                    onPress={editVehicleDetailsHandler}
+            <View style={styles.actions}>
+                <TouchableOpacity style={styles.button} onPress={handleEdit}>
+                    <Text style={styles.buttonText}>Edit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.button, styles.deleteButton]}
+                    onPress={handleDelete}
                 >
-                    Edit Details
-                </Text>
+                    <Text style={[styles.buttonText, { color: "#fff" }]}>
+                        Delete
+                    </Text>
+                </TouchableOpacity>
             </View>
-
-            <Text style={styles.detailButton} onPress={deleteVehicleHandler}>
-                Delete
-            </Text>
 
             <Modal
                 animationType="slide"
@@ -151,90 +121,61 @@ const VehicleDetailScreen = ({ route }: any) => {
                     {...{ modalVisible, setModalVisible, vehicle }}
                 />
             </Modal>
-        </View>
+        </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
         padding: 20,
-        width: "100%",
+        backgroundColor: "#f9f9f9",
     },
     title: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: "bold",
+        marginBottom: 20,
         color: "#333",
     },
-    vehicleInfo: {
-        marginTop: 15,
+    card: {
         backgroundColor: "#fff",
-        padding: 15,
-        borderRadius: 8,
+        borderRadius: 12,
+        padding: 20,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 2 },
         shadowRadius: 5,
-        elevation: 3,
+        elevation: 4,
     },
-    subtitle: {
-        fontSize: 18,
-        color: "#555",
-    },
-    infoItem: {
-        fontSize: 16,
+    label: {
+        fontSize: 14,
         color: "#777",
+        marginTop: 10,
     },
-    vehicleContainer: {
-        borderRadius: 8,
-        padding: 8,
-        backgroundColor: "white",
-        height: 160,
-        marginVertical: 15,
-        // flexDirection: 'row',
-        // width: '99%',
-        width: "100%",
-        shadowColor: "black",
-        // borderWidth: 1,
-        shadowRadius: 2,
-        elevation: 1,
+    value: {
+        fontSize: 16,
+        fontWeight: "500",
+        color: "#333",
     },
-    vehicle: {
-        height: 25,
-    },
-    detailsButtonContainer: {
+    actions: {
         flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "space-between",
+        marginTop: 24,
     },
-    detailButton: {
-        width: "45%",
-        height: 40,
-        backgroundColor: "white",
-        marginHorizontal: 16,
-        textAlign: "center",
-        textAlignVertical: "center",
+    button: {
+        flex: 1,
+        backgroundColor: "#e0e0e0",
+        padding: 14,
         borderRadius: 8,
+        marginHorizontal: 8,
+        alignItems: "center",
     },
-    modalContainer: {
-        width: "90%",
-        height: "90%",
-        padding: 16,
+    deleteButton: {
+        backgroundColor: "#E53935",
     },
-    textStyle: {
-        color: "black",
+    buttonText: {
+        fontSize: 16,
         fontWeight: "bold",
-        textAlign: "center",
     },
-    detailButtonText: { color: "white", fontWeight: "bold" },
-    closeButton: {
-        padding: 10,
-        backgroundColor: "#ff4d4d",
-        marginTop: 20,
-        borderRadius: 8,
-        alignItems: "center",
-    },
-    closeButtonText: { color: "white", fontWeight: "bold" },
 });
 
 export default VehicleDetailScreen;

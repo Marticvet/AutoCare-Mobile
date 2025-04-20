@@ -156,7 +156,6 @@ const HomeScreen = () => {
                                     // @ts-ignore
                                     navigation.navigate("VehicleDetailScreen", {
                                         vehicleId: item.id,
-                                        vehicle: item
                                     });
                                 }}
                             >
