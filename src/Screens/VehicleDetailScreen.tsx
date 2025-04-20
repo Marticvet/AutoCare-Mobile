@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Modal, Alert } from "react-native";
-import { useAuth } from "../providers/AuthProvider";
+import React, { useContext, useState } from "react";
+import { View, Text, StyleSheet, Modal, Alert } from "react-native";
 import {
     useDeleteVehicle,
     useVehicle,
@@ -8,27 +7,23 @@ import {
 } from "../api/vehicles";
 import { Loader } from "./Loader";
 import { useNavigation } from "@react-navigation/native";
-import { VehicleData } from "../../types/vehicle";
 import AddVehicleScreen from "./AddVehicleScreen";
+import { ProfileContext } from "../providers/ProfileDataProvider";
 
 const VehicleDetailScreen = ({ route }: any) => {
     const navigation = useNavigation();
     const { vehicleId } = route.params;
-    const { profile } = useAuth();
-    const [userId, setUserId] = useState<string | null>(null);
+    const { userProfile } = useContext(ProfileContext);
+
     const { mutate: deleteVehicle } = useDeleteVehicle();
     const { mutate: updateVehicle } = useUpdateVehicle();
 
-    // ✅ Wait for `profile.id` before setting userId
-    useEffect(() => {
-        if (profile?.id) {
-            setUserId(profile.id);
-        }
-    }, [profile, profile.id]);
-
-    // ✅ Fetch vehicle only when `userId` and vehicleId is available
-    const { data, isLoading, error } = useVehicle(userId || "", vehicleId);
-    const vehicle: VehicleData = data;
+    // ✅ Fetch vehicle only when `userProfile?.id` and vehicleId is available
+    const {
+        data: vehicle,
+        isLoading,
+        error,
+    } = useVehicle(userProfile?.id || "", vehicleId);
     const [modalVisible, setModalVisible] = useState(false);
 
     if (isLoading) {
@@ -42,28 +37,27 @@ const VehicleDetailScreen = ({ route }: any) => {
     }
 
     function editVehicleDetailsHandler() {
-        if (!vehicle || !vehicleId || !userId) {
+        if (!vehicle || !vehicleId || !userProfile?.id) {
             console.error("🚨 Missing required values. Cannot update vehicle.");
             return;
         }
 
-        // updateVehicle(
-        //     {
-        //         // @ts-ignore
-        //         vehicle: {...vehicle, vehicle_model: vehicle. },
-        //         vehicleId,
-        //         userId,
-        //     },
-        //     {
-        //         onSuccess: () => {
-        //             console.log("✅ Vehicle updated successfully!");
-        //             navigation.goBack(); // ✅ Navigate back after update
-        //         },
-        //         onError: (error) => {
-        //             console.error("🚨 Error updating vehicle:", error);
-        //         },
-        //     }
-        // );
+        updateVehicle(
+            {
+                vehicle,
+                vehicleId,
+                userId: userProfile?.id,
+            },
+            {
+                onSuccess: () => {
+                    console.log("✅ Vehicle updated successfully!");
+                    navigation.goBack(); // ✅ Navigate back after update
+                },
+                onError: (error) => {
+                    console.error("🚨 Error updating vehicle:", error);
+                },
+            }
+        );
     }
 
     async function deleteVehicleHandler() {
@@ -75,7 +69,7 @@ const VehicleDetailScreen = ({ route }: any) => {
                 {
                     text: "Delete",
                     onPress: () => {
-                        if (!userId) {
+                        if (!userProfile?.id) {
                             console.error(
                                 "🚨 User ID is missing. Cannot delete vehicle."
                             );
@@ -83,7 +77,7 @@ const VehicleDetailScreen = ({ route }: any) => {
                         }
 
                         deleteVehicle(
-                            { vehicleId, userId }, // ✅ Now passing userId as a parameter
+                            { vehicleId, userId: userProfile?.id }, // ✅ Now passing userProfile?.id as a parameter
                             {
                                 onSuccess: () => {
                                     navigation.goBack();

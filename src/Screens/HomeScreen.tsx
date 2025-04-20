@@ -6,6 +6,7 @@ import {
     Dimensions,
     Animated,
     FlatList,
+    TouchableOpacity,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
@@ -146,11 +147,18 @@ const HomeScreen = () => {
 
                     return (
                         <View style={styles.cardWrapper}>
-                            <Animated.View
+                            <TouchableOpacity
                                 style={[
                                     styles.card,
                                     { transform: [{ scale }, { translateY }] },
                                 ]}
+                                onPress={() => {
+                                    // @ts-ignore
+                                    navigation.navigate("VehicleDetailScreen", {
+                                        vehicleId: item.id,
+                                        vehicle: item
+                                    });
+                                }}
                             >
                                 <Text style={styles.title}>
                                     🚗 {item.vehicle_brand} {item.vehicle_model}
@@ -159,7 +167,7 @@ const HomeScreen = () => {
                                 <Text>Next Service:</Text>
                                 <Text>Insurance Expires:</Text>
                                 <Text>Last Tire Change:</Text>
-                            </Animated.View>
+                            </TouchableOpacity>
                         </View>
                     );
                 }}

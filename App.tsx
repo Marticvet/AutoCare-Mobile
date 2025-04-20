@@ -19,6 +19,7 @@ import ServiceExpenseScreen from "./src/Screens/ServiceExpenseScreen";
 import { FuelExpenseScreen } from "./src/Screens/FuelExpenseScreen";
 import HeaderServiceNavigator from "./src/Screens/Navigators/HeaderServiceNavigator";
 import MapScreen from "./src/Screens/MapScreen";
+import VehicleDetailScreen from "./src/Screens/VehicleDetailScreen";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -122,6 +123,12 @@ function RootNavigator() {
                 name="MapScreen"
                 component={MapScreen}
                 options={{ title: "Map" }}
+            />
+
+            <RootStack.Screen
+                name="VehicleDetailScreen"
+                component={VehicleDetailScreen}
+                options={{ title: "Vehicle Details" }}
             />
             {/* Add more global screens here if needed */}
         </RootStack.Navigator>

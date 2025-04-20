@@ -51,8 +51,19 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
 
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
     const [vehicles, setVehicles] = useState<VehicleData[]>([]);
-    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(
-        null
+    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>({
+        id: "",
+        selected_vehicle_id: "",
+        vehicle_brand: "",
+        vehicle_model: "",
+        vehicle_model_year: 0,
+        vehicle_car_type: "",
+        vehicle_license_plate: "",
+        vehicle_year_of_manufacture: 0,
+        vehicle_identification_number: "",
+        current_mileage: 0,
+        user_id: ""
+    }
     );
     const [fuelExpenses, setFuelExpenses] = useState<Fuel_Expenses[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
