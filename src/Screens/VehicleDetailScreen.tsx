@@ -11,7 +11,6 @@ import {
 import {
     useDeleteVehicle,
     useVehicle,
-    useUpdateVehicle,
 } from "../api/vehicles";
 import { Loader } from "./Loader";
 import { useNavigation } from "@react-navigation/native";

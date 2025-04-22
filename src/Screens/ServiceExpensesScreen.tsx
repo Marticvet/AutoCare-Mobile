@@ -8,6 +8,7 @@ import { DateTimePickerModal } from "./DateTimePickerModal";
 import { BarChart } from "react-native-chart-kit";
 import React from "react";
 import { ChartData } from "../../types/chart_data";
+import { formattedDate } from "../../types/formatteddateTime";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -41,34 +42,16 @@ export const ServiceExpensesScreen = () => {
     ).getDate();
     oneMonthAgo.setDate(Math.min(now.getDate(), lastDayOfPrevMonth));
 
-    const dueDate = new Date();
-    const userLocale = Intl.DateTimeFormat().resolvedOptions().locale; // Auto-detect user locale
-    // Get a date object for the current time
-
     oneMonthAgo.setDate(1); // Prevent day overflow
     oneMonthAgo.setMonth(now.getMonth() - 1);
 
     oneMonthAgo.setDate(Math.min(now.getDate(), lastDayOfPrevMonth));
 
-    // Format Date (User's Locale)
-    const formattedDate = oneMonthAgo.toLocaleDateString(userLocale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
-
-    // Format Date (User's Locale)
-    const formattedDueDate = dueDate.toLocaleDateString(userLocale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
-
     const [isValidUntilButtonPressed, setIsValidUntilButtonPressed] =
         useState(false);
     const [selectedDate, setSelectedDate] = useState<DateType>(formattedDate);
     const [selectedDueDate, setSelectedDueDate] =
-        useState<DateType>(formattedDueDate);
+        useState<DateType>(formattedDate);
 
     const [selectedDateTime, setSelectedDateTime] = useState<DateType>();
     const [modalVisible, setModalVisible] = useState(false);

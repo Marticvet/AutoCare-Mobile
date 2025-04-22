@@ -19,52 +19,11 @@ import { VehicleData } from "../../types/vehicle";
 import CustomPicker from "./CustomPicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProfileContext } from "../providers/ProfileDataProvider";
-
-const years = [
-    1980, 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990, 1991,
-    1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-    2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-    2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,
-];
-
-const carTypesByShape: { name: string; type: number }[] = [
-    { name: "Sedan", type: 1 },
-    { name: "Hatchback", type: 2 },
-    { name: "SUV", type: 3 },
-    { name: "Convertible", type: 4 },
-    { name: "Station Wagon", type: 5 },
-    { name: "Pickup Truck", type: 6 },
-    { name: "Van", type: 7 },
-    { name: "Crossover", type: 8 },
-    { name: "Sports Car", type: 9 },
-    { name: "Luxury Car", type: 10 },
-    { name: "Roadster", type: 11 },
-    { name: "Off-Road Vehicle", type: 12 },
-    { name: "Compact Car", type: 13 },
-    { name: "Supercar", type: 14 },
-    { name: "Electric Vehicle", type: 15 },
-    { name: "Liftback", type: 16 },
-    { name: "Targa", type: 17 },
-    { name: "Ute (Utility Vehicle)", type: 18 },
-    { name: "Campervan", type: 19 },
-    { name: "Panel Van", type: 20 },
-    { name: "Coupe", type: 21 },
-    { name: "Minivan", type: 22 },
-    { name: "Microcar", type: 23 },
-];
-
-const API_BASE_URL = "https://www.carqueryapi.com/api/0.3/";
-
-interface Brands {
-    make_country: string;
-    make_display: string;
-    make_id: string;
-    make_is_common: string;
-}
-
-interface Models {
-    model_name: string | null;
-}
+import { carBodyTypes } from "../utils/carBodyTypes";
+import { years } from "../utils/years";
+import { Brands } from "../../types/Brands";
+import { Models } from "../../types/Models";
+import { getCarMake, getCarMakeModels } from "../api/fetchCarsApi/fetchCarsApi";
 
 function AddVehicleScreen(props: any) {
     const { userProfile } = useContext(ProfileContext);
@@ -97,18 +56,6 @@ function AddVehicleScreen(props: any) {
         user_id: userId,
     };
 
-    // const addVehicleData: VehicleData = {
-    //     vehicle_brand: "BMW",
-    //     vehicle_model: "330",
-    //     vehicle_car_type: "sedan",
-    //     vehicle_model_year: 2021,
-    //     vehicle_license_plate: "HU-MT7927",
-    //     vehicle_year_of_manufacture: 2020,
-    //     vehicle_identification_number: "",
-    //     current_mileage: 30212,
-    //     user_id: userId,
-    // };
-
     const [brands, setBrands] = useState<Brands[]>([]);
     const [models, setModels] = useState<Models[]>([]);
 
@@ -128,11 +75,7 @@ function AddVehicleScreen(props: any) {
                 }
 
                 console.log("Fetching brands...");
-                const response = await fetch(`${API_BASE_URL}?cmd=getMakes`);
-                const data = await response.json();
-                const filteredData = data.Makes.filter(
-                    (brand: Brands) => Number(brand.make_is_common) > 0
-                );
+                const filteredData = await getCarMake();
 
                 // Store to AsyncStorage
                 await AsyncStorage.setItem(
@@ -170,22 +113,20 @@ function AddVehicleScreen(props: any) {
                 }
 
                 console.log(`Fetching models for ${selectedVehicleBrand}...`);
-                const response = await fetch(
-                    `${API_BASE_URL}?cmd=getModels&make=${selectedVehicleBrand}`
-                );
-                const data = await response.json();
+                const models = await getCarMakeModels(selectedVehicleBrand);
 
                 if (
                     JSON.stringify(previousModels.current) !==
-                    JSON.stringify(data.Models)
+                    JSON.stringify(models)
                 ) {
                     // Store in AsyncStorage only if models changed
                     await AsyncStorage.setItem(
                         cacheKey,
-                        JSON.stringify(data.Models)
+                        JSON.stringify(models)
                     );
-                    setModels(data.Models || []);
-                    previousModels.current = data.Models;
+                    
+                    setModels(models || []);
+                    previousModels.current = models;
                 }
             } catch (error) {
                 console.error(
@@ -221,19 +162,19 @@ function AddVehicleScreen(props: any) {
     };
 
     const addVehicleHandler = () => {
-        // if (
-        //     !selectedVehicleBrand.trim() ||
-        //     !selectedModel.trim() ||
-        //     !selectedCarType.trim() ||
-        //     !vehicleLicensePlate.trim() ||
-        //     !yearOfManufacture // Check if it's 0 or undefined
-        // ) {
-        //     Alert.alert(
-        //         "Error",
-        //         "Please fill in all required fields before proceeding."
-        //     );
-        //     return false;
-        // }
+        if (
+            !selectedVehicleBrand.trim() ||
+            !selectedModel.trim() ||
+            !selectedCarType.trim() ||
+            !vehicleLicensePlate.trim() ||
+            !yearOfManufacture // Check if it's 0 or undefined
+        ) {
+            Alert.alert(
+                "Error",
+                "Please fill in all required fields before proceeding."
+            );
+            return false;
+        }
 
         // @ts-ignore
         mutate(addVehicleData, {
@@ -325,8 +266,8 @@ function AddVehicleScreen(props: any) {
                         <View style={styles.pickerContainer}>
                             <View style={styles.pickerWrapper}>
                                 <CustomPicker
-                                    items={carTypesByShape.map(
-                                        (carType) => carType.name
+                                    items={carBodyTypes.map(
+                                        (carType) => carType
                                     )}
                                     selectedValue={selectedCarType}
                                     onValueChange={(value: string) =>

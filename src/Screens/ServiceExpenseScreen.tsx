@@ -23,6 +23,7 @@ import { DateTimePickerModal } from "./DateTimePickerModal";
 import { useNavigation } from "@react-navigation/native";
 import { useUpdateVehicle } from "../api/vehicles";
 import { useInsertServiceExpense } from "../api/service_expenses";
+import { formattedDate, formattedTime } from "../../types/formatteddateTime";
 
 const ServiceExpenseScreen = () => {
     const { mutate: updateVehicle } = useUpdateVehicle();
@@ -54,23 +55,6 @@ const ServiceExpenseScreen = () => {
     const costRef = useRef(null);
     const paymentMethodRef = useRef(null);
     const notesRef = useRef(null);
-
-    const date = new Date(); // Get current date & time
-    const userLocale = Intl.DateTimeFormat().resolvedOptions().locale; // Auto-detect user locale
-
-    // Format Date (User's Locale)
-    const formattedDate = date.toLocaleDateString(userLocale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
-
-    // Format Time (User's Locale)
-    const formattedTime = date.toLocaleTimeString(userLocale, {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-    });
 
     const [selectedDate, setSelectedDate] = useState<DateType>(formattedDate);
     const [selectedTime, setSelectedTime] = useState<DateType>(formattedTime);

@@ -1,25 +1,43 @@
-import { useState } from "react";
 import { Alert, Modal, Pressable, View, Text, StyleSheet } from "react-native";
 import DateTimePicker, {
     DateType,
     useDefaultStyles,
 } from "react-native-ui-datepicker";
 
-export const DateTimePickerModal = (props: any) => {
-    const {
-        modalVisible,
-        setModalVisible,
-        selectedDueDate,
-        selectedDateTime,
-        selectedDate,
-        setSelectedDateTime,
-        setSelectedDate,
-        setSelectedTime,
-        insuranceExpenseScreen,
-        setSelectedDueDate,
-        setIsValidUntilButtonPressed,
-        isValidUntilButtonPressed,
-    } = props;
+export interface DateTimePickerModalProps {
+    modalVisible: boolean;
+    setModalVisible: (value: boolean) => void;
+
+    selectedDateTime: DateType;
+    setSelectedDateTime: (value: DateType) => void;
+
+    selectedDate?: DateType;
+    setSelectedDate?: (value: DateType) => void;
+
+    setSelectedTime?: (value: DateType) => void;
+
+    insuranceExpenseScreen?: boolean;
+    isValidUntilButtonPressed?: boolean;
+    setIsValidUntilButtonPressed?: (value: boolean) => void;
+
+    selectedDueDate?: string | DateType;
+    setSelectedDueDate?: (value: string) => void;
+}
+
+export const DateTimePickerModal = ({
+    modalVisible,
+    setModalVisible,
+    selectedDueDate,
+    selectedDateTime,
+    selectedDate,
+    setSelectedDateTime,
+    setSelectedDate,
+    setSelectedTime,
+    insuranceExpenseScreen,
+    setSelectedDueDate,
+    setIsValidUntilButtonPressed,
+    isValidUntilButtonPressed,
+}: DateTimePickerModalProps) => {
     const defaultStyles = useDefaultStyles();
 
     function handleDateChange({ date }: { date?: DateType }) {
@@ -39,18 +57,18 @@ export const DateTimePickerModal = (props: any) => {
         });
 
         if (insuranceExpenseScreen && insuranceExpenseScreen !== true) {
-            setSelectedDate(formattedDate);
-            setSelectedTime(formattedTime);
+            setSelectedDate?.(formattedDate);
+            setSelectedTime?.(formattedTime);
             setSelectedDateTime(date);
         }
 
         if (isValidUntilButtonPressed) {
             setSelectedDateTime(date);
-            setSelectedDueDate(formattedDate);
-            setIsValidUntilButtonPressed(false);
+            setSelectedDueDate?.(formattedDate);
+            setIsValidUntilButtonPressed?.(false);
         } else {
             setSelectedDateTime(date);
-            setSelectedDate(formattedDate);
+            setSelectedDate?.(formattedDate);
         }
     }
 
@@ -88,13 +106,14 @@ export const DateTimePickerModal = (props: any) => {
                                 selected_label: { color: "white" },
                                 header: {
                                     // color: "white",
+                                    marginBottom: 32,
                                     width: 300,
                                 },
                             }}
                         />
 
-                        <View style={styles.modalButtonsContainer}>
-                            {/* confirm button */}
+                        {/* <View style={styles.modalButtonsContainer}>
+                            confirm button
                             <Pressable
                                 style={styles.confirmButton}
                                 onPress={() => setModalVisible(false)}
@@ -104,7 +123,7 @@ export const DateTimePickerModal = (props: any) => {
                                 </Text>
                             </Pressable>
 
-                            {/* close button */}
+                            close button
                             <Pressable
                                 style={styles.closeButton}
                                 onPress={() => setModalVisible(false)}
@@ -113,7 +132,7 @@ export const DateTimePickerModal = (props: any) => {
                                     Close
                                 </Text>
                             </Pressable>
-                        </View>
+                        </View> */}
                     </View>
                 </View>
             </Pressable>
@@ -132,11 +151,13 @@ const styles = StyleSheet.create({
     },
     modalContainer: {
         width: "85%",
-        height: "60%",
+        // height: "60%",
+        height: "50%",
         backgroundColor: "white",
         padding: 20,
         borderRadius: 15,
         alignItems: "center",
+        justifyContent: "center",
         elevation: 10,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },

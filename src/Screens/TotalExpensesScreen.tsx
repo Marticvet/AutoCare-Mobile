@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { parseMMDDYYYY } from "../utils/parseMMDDYYYY";
 import { PieChart } from "react-native-chart-kit";
 import { Insurance_Expenses } from "../../types/insurance_expenses";
+import { formattedDate } from "../../types/formatteddateTime";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -52,28 +53,11 @@ const TotalExpensesScreen = () => {
     ).getDate();
     oneMonthAgo.setDate(Math.min(now.getDate(), lastDayOfPrevMonth));
 
-    const dueDate = new Date();
-    const userLocale = Intl.DateTimeFormat().resolvedOptions().locale; // Auto-detect user locale
-
-    // Format Date (User's Locale)
-    const formattedDate = oneMonthAgo.toLocaleDateString(userLocale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
-
-    // Format Date (User's Locale)
-    const formattedDueDate = dueDate.toLocaleDateString(userLocale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
-
     const [isValidUntilButtonPressed, setIsValidUntilButtonPressed] =
         useState(false);
     const [selectedDate, setSelectedDate] = useState<DateType>(formattedDate);
     const [selectedDueDate, setSelectedDueDate] =
-        useState<DateType>(formattedDueDate);
+        useState<DateType>(formattedDate);
 
     const [selectedDateTime, setSelectedDateTime] = useState<DateType>();
     const [modalVisible, setModalVisible] = useState(false);

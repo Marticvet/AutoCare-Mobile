@@ -24,11 +24,12 @@ import { ProfileContext } from "../providers/ProfileDataProvider";
 import { Insurance_Expenses } from "../../types/insurance_expenses";
 import { useNavigation } from "@react-navigation/native";
 import { useInsertInsuranceExpense } from "../api/insurance_expenses";
+import { formattedDate } from "../../types/formatteddateTime";
 
 export const InsuranceExpenseScreen = () => {
     const navigation = useNavigation();
     // Retrieve the values provided by ProfileDataProvider
-    const { selectedVehicle, userProfile } = useContext(ProfileContext);
+    const { userProfile } = useContext(ProfileContext);
     const { mutate, isPending, error } = useInsertInsuranceExpense(); // ✅ Call Hook at the top level
 
     const [selectedDateTime, setSelectedDateTime] = useState<DateType>();
@@ -44,14 +45,6 @@ export const InsuranceExpenseScreen = () => {
     const notesRef = useRef(null);
 
     const date = new Date(); // Get current date & time
-    const userLocale = Intl.DateTimeFormat().resolvedOptions().locale; // Auto-detect user locale
-
-    // Format Date (User's Locale)
-    const formattedDate = date.toLocaleDateString(userLocale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
 
     const [isValidUntilButtonPressed, setIsValidUntilButtonPressed] =
         useState(false);
