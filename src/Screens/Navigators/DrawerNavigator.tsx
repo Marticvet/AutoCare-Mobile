@@ -38,7 +38,7 @@ const DrawerNavigator = () => {
             <Drawer.Screen
                 name="Notifications"
                 component={() => null}
-                options={({ navigation }) => ({
+                options={({ navigation }: any) => ({
                     title: "Notifications",
                     headerLeft: () => (
                         <Pressable
@@ -53,7 +53,7 @@ const DrawerNavigator = () => {
             <Drawer.Screen
                 name="Profile"
                 component={() => null}
-                options={({ navigation }) => ({
+                options={({ navigation }: any) => ({
                     title: "Profile",
                     headerLeft: () => (
                         <Pressable
@@ -68,7 +68,7 @@ const DrawerNavigator = () => {
             <Drawer.Screen
                 name="Settings"
                 component={SettingsScreen}
-                options={({ navigation }) => ({
+                options={({ navigation }: any) => ({
                     title: "Settings",
                     headerLeft: () => (
                         <Pressable

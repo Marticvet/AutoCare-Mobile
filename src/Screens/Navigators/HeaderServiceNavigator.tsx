@@ -35,18 +35,18 @@ export const HeaderServiceNavigator = () => {
                 <Tab.Screen
                     name="FuelExpensesScreen"
                     component={FuelExpensesScreen}
-                    options={{ title: "Fuel Epx" }}
+                    options={{ title: "Fuel" }}
                 />
                 <Tab.Screen
                     name="ServiceExpensesScreen"
                     component={ServiceExpensesScreen}
-                    options={{ title: "Service Exp" }}
+                    options={{ title: "Service" }}
                 />
 
                 <Tab.Screen
                     name="InsuranceExpensesScreen"
                     component={InsuranceExpensesScreen}
-                    options={{ title: "Insurance Exp" }}
+                    options={{ title: "Insurance" }}
                 />
             </Tab.Navigator>
         </View>
