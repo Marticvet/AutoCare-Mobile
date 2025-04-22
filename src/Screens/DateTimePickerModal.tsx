@@ -70,6 +70,8 @@ export const DateTimePickerModal = ({
             setSelectedDateTime(date);
             setSelectedDate?.(formattedDate);
         }
+
+        setModalVisible(false);
     }
 
     return (
@@ -82,60 +84,37 @@ export const DateTimePickerModal = ({
                 setModalVisible(!modalVisible);
             }}
         >
-            {/* Press anywhere outside modal to close */}
-            <Pressable
-                style={styles.modalOverlay}
-                onPress={() => setModalVisible(false)} // ✅ Close when tapping outside
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <DateTimePicker
-                            mode="single"
-                            date={selectedDateTime}
-                            onChange={handleDateChange}
-                            timePicker={!insuranceExpenseScreen ? true : false} // ✅ Enables both Date & Time selection
-                            styles={{
-                                ...defaultStyles,
-                                today: {
-                                    borderColor: "#00AFCF",
-                                    borderWidth: 2,
-                                },
-                                selected: {
-                                    backgroundColor: "#00AFCF",
-                                },
-                                selected_label: { color: "white" },
-                                header: {
-                                    // color: "white",
-                                    marginBottom: 32,
-                                    width: 300,
-                                },
-                            }}
-                        />
+            <View style={styles.modalOverlay}>
+                {/* Only this Pressable is touch-sensitive for dismissing */}
+                <Pressable
+                    style={StyleSheet.absoluteFill}
+                    onPress={() => setModalVisible(false)}
+                />
 
-                        {/* <View style={styles.modalButtonsContainer}>
-                            confirm button
-                            <Pressable
-                                style={styles.confirmButton}
-                                onPress={() => setModalVisible(false)}
-                            >
-                                <Text style={styles.confirmButtonText}>
-                                    Confirm
-                                </Text>
-                            </Pressable>
-
-                            close button
-                            <Pressable
-                                style={styles.closeButton}
-                                onPress={() => setModalVisible(false)}
-                            >
-                                <Text style={styles.closeButtonText}>
-                                    Close
-                                </Text>
-                            </Pressable>
-                        </View> */}
-                    </View>
+                <View style={styles.modalContainer}>
+                    <DateTimePicker
+                        mode="single"
+                        date={selectedDateTime}
+                        onChange={handleDateChange}
+                        timePicker={!insuranceExpenseScreen}
+                        styles={{
+                            ...defaultStyles,
+                            today: {
+                                borderColor: "#00AFCF",
+                                borderWidth: 2,
+                            },
+                            selected: {
+                                backgroundColor: "#00AFCF",
+                            },
+                            selected_label: { color: "white" },
+                            header: {
+                                marginBottom: 32,
+                                width: 300,
+                            },
+                        }}
+                    />
                 </View>
-            </Pressable>
+            </View>
         </Modal>
     );
 };
