@@ -60,18 +60,19 @@ export const DateTimePickerModal = ({
             setSelectedDate?.(formattedDate);
             setSelectedTime?.(formattedTime);
             setSelectedDateTime(date);
+            setModalVisible(false);
         }
 
         if (isValidUntilButtonPressed) {
             setSelectedDateTime(date);
             setSelectedDueDate?.(formattedDate);
             setIsValidUntilButtonPressed?.(false);
+            setModalVisible(false);
         } else {
             setSelectedDateTime(date);
+            setSelectedTime?.(formattedTime);
             setSelectedDate?.(formattedDate);
         }
-
-        setModalVisible(false);
     }
 
     return (

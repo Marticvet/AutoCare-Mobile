@@ -8,10 +8,7 @@ import {
     TouchableOpacity,
     ScrollView,
 } from "react-native";
-import {
-    useDeleteVehicle,
-    useVehicle,
-} from "../api/vehicles";
+import { useDeleteVehicle, useVehicle } from "../api/vehicles";
 import { Loader } from "./Loader";
 import { useNavigation } from "@react-navigation/native";
 import AddVehicleScreen from "./AddVehicleScreen";
@@ -24,7 +21,7 @@ const VehicleDetailScreen = ({ route }: any) => {
     const { vehicleId } = route.params;
     const { userProfile } = useContext(ProfileContext);
 
-    const { mutate: deleteVehicle } = useDeleteVehicle();
+    const { mutate: deleteVehicle, isPending } = useDeleteVehicle();
 
     const {
         data: vehicle,
@@ -33,7 +30,8 @@ const VehicleDetailScreen = ({ route }: any) => {
     } = useVehicle(userProfile?.id || "", vehicleId);
     const [modalVisible, setModalVisible] = useState(false);
 
-    if (isLoading) return <Loader />;
+    if (isLoading || isPending) return <Loader />;
+
     if (error) {
         Alert.alert("Error", error.message);
         return;
@@ -67,7 +65,10 @@ const VehicleDetailScreen = ({ route }: any) => {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            style={styles.container}
+        >
             <Text style={styles.title}>Vehicle Information</Text>
 
             <View style={styles.card}>
@@ -78,15 +79,18 @@ const VehicleDetailScreen = ({ route }: any) => {
                 <Text style={styles.value}>{vehicle.vehicle_model}</Text>
 
                 <Text style={styles.label}>Car Type</Text>
-                <Text style={styles.value}>
-                    {vehicle.vehicle_car_type}{" "}
+                <View style={styles.inlineRow}>
+                    <Text style={styles.value}>{vehicle.vehicle_car_type}</Text>
                     <MaterialCommunityIcons
                         // @ts-ignore
-                        name={vehicleTypeIcons[vehicle.vehicle_car_type]}
-                        size={24}
-                        color="black"
+                        name={
+                            vehicleTypeIcons[vehicle.vehicle_car_type] || "car"
+                        }
+                        size={20}
+                        color="#6c6b6b"
+                        style={styles.iconSpacing}
                     />
-                </Text>
+                </View>
 
                 <Text style={styles.label}>License Plate</Text>
                 <Text style={styles.value}>
@@ -135,8 +139,12 @@ const VehicleDetailScreen = ({ route }: any) => {
 };
 
 const styles = StyleSheet.create({
+    scrollContent: {
+        backgroundColor: "#f9f9f9",
+    },
     container: {
         padding: 20,
+        flex: 1,
         backgroundColor: "#f9f9f9",
     },
     title: {
@@ -184,6 +192,16 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 16,
         fontWeight: "bold",
+    },
+    // icon
+    inlineRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 4,
+    },
+
+    iconSpacing: {
+        marginLeft: 6,
     },
 });
 

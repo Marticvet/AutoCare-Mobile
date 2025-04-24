@@ -12,7 +12,8 @@ import { useNavigation } from "@react-navigation/native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import HomeScreenDropdown from "./HomeScreenDropdown";
 import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Loader } from "./Loader";
 
 const { width } = Dimensions.get("window");
 
@@ -22,8 +23,13 @@ const ITEM_SPACER = (width - ITEM_WIDTH) / 2;
 
 const HomeScreen = () => {
     const navigation = useNavigation();
-    const { selectedVehicle, vehicles, userProfile } =
-        useContext(ProfileContext);
+    const {
+        selectedVehicle,
+        vehicles,
+        userProfile,
+        isVehiclesLoading,
+        errorVehicles,
+    } = useContext(ProfileContext);
 
     const scrollX = useRef(new Animated.Value(0)).current;
     const flatListRef = useRef<FlatList>(null);
@@ -73,6 +79,8 @@ const HomeScreen = () => {
         }
     };
 
+    console.log(vehicles?.length, `here`);
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -102,85 +110,115 @@ const HomeScreen = () => {
                 <Text style={styles.sectionTitle}>Your Vehicles</Text>
             </View>
 
+            {isVehiclesLoading && <Loader />}
+            {errorVehicles && (
+                <View style={styles.errorVehiclesContainer}>
+                    <Text style={styles.errorVehiclesText}>
+                        Error while loading your vehicles!
+                    </Text>
+                    <Text style={styles.errorVehiclesText}>
+                        Please try later...
+                    </Text>
+                </View>
+            )}
+
             {/* Animated FlatList */}
-            <Animated.FlatList
-                ref={flatListRef}
-                data={repeatedData}
-                keyExtractor={(item) => item.key}
-                horizontal
-                snapToInterval={ITEM_WIDTH}
-                decelerationRate="fast"
-                showsHorizontalScrollIndicator={false}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={handleScrollEnd}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: true }
-                )}
-                getItemLayout={(_, index) => ({
-                    length: ITEM_WIDTH,
-                    offset: ITEM_WIDTH * index,
-                    index,
-                })}
-                renderItem={({ item, index }) => {
-                    if (item.type?.includes("spacer")) {
-                        return <View style={{ width: ITEM_SPACER }} />;
-                    }
+            {vehicles && vehicles?.length > 0 && (
+                <Animated.FlatList
+                    ref={flatListRef}
+                    data={repeatedData}
+                    keyExtractor={(item) => item.key}
+                    horizontal
+                    snapToInterval={ITEM_WIDTH}
+                    decelerationRate="fast"
+                    showsHorizontalScrollIndicator={false}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={handleScrollEnd}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: true }
+                    )}
+                    getItemLayout={(_, index) => ({
+                        length: ITEM_WIDTH,
+                        offset: ITEM_WIDTH * index,
+                        index,
+                    })}
+                    renderItem={({ item, index }) => {
+                        if (item.type?.includes("spacer")) {
+                            return <View style={{ width: ITEM_SPACER }} />;
+                        }
 
-                    const inputRange = [
-                        (index - 2) * ITEM_WIDTH,
-                        (index - 1) * ITEM_WIDTH,
-                        index * ITEM_WIDTH,
-                        (index + 1) * ITEM_WIDTH,
-                        (index + 2) * ITEM_WIDTH,
-                    ];
+                        const inputRange = [
+                            (index - 2) * ITEM_WIDTH,
+                            (index - 1) * ITEM_WIDTH,
+                            index * ITEM_WIDTH,
+                            (index + 1) * ITEM_WIDTH,
+                            (index + 2) * ITEM_WIDTH,
+                        ];
 
-                    const scale = scrollX.interpolate({
-                        inputRange,
-                        outputRange: [0.85, 1, 0.85, 0, 0], // 👈 bump these values
-                        extrapolate: "clamp",
-                    });
+                        const scale = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [0.85, 1, 0.85, 0, 0], // 👈 bump these values
+                            extrapolate: "clamp",
+                        });
 
-                    const translateY = scrollX.interpolate({
-                        inputRange,
-                        outputRange: [12, 6, 0, 6, 12],
-                        extrapolate: "clamp",
-                    });
+                        const translateY = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [12, 6, 0, 6, 12],
+                            extrapolate: "clamp",
+                        });
 
-                    return (
-                        <View style={styles.cardWrapper}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.card,
-                                    { transform: [{ scale }, { translateY }] },
-                                ]}
-                                onPress={() => {
-                                    // @ts-ignore
-                                    navigation.navigate("VehicleDetailScreen", {
-                                        vehicleId: item.id,
-                                    });
-                                }}
-                            >
-                                <MaterialCommunityIcons
-                                    // @ts-ignore
-                                    name={
-                                        vehicleTypeIcons[item.vehicle_car_type]
-                                    }
-                                    size={24}
-                                    color="black"
-                                />
-                                <Text style={styles.title}>
-                                    {item.vehicle_brand} {item.vehicle_model}
-                                </Text>
-                                <Text>Odometer: {item.current_mileage} km</Text>
-                                <Text>Next Service:</Text>
-                                <Text>Insurance Expires:</Text>
-                                <Text>Last Tire Change:</Text>
-                            </TouchableOpacity>
-                        </View>
-                    );
-                }}
-            />
+                        return (
+                            <View style={styles.cardWrapper}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.card,
+                                        {
+                                            transform: [
+                                                { scale },
+                                                { translateY },
+                                            ],
+                                        },
+                                    ]}
+                                    onPress={() => {
+                                        navigation.navigate(
+                                            // @ts-ignore
+                                            "VehicleDetailScreen",
+                                            {
+                                                vehicleId: item.id,
+                                            }
+                                        );
+                                    }}
+                                >
+                                    <View style={styles.titleContainer}>
+                                        <Text style={styles.title}>
+                                            {item.vehicle_brand}{" "}
+                                            {item.vehicle_model}
+                                        </Text>
+                                        <MaterialCommunityIcons
+                                            //@ts-ignore
+                                            name={
+                                                vehicleTypeIcons[
+                                                    item.vehicle_car_type
+                                                ] || "car"
+                                            }
+                                            size={24}
+                                            color="#6c6b6b"
+                                        />
+                                    </View>
+
+                                    <Text>
+                                        Odometer: {item.current_mileage} km
+                                    </Text>
+                                    <Text>Next Service:</Text>
+                                    <Text>Insurance Expires:</Text>
+                                    <Text>Last Tire Change:</Text>
+                                </TouchableOpacity>
+                            </View>
+                        );
+                    }}
+                />
+            )}
         </View>
     );
 };
@@ -243,11 +281,32 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 3,
     },
+    titleContainer: {
+        flexDirection: "row",
+        alignItems: "center", // vertical centering
+        gap: 6, // spacing between text and icon (RN 0.71+)
+        paddingBottom: 8,
+    },
+
     title: {
         fontSize: 18,
         fontWeight: "bold",
         color: "#00AFCF",
-        marginBottom: 10,
+        marginRight: 6, // manually add spacing before the icon
+    },
+
+    ////// vehicles error
+    errorVehiclesContainer: {
+        flex: 1,
+        alignContent: "center",
+        justifyContent: "center",
+        // flexDirection: "row",
+    },
+    errorVehiclesText: {
+        textAlign: "center",
+        fontSize: 18,
+        color: "#e64848",
+        fontWeight: 600,
     },
 });
 

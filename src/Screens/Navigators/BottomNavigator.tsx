@@ -131,7 +131,7 @@ export default function BottomNavigator() {
                     <Modal
                         transparent
                         visible={modalVisible}
-                        animationType="slide"
+                        animationType="fade"
                         onRequestClose={() => setModalVisible(false)}
                     >
                         <Pressable
@@ -153,11 +153,6 @@ export default function BottomNavigator() {
                                         title: "Service Expense",
                                         screen: "ServiceExpenseScreen",
                                     },
-
-                                    {
-                                        title: "Reports",
-                                        screen: "ReportsScreen",
-                                    },
                                     {
                                         title: "Reminder",
                                         screen: "ReminderScreen",
@@ -165,7 +160,7 @@ export default function BottomNavigator() {
                                     {
                                         title: "Analitics",
                                         screen: "HeaderServiceNavigator",
-                                    }
+                                    },
                                 ]
                                     .sort((a, b) =>
                                         a.title.localeCompare(b.title)

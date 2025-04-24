@@ -65,7 +65,7 @@ function EditVehicleScreen({ route }: any) {
 
     const [refreshModel, setRefreshModel] = useState<boolean>(false);
 
-    const { mutate: updateVehicle } = useUpdateVehicle();
+    const { mutate: updateVehicle, isPending } = useUpdateVehicle();
 
     const updateVehicleData: VehicleData = {
         vehicle_brand: selectedVehicleBrand,
@@ -182,6 +182,9 @@ function EditVehicleScreen({ route }: any) {
         }
     };
 
+    console.log(isPending);
+    
+
     const updateVehicleHandler = () => {
         if (
             !selectedVehicleBrand.trim() ||
@@ -213,7 +216,9 @@ function EditVehicleScreen({ route }: any) {
         );
     };
 
-    console.log(selectedModel, "selectedModel");
+    if(isPending){
+        return <Loader />
+     }
 
     return (
         <SafeAreaView style={{ flex: 1 }}>

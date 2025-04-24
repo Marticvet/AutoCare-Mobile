@@ -62,17 +62,16 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         vehicle_year_of_manufacture: 0,
         vehicle_identification_number: "",
         current_mileage: 0,
-        user_id: ""
-    }
-    );
+        user_id: "",
+    });
     const [fuelExpenses, setFuelExpenses] = useState<Fuel_Expenses[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [insuranceExpenses, setInsuranceExpenses] = useState<
         Insurance_Expenses[]
     >([]);
-    const [serviceExpenses, setServiceExpenses] = useState<
-        Service_Expenses[]
-    >([]);
+    const [serviceExpenses, setServiceExpenses] = useState<Service_Expenses[]>(
+        []
+    );
 
     // Fetch profile data
     const {
@@ -191,7 +190,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             fuelExpenses,
             expenses,
             insuranceExpenses,
-            serviceExpenses
+            serviceExpenses,
         }),
         [
             userProfile,
@@ -204,7 +203,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             fuelExpenses,
             expenses,
             insuranceExpenses,
-            serviceExpenses
+            serviceExpenses,
         ]
     );
 
