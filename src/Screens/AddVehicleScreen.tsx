@@ -77,6 +77,8 @@ function AddVehicleScreen(props: any) {
                 console.log("Fetching brands...");
                 const filteredData = await getCarMake();
 
+                console.log(filteredData, "filteredData");
+                
                 // Store to AsyncStorage
                 await AsyncStorage.setItem(
                     "brands",
@@ -124,7 +126,7 @@ function AddVehicleScreen(props: any) {
                         cacheKey,
                         JSON.stringify(models)
                     );
-                    
+
                     setModels(models || []);
                     previousModels.current = models;
                 }
@@ -210,23 +212,22 @@ function AddVehicleScreen(props: any) {
                         keyboardShouldPersistTaps="handled"
                     >
                         {/* Brand Picker */}
-                        {brands.length > 0 && (
-                            <View style={styles.pickerContainer}>
-                                <View style={styles.pickerWrapper}>
-                                    <CustomPicker
-                                        items={brands.map(
-                                            (brand) => brand.make_display
-                                        )}
-                                        selectedValue={selectedVehicleBrand}
-                                        onValueChange={(value: string) =>
-                                            handlePickerChange("brand", value)
-                                        }
-                                        label="Vehicle Brand"
-                                        placeholder={"Select a brand"}
-                                    />
-                                </View>
+
+                        <View style={styles.pickerContainer}>
+                            <View style={styles.pickerWrapper}>
+                                <CustomPicker
+                                    items={brands.map(
+                                        (brand) => brand.make_display
+                                    )}
+                                    selectedValue={selectedVehicleBrand}
+                                    onValueChange={(value: string) =>
+                                        handlePickerChange("brand", value)
+                                    }
+                                    label="Vehicle Brand"
+                                    placeholder={"Select a brand"}
+                                />
                             </View>
-                        )}
+                        </View>
 
                         {/* Model Picker */}
                         <View style={styles.pickerContainer}>

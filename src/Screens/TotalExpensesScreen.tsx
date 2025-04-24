@@ -86,6 +86,7 @@ const TotalExpensesScreen = () => {
 
             // @ts-ignore
             const start = parseMMDDYYYY(selectedDate);
+            
             // @ts-ignore
             const end = parseMMDDYYYY(selectedDueDate);
 
