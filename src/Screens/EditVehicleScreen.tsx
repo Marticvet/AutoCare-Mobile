@@ -32,7 +32,7 @@ function EditVehicleScreen({ route }: any) {
     const { vehicle } = route.params;
 
     if (!vehicle) {
-        return <Loader />;
+        return <Loader text={"Vehicle's data is loading..."}/>;
     }
 
     const navigation = useNavigation();
@@ -217,7 +217,7 @@ function EditVehicleScreen({ route }: any) {
     };
 
     if(isPending){
-        return <Loader />
+        return <Loader text={"Vehicle's data is updating..."}/>
      }
 
     return (

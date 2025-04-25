@@ -79,8 +79,6 @@ const HomeScreen = () => {
         }
     };
 
-    console.log(vehicles?.length, `here`);
-
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -110,7 +108,7 @@ const HomeScreen = () => {
                 <Text style={styles.sectionTitle}>Your Vehicles</Text>
             </View>
 
-            {isVehiclesLoading && <Loader />}
+            {isVehiclesLoading && <Loader text={"Your vehicles are loading..."}/>}
             {errorVehicles && (
                 <View style={styles.errorVehiclesContainer}>
                     <Text style={styles.errorVehiclesText}>

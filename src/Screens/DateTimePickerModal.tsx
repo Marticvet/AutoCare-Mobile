@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Alert, Modal, Pressable, View, Text, StyleSheet } from "react-native";
 import DateTimePicker, {
     DateType,
@@ -60,14 +61,14 @@ export const DateTimePickerModal = ({
             setSelectedDate?.(formattedDate);
             setSelectedTime?.(formattedTime);
             setSelectedDateTime(date);
-            setModalVisible(false);
+            // setModalVisible(false);
         }
 
         if (isValidUntilButtonPressed) {
             setSelectedDateTime(date);
             setSelectedDueDate?.(formattedDate);
             setIsValidUntilButtonPressed?.(false);
-            setModalVisible(false);
+            // setModalVisible(false);
         } else {
             setSelectedDateTime(date);
             setSelectedTime?.(formattedTime);
@@ -93,6 +94,18 @@ export const DateTimePickerModal = ({
                 />
 
                 <View style={styles.modalContainer}>
+                    <Pressable
+                        style={styles.closeIcon}
+                        onPress={() => setModalVisible(false)}
+                    >
+                        <Ionicons
+                            name="close-circle"
+                            size={28}
+                            color="#6c6b6b"
+                            style={styles.closeIconText}
+                        />
+                    </Pressable>
+
                     <DateTimePicker
                         mode="single"
                         date={selectedDateTime}
@@ -132,7 +145,7 @@ const styles = StyleSheet.create({
     modalContainer: {
         width: "85%",
         // height: "60%",
-        height: "50%",
+        height: "53%",
         backgroundColor: "white",
         padding: 20,
         borderRadius: 15,
@@ -176,5 +189,20 @@ const styles = StyleSheet.create({
         color: "white",
         fontSize: 16,
         fontWeight: "bold",
+    },
+
+    /// close icon
+    closeIcon: {
+        position: "absolute",
+        top: 5,
+        right: 5,
+        zIndex: 10,
+        padding: 8,
+        borderRadius: 20,
+    },
+    closeIconText: {
+        // fontSize: 18,
+        // fontWeight: "bold",
+        color: "#333",
     },
 });

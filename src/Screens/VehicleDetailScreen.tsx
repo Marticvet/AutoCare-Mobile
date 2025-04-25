@@ -30,7 +30,13 @@ const VehicleDetailScreen = ({ route }: any) => {
     } = useVehicle(userProfile?.id || "", vehicleId);
     const [modalVisible, setModalVisible] = useState(false);
 
-    if (isLoading || isPending) return <Loader />;
+    if (isLoading) {
+        return <Loader text={"Vehicle's data is loading..."} />;
+    }
+
+    if (isPending) {
+        return <Loader text="Vehicle's data is deleting..." />;
+    }
 
     if (error) {
         Alert.alert("Error", error.message);

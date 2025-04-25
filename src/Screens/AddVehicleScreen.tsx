@@ -24,6 +24,7 @@ import { years } from "../utils/years";
 import { Brands } from "../../types/Brands";
 import { Models } from "../../types/Models";
 import { getCarMake, getCarMakeModels } from "../api/fetchCarsApi/fetchCarsApi";
+import { Loader } from "./Loader";
 
 function AddVehicleScreen(props: any) {
     const { userProfile } = useContext(ProfileContext);
@@ -196,7 +197,8 @@ function AddVehicleScreen(props: any) {
     }
 
     if (isPending) {
-        Alert.alert("Inserting vehicle...");
+        // Alert.alert("Inserting vehicle...");
+        return <Loader text="Inserting vehicle..."/>
     }
 
     return (
