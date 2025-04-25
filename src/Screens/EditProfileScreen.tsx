@@ -17,10 +17,9 @@ import {
 
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { Loader } from "./Loader";
-import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useUpdateProfile } from "../api/profiles";
 import { useNavigation } from "@react-navigation/native";
 
@@ -59,22 +58,70 @@ export const EditProfileScreen = () => {
     const passwordRef = useRef<TextInput>(null);
     const confirmPasswordRef = useRef<TextInput>(null);
 
+    const requestPermission = async () => {
+        const { status } =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== "granted") {
+            Alert.alert(
+                "Permission Required",
+                "Please allow access to your media library to pick an image."
+            );
+            return false;
+        }
+        return true;
+    };
+
     const handlePickImage = async () => {
+        const hasPermission = await requestPermission();
+        if (!hasPermission) {
+            return;
+        }
+
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            base64: true, // Important for storing the image itself
-            quality: 0.7,
+            allowsEditing: false,
+            base64: false, // important: false here, we will get base64 after cropping
+            quality: 1,
         });
 
         if (!result.canceled && result.assets.length > 0) {
-            const base64Img = result.assets[0].base64;
+            const asset = result.assets[0];
 
-            if (!base64Img) {
-                console.error("No base64 data found.");
+            const cropSize = Math.min(asset.width ?? 0, asset.height ?? 0);
+
+            if (!asset.uri || cropSize === 0) {
+                console.error("No valid image selected.");
                 return;
             }
 
-            setAvatarUrl(`data:image/jpeg;base64,${base64Img}`);
+            // Perform cropping
+            const manipulated = await ImageManipulator.manipulateAsync(
+                asset.uri,
+                [
+                    {
+                        crop: {
+                            originX: (asset.width! - cropSize) / 2, // center crop horizontally
+                            originY: (asset.height! - cropSize) / 2, // center crop vertically
+                            width: cropSize,
+                            height: cropSize,
+                        },
+                    },
+                ],
+                {
+                    compress: 0.7,
+                    format: ImageManipulator.SaveFormat.JPEG,
+                    base64: true, // after manipulation
+                }
+            );
+
+            if (!manipulated.base64) {
+                console.error("Cropping succeeded but no base64 found.");
+                return;
+            }
+
+            // Now you have the cropped and compressed image as base64
+            setAvatarUrl(`data:image/jpeg;base64,${manipulated.base64}`);
         }
     };
 

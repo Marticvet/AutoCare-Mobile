@@ -57,6 +57,15 @@
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
+
+    <!-- ✅ Added missing permissions here -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>We need access to your photo library to upload your profile picture.</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>We need access to your camera to take a profile picture.</string>
+    <!-- ✅ -->
+
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

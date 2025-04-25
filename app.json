@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.marticvet.AutoCareMobile",
-      "userInterfaceStyle": "light"
+      "userInterfaceStyle": "light",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "We need access to your photo library to let you upload a profile picture."
+      }
     },
     "android": {
       "adaptiveIcon": {
