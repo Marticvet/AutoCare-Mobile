@@ -11,14 +11,15 @@ import {
 } from "react-native";
 import { useAuth } from "../providers/AuthProvider";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 const DATA = [
     {
         title: "General",
         data: [
             {
-                title: "My account",
-                screen: "MyAccountScreen",
+                title: "My Profile",
+                screen: "MyProfileScreen",
                 icon: "account-circle",
             }, // MaterialIcons
             {
@@ -77,13 +78,21 @@ const DATA = [
 ];
 
 function OptionsScreen() {
+    const navigation = useNavigation();
+
     return (
         <SafeAreaView style={styles.container}>
             <SectionList
                 sections={DATA}
                 keyExtractor={(item) => item.screen}
                 renderItem={({ item }) => (
-                    <View style={styles.item}>
+                    <TouchableOpacity
+                        style={styles.item}
+                        onPress={() => {
+                            // @ts-ignore
+                            navigation.navigate(item.screen);
+                        }}
+                    >
                         <MaterialCommunityIcons
                             // @ts-ignore
                             name={item.icon}
@@ -92,7 +101,7 @@ function OptionsScreen() {
                             style={styles.icon}
                         />
                         <Text style={styles.title}>{item.title}</Text>
-                    </View>
+                    </TouchableOpacity>
                 )}
                 renderSectionHeader={({ section: { title } }) => (
                     <Text style={styles.header}>{title}</Text>
