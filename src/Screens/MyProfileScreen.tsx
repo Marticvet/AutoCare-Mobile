@@ -11,9 +11,11 @@ import {
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { useAuth } from "../providers/AuthProvider";
+import { useNavigation } from "@react-navigation/native";
 
 export const MyProfileScreen = () => {
     const { userProfile } = useContext(ProfileContext);
+    const navigation = useNavigation();
 
     const { logout } = useAuth(); // Get logout function from AuthProvider
     const [pushEnabled, setPushEnabled] = useState(true);
@@ -38,7 +40,10 @@ export const MyProfileScreen = () => {
                     {userProfile?.first_name} {userProfile?.last_name}
                 </Text>
                 <Text style={styles.email}>{userProfile?.email}</Text>
-                <Pressable style={styles.editProfileButton}>
+                <Pressable style={styles.editProfileButton} onPress={() => {
+                    // @ts-ignore
+                    navigation.navigate("EditProfileScreen");
+                }}>
                     <Text style={styles.editProfileText}>Edit profile</Text>
                 </Pressable>
             </View>

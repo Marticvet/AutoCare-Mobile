@@ -8,4 +8,5 @@ export interface Profile {
     full_name: string | null;
     selected_vehicle_id: string;
     phone_number: string;
+    username: string;
 }

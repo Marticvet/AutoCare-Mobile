@@ -22,6 +22,7 @@ import MapScreen from "./src/Screens/MapScreen";
 import VehicleDetailScreen from "./src/Screens/VehicleDetailScreen";
 import EditVehicleScreen from "./src/Screens/EditVehicleScreen";
 import { MyProfileScreen } from "./src/Screens/MyProfileScreen";
+import { EditProfileScreen } from "./src/Screens/EditProfileScreen";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -139,6 +140,12 @@ function RootNavigator() {
                 name="MyProfileScreen"
                 component={MyProfileScreen}
                 options={{ title: "My Profile" }}
+            />     
+            
+               <RootStack.Screen
+                name="EditProfileScreen"
+                component={EditProfileScreen}
+                options={{ title: "Edit Profile" }}
             />
 
             {/* Add more global screens here if needed */}
