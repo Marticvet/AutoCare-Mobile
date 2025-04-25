@@ -7,21 +7,23 @@ import {
     useState,
 } from "react";
 import { supabase } from "../lib/supabase";
+import { jwtDecode } from "jwt-decode";
+import * as SecureStore from "expo-secure-store";
 
 type AuthData = {
     session: Session | null;
     profile: any;
     loading: boolean;
     logout: () => Promise<void>;
-    // isAdmin: boolean;
+    isAuthenticated: boolean;
 };
 
 const AuthContext = createContext<AuthData>({
     session: null,
-    loading: true,
     profile: null,
+    loading: true,
     logout: async () => {},
-    // isAdmin: false,
+    isAuthenticated: false,
 });
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
@@ -29,7 +31,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    // ✅ Define `fetchProfile` before using it
+    // Fetch user profile from Supabase 'profiles' table
     const fetchProfile = async (userId: string) => {
         const { data, error } = await supabase
             .from("profiles")
@@ -38,62 +40,85 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             .single();
 
         if (error) {
-            console.error("🚨 Error fetching profile:", error);
+            console.error("Error fetching profile:", error);
             setProfile(null);
         } else {
             setProfile(data);
         }
     };
 
+    // Restore session on app load
     useEffect(() => {
-        const fetchSession = async () => {
+        const restoreSession = async () => {
             const {
                 data: { session },
             } = await supabase.auth.getSession();
 
-            setSession(session);
-            if (session && session.user.id) {
-                await fetchProfile(session.user.id);
+            // Optionally load from secure storage if session is null
+            if (!session) {
+                const saved = await SecureStore.getItemAsync("session");
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    const { data: restoredSession, error } =
+                        await supabase.auth.setSession(parsed);
+                    if (error) {
+                        console.error("Error restoring session:", error);
+                    } else {
+                        setSession(restoredSession.session);
+                        if (restoredSession.session?.user?.id) {
+                            await fetchProfile(restoredSession.session.user.id);
+                        }
+                    }
+                }
+            } else {
+                setSession(session);
+                if (session.user.id) {
+                    await fetchProfile(session.user.id);
+                }
             }
+
             setLoading(false);
         };
 
-        fetchSession();
+        restoreSession();
 
+        // Listen for auth state changes (login, logout, refresh)
         const { data: authListener } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 setSession(session);
                 if (session && session.user.id) {
                     await fetchProfile(session.user.id);
+                    await SecureStore.setItemAsync(
+                        "session",
+                        JSON.stringify(session)
+                    );
                 } else {
                     setProfile(null);
                     setSession(null);
+                    await SecureStore.deleteItemAsync("session");
                 }
             }
         );
 
-        return () => authListener.subscription.unsubscribe();
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
     }, []);
 
-    // ✅ Logout function inside AuthProvider
+    // Token refresh hook
+    useTokenRefresher(session, async () => {
+        await logout();
+    });
+
+    // Logout and cleanup
     const logout = async () => {
         const { error } = await supabase.auth.signOut();
-
         if (error) {
-            setSession(null);
-            return;
+            console.error("Logout error:", error);
         }
-
-        // ✅ Reset auth state
         setSession(null);
         setProfile(null);
-
-        // ✅ Reset navigation stack to Login screen
-
-        console.log("✅ Successfully logged out!");
-
-        // Place the token refresher hook here so it runs when session changes
-        useTokenRefresher(session, logout);
+        await SecureStore.deleteItemAsync("session");
     };
 
     return (
@@ -102,7 +127,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                 session,
                 profile,
                 loading,
-                logout, // ✅ Expose logout function
+                logout,
+                isAuthenticated: !!session,
             }}
         >
             {children}
@@ -110,29 +136,28 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     );
 };
 
-import jwtDecode from "jwt-decode";
-
-const useTokenRefresher = (session: any, logout: () => Promise<void>) => {
+// Hook to auto-refresh access token based on expiration time
+const useTokenRefresher = (
+    session: Session | null,
+    logout: () => Promise<void>
+) => {
     useEffect(() => {
         const checkTokenExpiration = async () => {
             if (session?.access_token) {
                 try {
-                    // @ts-ignore
                     const decoded: any = jwtDecode(session.access_token);
                     const currentTime = Math.floor(Date.now() / 1000);
-                    // If token is going to expire within 5 minutes, refresh it
+                    // Refresh if token expires in less than 1 minute
                     if (decoded.exp - currentTime < 60) {
-                        // Call getSession() to trigger auto-refresh, or perform your logic here
                         await supabase.auth.getSession();
                     }
                 } catch (error) {
-                    logout();
-                    console.log("Error decoding token:", error);
+                    console.error("Error decoding token:", error);
+                    await logout();
                 }
             }
         };
 
-        // Check every minute
         const interval = setInterval(checkTokenExpiration, 60 * 1000);
 
         return () => clearInterval(interval);
