@@ -20,9 +20,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { Loader } from "./Loader";
+import * as FileSystem from "expo-file-system";
+import { useUpdateProfile } from "../api/profiles";
+import { useNavigation } from "@react-navigation/native";
 
 export const EditProfileScreen = () => {
     const { userProfile } = useContext(ProfileContext);
+    const { mutate: updateProfile, isPending: updatingProfile } =
+        useUpdateProfile();
+    const navigation = useNavigation();
 
     if (!userProfile) {
         return <Loader text="Your profile's data is loading..." />;
@@ -45,7 +51,6 @@ export const EditProfileScreen = () => {
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
 
     // Refs for autofocusing next input
     const lastNameRef = useRef<TextInput>(null);
@@ -57,88 +62,50 @@ export const EditProfileScreen = () => {
     const handlePickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
+            base64: true, // Important for storing the image itself
             quality: 0.7,
         });
 
         if (!result.canceled && result.assets.length > 0) {
-            const image = result.assets[0];
-            const filePath = `avatars/${Date.now()}.jpg`;
+            const base64Img = result.assets[0].base64;
 
-            const response = await fetch(image.uri);
-            const blob = await response.blob();
-
-            const { error: uploadError } = await supabase.storage
-                .from("avatars")
-                .upload(filePath, blob, {
-                    cacheControl: "3600",
-                    upsert: true,
-                });
-
-            if (uploadError) {
-                Alert.alert("Upload failed", uploadError.message);
+            if (!base64Img) {
+                console.error("No base64 data found.");
                 return;
             }
 
-            const { data } = supabase.storage
-                .from("avatars")
-                .getPublicUrl(filePath);
-
-            setAvatarUrl(data.publicUrl);
+            setAvatarUrl(`data:image/jpeg;base64,${base64Img}`);
         }
     };
 
-    const handleSaveChanges = async () => {
-        setLoading(true);
-
-        const {
-            data: { session },
-        } = await supabase.auth.getSession();
-
-        const user = session?.user;
-        if (!user) {
-            setLoading(false);
-            return Alert.alert("Error", "User not authenticated");
-        }
-
-        if (password && password !== confirmPassword) {
-            setLoading(false);
-            return Alert.alert("Password Mismatch", "Passwords do not match.");
-        }
-
-        const { error } = await supabase
-            .from("profiles")
-            .update({
-                avatar_url: avatarUrl,
-                first_name: firstName,
-                last_name: lastName,
-                username: username,
-                phone_number: phoneNumber,
-            })
-            .eq("id", user.id);
-
-        if (error) {
-            setLoading(false);
-            return Alert.alert("Failed to update profile", error.message);
-        }
-
-        if (password) {
-            const { error: passwordError } = await supabase.auth.updateUser({
-                password,
-            });
-            if (passwordError) {
-                setLoading(false);
-                return Alert.alert(
-                    "Failed to update password",
-                    passwordError.message
-                );
+    const handleUpdateChanges = async () => {
+        updateProfile(
+            {
+                profile: {
+                    ...userProfile,
+                    avatar_url: avatarUrl ?? "", // updated avatar
+                    first_name: firstName, // updated first name
+                    last_name: lastName, // updated last name
+                    username: username, // updated username
+                    phone_number: phoneNumber, // updated phone number
+                },
+                userId: userProfile.id,
+            },
+            {
+                onSuccess: () => {
+                    console.log("✅ Profile updated successfully!");
+                    navigation.goBack();
+                },
+                onError: (error: any) => {
+                    console.error("🚨 Error updating Profile:", error);
+                },
             }
-        }
-
-        setLoading(false);
-        Alert.alert("Success", "Profile updated successfully");
+        );
     };
+
+    if (updatingProfile) {
+        return <Loader text="Updating your profile..." />;
+    }
 
     return (
         <KeyboardAvoidingView
@@ -348,15 +315,11 @@ export const EditProfileScreen = () => {
 
                     <Pressable
                         style={styles.saveButton}
-                        onPress={handleSaveChanges}
+                        onPress={handleUpdateChanges}
                     >
-                        {loading ? (
-                            <ActivityIndicator color="white" />
-                        ) : (
-                            <Text style={styles.saveButtonText}>
-                                Update profile
-                            </Text>
-                        )}
+                        <Text style={styles.saveButtonText}>
+                            Update profile
+                        </Text>
                     </Pressable>
                 </ScrollView>
             </TouchableWithoutFeedback>
