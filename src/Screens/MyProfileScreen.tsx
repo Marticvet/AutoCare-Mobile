@@ -21,8 +21,6 @@ export const MyProfileScreen = () => {
     const [pushEnabled, setPushEnabled] = useState(true);
     const [faceIdEnabled, setFaceIdEnabled] = useState(true);
 
-    console.log(userProfile?.avatar_url);
-
     return (
         <ScrollView contentContainerStyle={styles.container}>
             {/* Profile Header */}

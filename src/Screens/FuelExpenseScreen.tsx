@@ -9,10 +9,7 @@ import {
     View,
     Text,
     StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
     ScrollView,
-    SafeAreaView,
     Pressable,
     TextInput,
     Switch,
@@ -26,6 +23,9 @@ import { Fuel_Expenses } from "../../types/fuel_expenses";
 import { DateTimePickerModal } from "./DateTimePickerModal";
 import { useNavigation } from "@react-navigation/native";
 import { formattedDate, formattedTime } from "../../types/formatteddateTime";
+import { handleAttachFileAndUpload } from "../utils/handleAttachFileAndUpload";
+
+import * as DocumentPicker from "expo-document-picker";
 
 export const FuelExpenseScreen = () => {
     const { mutate: updateVehicle } = useUpdateVehicle();
@@ -46,6 +46,13 @@ export const FuelExpenseScreen = () => {
     const [paymentMethod, setPaymentMethod] = useState<string>("");
     const [notes, setNotes] = useState<string>("");
     const [locationName, setLocationName] = useState<string>("");
+    const [attachment, setAttachment] = useState<{
+        uri: string;
+        name: string;
+        mimeType: string;
+    } | null>(null);
+
+    console.log(attachment, "attachment");
 
     // References for each input field to manage focus
     const odometerRef = useRef(null);
@@ -176,6 +183,24 @@ export const FuelExpenseScreen = () => {
             }
         );
     }
+
+    const onAttachFile = async () => {
+        const uploadResult = await handleAttachFileAndUpload();
+
+        if (uploadResult.success && uploadResult.file) {
+            console.log("✅ File picked:", uploadResult.file.name);
+
+            setAttachment({
+                uri: uploadResult.file.uri,
+                name: uploadResult.file.name,
+                mimeType:
+                    uploadResult.file.mimeType || "application/octet-stream",
+            });
+        } else {
+            // @ts-ignore
+            console.log("❌ Error picking file:", uploadResult.error);
+        }
+    };
 
     return (
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -430,26 +455,38 @@ export const FuelExpenseScreen = () => {
                     </View>
 
                     {/* Attatch File input */}
-                    {/* <View style={styles.inputContainer}>
-                            <MaterialIcons
-                                name="attach-file"
-                                size={24}
-                                color="#6c6b6b"
-                                style={styles.icon}
-                            />
-                            <View
-                                style={[
-                                    styles.innerInputContainer,
-                                    { borderBottomWidth: 0 },
-                                ]}
-                            >
-                                <Pressable style={styles.attachFile}>
-                                    <Text style={styles.attachText}>
-                                        Attach file
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </View> */}
+                    <View style={styles.inputContainer}>
+                        <MaterialIcons
+                            name="attach-file"
+                            size={24}
+                            color="#6c6b6b"
+                            style={styles.icon}
+                        />
+                        <View
+                            style={[
+                                styles.innerInputContainer,
+                                { borderBottomWidth: 0 },
+                            ]}
+                        >
+                            <Pressable style={styles.attachFile}>
+                                <Text style={styles.attachText}>
+                                    Attach file
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </View>
+
+                    {attachment && (
+                        <Text
+                            style={{
+                                marginLeft: 10,
+                                color: "black",
+                                fontSize: 14,
+                            }}
+                        >
+                            Selected file: {attachment.name}
+                        </Text>
+                    )}
 
                     {/* Note Input */}
                     <View style={styles.inputContainerNoteContainer}>
