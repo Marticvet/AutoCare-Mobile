@@ -468,7 +468,10 @@ export const FuelExpenseScreen = () => {
                                 { borderBottomWidth: 0 },
                             ]}
                         >
-                            <Pressable style={styles.attachFile}>
+                            <Pressable
+                                style={styles.attachFile}
+                                onPress={onAttachFile}
+                            >
                                 <Text style={styles.attachText}>
                                     Attach file
                                 </Text>
