@@ -24,6 +24,8 @@ import EditVehicleScreen from "./src/Screens/EditVehicleScreen";
 import { MyProfileScreen } from "./src/Screens/MyProfileScreen";
 import { EditProfileScreen } from "./src/Screens/EditProfileScreen";
 
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
+
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
 
@@ -47,18 +49,20 @@ const MyTheme = {
 
 function App() {
     return (
-        <QueryProvider>
-            <AuthProvider>
-                <ProfileDataProvider>
-                    <NavigationContainer
-                        // @ts-ignore
-                        theme={MyTheme}
-                    >
-                        <RootNavigator />
-                    </NavigationContainer>
-                </ProfileDataProvider>
-            </AuthProvider>
-        </QueryProvider>
+        <ActionSheetProvider>
+            <QueryProvider>
+                <AuthProvider>
+                    <ProfileDataProvider>
+                        <NavigationContainer
+                            // @ts-ignore
+                            theme={MyTheme}
+                        >
+                            <RootNavigator />
+                        </NavigationContainer>
+                    </ProfileDataProvider>
+                </AuthProvider>
+            </QueryProvider>
+        </ActionSheetProvider>
     );
 }
 
@@ -140,9 +144,9 @@ function RootNavigator() {
                 name="MyProfileScreen"
                 component={MyProfileScreen}
                 options={{ title: "My Profile" }}
-            />     
-            
-               <RootStack.Screen
+            />
+
+            <RootStack.Screen
                 name="EditProfileScreen"
                 component={EditProfileScreen}
                 options={{ title: "Edit Profile" }}

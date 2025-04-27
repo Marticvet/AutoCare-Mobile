@@ -23,6 +23,9 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { useUpdateProfile } from "../api/profiles";
 import { useNavigation } from "@react-navigation/native";
 
+import * as DocumentPicker from "expo-document-picker";
+import { useActionSheet } from "@expo/react-native-action-sheet";
+
 export const EditProfileScreen = () => {
     const { userProfile } = useContext(ProfileContext);
     const { mutate: updateProfile, isPending: updatingProfile } =
@@ -57,6 +60,8 @@ export const EditProfileScreen = () => {
     const phoneNumberRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
     const confirmPasswordRef = useRef<TextInput>(null);
+
+    const { showActionSheetWithOptions } = useActionSheet();
 
     const requestPermission = async () => {
         const { status } =
@@ -150,6 +155,74 @@ export const EditProfileScreen = () => {
         );
     };
 
+    const handlePickAnyFile = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: "*/*",
+                copyToCacheDirectory: true,
+            });
+
+            // @ts-ignore
+            if (result.type === "success") {
+                // @ts-ignore
+                if (result.mimeType?.startsWith("image/")) {
+                    // @ts-ignore
+                    setAvatarUrl(result.uri);
+                } else {
+                    Alert.alert(
+                        "Only images are supported for profile pictures."
+                    );
+                }
+            }
+        } catch (error) {
+            console.error("Document picker error:", error);
+        }
+    };
+
+    const handleDeleteAvatar = () => {
+        Alert.alert(
+            "Delete Profile Picture",
+            "Are you sure you want to remove your profile picture?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => setAvatarUrl(null),
+                },
+            ]
+        );
+    };
+
+    const handleAvatarOptions = () => {
+        const options = [
+            "Change Photo",
+            "Pick from Files",
+            "Remove Photo",
+            "Cancel",
+        ];
+        const destructiveButtonIndex = 2;
+        const cancelButtonIndex = 3;
+
+        showActionSheetWithOptions(
+            {
+                options,
+                cancelButtonIndex,
+                destructiveButtonIndex,
+                title: "Profile Picture",
+            },
+            (buttonIndex) => {
+                if (buttonIndex === 0) {
+                    handlePickImage();
+                } else if (buttonIndex === 1) {
+                    handlePickAnyFile();
+                } else if (buttonIndex === 2) {
+                    handleDeleteAvatar();
+                }
+            }
+        );
+    };
+
     if (updatingProfile) {
         return <Loader text="Updating your profile..." />;
     }
@@ -164,7 +237,7 @@ export const EditProfileScreen = () => {
                     <Text style={styles.header}>Edit profile</Text>
 
                     <View style={styles.avatarSection}>
-                        <Pressable onPress={handlePickImage}>
+                        <Pressable onPress={handleAvatarOptions}>
                             <View style={styles.avatarWrapper}>
                                 <Image
                                     source={{
@@ -183,9 +256,6 @@ export const EditProfileScreen = () => {
                                     style={styles.cameraIcon}
                                 />
                             </View>
-                            <Text style={styles.changePhotoText}>
-                                Change photo
-                            </Text>
                         </Pressable>
                     </View>
 
@@ -464,5 +534,19 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontWeight: "bold",
         fontSize: 16,
+    },
+    /////// avatar
+    pickFromFilesText: {
+        marginTop: 4,
+        fontSize: 13,
+        color: "#007bff",
+        textAlign: "center",
+    },
+
+    deleteAvatarText: {
+        marginTop: 4,
+        fontSize: 13,
+        color: "red",
+        textAlign: "center",
     },
 });
