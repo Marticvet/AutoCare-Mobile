@@ -33,7 +33,7 @@
     "car-query": "^1.0.12",
     "dotenv": "^16.4.7",
     "eas-cli": "^16.3.0",
-    "expo": "~52.0.43",
+    "expo": "52.0.0",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.8",
     "expo-dev-client": "^5.0.20",

@@ -16,6 +16,7 @@ import { useExpensesList } from "../api/expenses/expenses";
 import { Insurance_Expenses } from "../../types/insurance_expenses";
 import { useInsuranceExpensesList } from "../api/insurance_expenses";
 import { useServiceExpensesList } from "../api/service_expenses";
+import { supabase } from "../lib/supabase";
 
 interface ProfileContextData {
     userProfile: Profile | null;
@@ -30,6 +31,8 @@ interface ProfileContextData {
     expenses?: any[];
     insuranceExpenses?: Insurance_Expenses[];
     serviceExpenses?: Service_Expenses[];
+    refreshing: boolean;
+    setRefreshing: (refreshing: boolean) => void;
 }
 
 const ProfileContext = createContext<ProfileContextData>({
@@ -39,6 +42,8 @@ const ProfileContext = createContext<ProfileContextData>({
     isProfileLoading: false,
     isVehiclesLoading: false,
     setSelectedVehicle: () => {},
+    refreshing: false,
+    setRefreshing: () => {},
     fuelExpenses: [],
     expenses: [],
     insuranceExpenses: [],
@@ -47,136 +52,161 @@ const ProfileContext = createContext<ProfileContextData>({
 
 const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     const { profile } = useAuth();
-    const userId = profile?.id || ""; // ✅ Ensure userId is set correctly
+    const userId = profile?.id || "";
 
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
     const [vehicles, setVehicles] = useState<VehicleData[]>([]);
-    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>({
-        id: "",
-        selected_vehicle_id: "",
-        vehicle_brand: "",
-        vehicle_model: "",
-        vehicle_model_year: 0,
-        vehicle_car_type: "",
-        vehicle_license_plate: "",
-        vehicle_year_of_manufacture: 0,
-        vehicle_identification_number: "",
-        current_mileage: 0,
-        user_id: "",
-    });
+    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
     const [fuelExpenses, setFuelExpenses] = useState<Fuel_Expenses[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
-    const [insuranceExpenses, setInsuranceExpenses] = useState<
-        Insurance_Expenses[]
-    >([]);
-    const [serviceExpenses, setServiceExpenses] = useState<Service_Expenses[]>(
-        []
-    );
+    const [insuranceExpenses, setInsuranceExpenses] = useState<Insurance_Expenses[]>([]);
+    const [serviceExpenses, setServiceExpenses] = useState<Service_Expenses[]>([]);
+    const [refreshing, setRefreshing] = useState<boolean>(false);
 
-    // Fetch profile data
+    // --- API Hooks with refetch support
     const {
         data: userProfileData,
         isLoading: isProfileLoading,
         error: errorProfile,
+        refetch: refetchProfile,
     } = useProfile(userId);
 
-    // Fetch vehicle list
     const {
         data: vehicleList,
         isLoading: isVehiclesLoading,
         error: errorVehicles,
+        refetch: refetchVehicleList,
     } = useVehicleList(userId);
 
-    // Fetch selected vehicle
     const {
         data: vehicleData,
         isLoading: isSelectedVehicleLoading,
         error: errorSelectedVehicle,
+        refetch: refetchVehicle,
     } = useVehicle(userId, userProfile?.selected_vehicle_id || "");
 
-    // Get all fuelExpenses by userId and user's selected_vehicle_id
     const {
         data: fuelExpensesData,
         isLoading: isFuelExpensesLoading,
         error: errorFuelExpenses,
-    } = useFuelExpensesList(
-        userId || "",
-        userProfile?.selected_vehicle_id || ""
-    );
+        refetch: refetchFuelExpenses,
+    } = useFuelExpensesList(userId, userProfile?.selected_vehicle_id || "");
 
-    // Get all insuranceExpenses by userId and user's selected_vehicle_id
     const {
         data: insuranceExpensesData,
         isLoading: isInsuranceExpensesLoading,
         error: errorInsuranceExpenses,
-    } = useInsuranceExpensesList(
-        userId || "",
-        userProfile?.selected_vehicle_id || ""
-    );
+        refetch: refetchInsuranceExpenses,
+    } = useInsuranceExpensesList(userId, userProfile?.selected_vehicle_id || "");
 
-    // Get all serviceExpenses by userId and user's selected_vehicle_id
     const {
         data: servicexpensesData,
         isLoading: isServiceExpensesLoading,
         error: errorServiceExpenses,
-    } = useServiceExpensesList(
-        userId || "",
-        userProfile?.selected_vehicle_id || ""
-    );
+        refetch: refetchServiceExpenses,
+    } = useServiceExpensesList(userId, userProfile?.selected_vehicle_id || "");
 
-    // Fetch all expenses by selected vehicle's id
     const {
         data: expensesData,
         isLoading: isExpensesLoading,
         error: errorExpenses,
+        refetch: refetchExpenses,
     } = useExpensesList(userProfile?.selected_vehicle_id || "");
 
-    // ✅ Load userProfile when API call completes
+    // Update local state when data changes
     useEffect(() => {
-        if (userProfileData) {
-            setUserProfile(userProfileData);
-        }
+        if (userProfileData) setUserProfile(userProfileData);
     }, [userProfileData]);
 
-    // ✅ Load vehicles when API call completes
     useEffect(() => {
-        if (vehicleList) {
-            setVehicles(vehicleList);
-        }
-    }, [vehicleList, isVehiclesLoading]);
-
-    // ✅ Set selected vehicle when `vehicleData` is fetched
-    useEffect(() => {
-        if (vehicleData) {
-            setSelectedVehicle(vehicleData);
-        }
-    }, [vehicleData, isSelectedVehicleLoading]);
+        if (vehicleList) setVehicles(vehicleList);
+    }, [vehicleList]);
 
     useEffect(() => {
-        if (fuelExpensesData) {
-            setFuelExpenses(fuelExpensesData);
-        }
-    }, [fuelExpensesData, isFuelExpensesLoading]);
+        if (vehicleData) setSelectedVehicle(vehicleData);
+    }, [vehicleData]);
 
     useEffect(() => {
-        if (expensesData) {
-            setExpenses(expensesData);
-        }
-    }, [expensesData, isExpensesLoading]);
+        if (fuelExpensesData) setFuelExpenses(fuelExpensesData);
+    }, [fuelExpensesData]);
 
     useEffect(() => {
-        if (servicexpensesData) {
-            setServiceExpenses(servicexpensesData);
-        }
-    }, [servicexpensesData, isServiceExpensesLoading]);
+        if (expensesData) setExpenses(expensesData);
+    }, [expensesData]);
 
     useEffect(() => {
-        if (insuranceExpensesData) {
-            setInsuranceExpenses(insuranceExpensesData);
-        }
-    }, [insuranceExpensesData, isInsuranceExpensesLoading]);
+        if (insuranceExpensesData) setInsuranceExpenses(insuranceExpensesData);
+    }, [insuranceExpensesData]);
 
-    // Memoize context value to optimize performance
+    useEffect(() => {
+        if (servicexpensesData) setServiceExpenses(servicexpensesData);
+    }, [servicexpensesData]);
+
+    // Realtime: Refresh on changes from other devices
+    useEffect(() => {
+        if (!userId) return;
+
+        const channel = supabase
+            .channel("realtime:profile_sync")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "profiles",
+                    filter: `id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log("🔁 Realtime update from 'profiles':", payload);
+                    setRefreshing(true);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "vehicles",
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log("🔁 Realtime update from 'vehicles':", payload);
+                    setRefreshing(true);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId]);
+
+    // Manual refresh logic
+    useEffect(() => {
+        if (!refreshing) return;
+
+        const doRefresh = async () => {
+            try {
+                await Promise.all([
+                    refetchProfile(),
+                    refetchVehicleList(),
+                    refetchVehicle(),
+                    refetchFuelExpenses(),
+                    refetchInsuranceExpenses(),
+                    refetchServiceExpenses(),
+                    refetchExpenses(),
+                ]);
+            } catch (err) {
+                console.error("🔁 Refresh error:", err);
+            } finally {
+                setRefreshing(false);
+            }
+        };
+
+        doRefresh();
+    }, [refreshing]);
+
+    // Provide all data via context
     const contextValue = useMemo(
         () => ({
             userProfile,
@@ -191,6 +221,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             expenses,
             insuranceExpenses,
             serviceExpenses,
+            refreshing,
+            setRefreshing,
         }),
         [
             userProfile,
@@ -204,6 +236,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             expenses,
             insuranceExpenses,
             serviceExpenses,
+            refreshing,
         ]
     );
 
@@ -215,3 +248,4 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
 };
 
 export { ProfileContext, ProfileDataProvider };
+
