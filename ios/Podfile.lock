@@ -2396,7 +2396,7 @@ DEPENDENCIES:
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
-  trunk:
+  https://github.com/CocoaPods/Specs.git:
     - AppAuth
     - GoogleSignIn
     - GTMAppAuth
@@ -2734,6 +2734,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
 
-PODFILE CHECKSUM: aa21a544ea1745c9139a93f3a93f294103db507c
+PODFILE CHECKSUM: 32d8cea4d46d870bfaf410048adafdfe6821dad4
 
 COCOAPODS: 1.16.2
