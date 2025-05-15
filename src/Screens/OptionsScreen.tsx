@@ -33,7 +33,7 @@ const DATA = [
     {
         title: "Vehicles",
         data: [
-            { title: "Vehicles", screen: "VehiclesScreen", icon: "car" }, // FontAwesome
+            { title: "Vehicles", screen: "OwnerVehiclesScreen", icon: "car" }, // FontAwesome
             { title: "Users", screen: "UsersScreen", icon: "account-multiple" }, // MaterialCommunityIcons
             {
                 title: "Vehicle / User",

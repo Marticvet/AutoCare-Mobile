@@ -25,6 +25,7 @@ import { MyProfileScreen } from "./src/Screens/MyProfileScreen";
 import { EditProfileScreen } from "./src/Screens/EditProfileScreen";
 
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
+import { OwnerVehiclesScreen } from "./src/Screens/OwnerVehiclesScreen";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -139,19 +140,21 @@ function RootNavigator() {
                 component={EditVehicleScreen}
                 options={{ title: "Edit Vehicle Details" }}
             />
-
             <RootStack.Screen
                 name="MyProfileScreen"
                 component={MyProfileScreen}
                 options={{ title: "My Profile" }}
             />
-
             <RootStack.Screen
                 name="EditProfileScreen"
                 component={EditProfileScreen}
                 options={{ title: "Edit Profile" }}
             />
-
+            <RootStack.Screen
+                name="OwnerVehiclesScreen"
+                component={OwnerVehiclesScreen}
+                options={{ title: "Your Vehicles" }}
+            />
             {/* Add more global screens here if needed */}
         </RootStack.Navigator>
     );

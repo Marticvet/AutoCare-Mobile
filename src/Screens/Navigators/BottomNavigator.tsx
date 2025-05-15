@@ -125,7 +125,7 @@ export default function BottomNavigator() {
                 />
             </Tab.Navigator>
 
-            {/* ✅ Modal for Selecting Actions */}
+            {/* Modal for Selecting Actions */}
             {modalVisible && (
                 <View style={styles.modalWrapper}>
                     <Modal

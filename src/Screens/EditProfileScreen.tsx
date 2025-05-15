@@ -131,6 +131,17 @@ export const EditProfileScreen = () => {
     };
 
     const handleUpdateChanges = async () => {
+        if (firstName.trim().length === 0 || lastName.trim().length === 0) {
+            Alert.alert("Your name(s) can't be empty");
+            return;
+        }
+
+        if (password.trim() !== confirmPassword.trim()) {
+            Alert.alert("Your pass doesn't match!");
+            return;
+        }
+
+        // password update is missing
         updateProfile(
             {
                 profile: {

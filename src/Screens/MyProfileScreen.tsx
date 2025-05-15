@@ -103,7 +103,7 @@ export const MyProfileScreen = () => {
                     />
                 </View>
 
-                <View style={styles.item}>
+                {/* <View style={styles.item}>
                     <View style={styles.itemLeft}>
                         <MaterialIcons name="face" size={22} color="#000" />
                         <Text style={styles.itemText}>Face ID</Text>
@@ -122,7 +122,7 @@ export const MyProfileScreen = () => {
                         <Text style={styles.itemText}>PIN Code</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="#888" />
-                </Pressable>
+                </Pressable> */}
 
                 <Pressable
                     style={styles.item}
