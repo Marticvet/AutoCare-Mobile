@@ -14,30 +14,56 @@ import {
     Modal,
 } from "react-native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { AntDesign, MaterialCommunityIcons } from "@expo/vector-icons";
 import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
-import { VehicleData } from "../../types/vehicle";
+import { useNavigation } from "@react-navigation/native";
+import { TextInput } from "react-native-gesture-handler";
 
 // *
 // TODO
 // make a filter system to sort by name, by mileage, by model year
 // */
-
-const sortingCriteriasArray: string[] = [
-    "Sort by mileage increase",
-    "Sort by mileage decrease",
-    "Sort by model name A-Z",
-    "Sort by model name Z-A",
-    "Sort by model year increase",
-    "Sort by model year decrease",
-];
+interface SortingCriteria {
+    [key: string]: {
+        criteria: string;
+        selected: boolean;
+    };
+}
 
 export function OwnerVehiclesScreen() {
+    const navigation = useNavigation();
     const { vehicles } = useContext(ProfileContext);
     const [showSortPopup, setShowSortPopup] = useState<boolean>(false);
-    const [filteredVehicles, setFilteredVehicles] = useState<VehicleData[]>(
-        vehicles ?? []
-    );
+    const [filteredVehicles, setFilteredVehicles] = useState(vehicles);
+    const [searchCriteria, setSearchCriteria] = useState<string>("");
+
+    const [sortingCriteriaObject, setSortingCriteriaObject] =
+        useState<SortingCriteria>({
+            increaseMileage: {
+                criteria: "Sort by mileage increase",
+                selected: false,
+            },
+            decreaseMileage: {
+                criteria: "Sort by mileage decrease",
+                selected: false,
+            },
+            sortAlphabetical: {
+                criteria: "Sort by model name A-Z",
+                selected: false,
+            },
+            sortReverseAlphabetical: {
+                criteria: "Sort by model name Z-A",
+                selected: false,
+            },
+            increaseModelYear: {
+                criteria: "Sort by model year increase",
+                selected: false,
+            },
+            decreaseModelYear: {
+                criteria: "Sort by model year decrease",
+                selected: false,
+            },
+        });
 
     const sortVehiclesByCriteriaHandler = (criteria: string) => {
         const newFilteredVehicles = [...(vehicles ?? [])].sort((a, b) => {
@@ -60,6 +86,32 @@ export function OwnerVehiclesScreen() {
 
         setFilteredVehicles(newFilteredVehicles);
         setShowSortPopup(false);
+
+        if (criteria === "Sort by mileage increase") {
+        } else if (criteria === "Sort by mileage decrease") {
+        } else if (criteria === "Sort by model name A-Z") {
+        } else if (criteria === "Sort by model name Z-A") {
+        } else if (criteria === "Sort by model year increase") {
+        } else if (criteria === "Sort by model year decrease") {
+        }
+
+        const copiedSortingCriteriaObject = JSON.parse(JSON.stringify(sortingCriteriaObject));
+
+        Object.keys(copiedSortingCriteriaObject).forEach((key) => {
+            if (copiedSortingCriteriaObject[key].criteria === criteria) {
+                copiedSortingCriteriaObject[key] = {
+                    ...copiedSortingCriteriaObject[key],
+                    selected: true,
+                };
+            } else {
+                copiedSortingCriteriaObject[key] = {
+                    ...copiedSortingCriteriaObject[key],
+                    selected: false,
+                };
+            }
+        });
+
+        setSortingCriteriaObject(copiedSortingCriteriaObject);
     };
 
     return (
@@ -88,6 +140,15 @@ export function OwnerVehiclesScreen() {
                                             style={[styles.card]}
                                             onPress={() => {
                                                 setShowSortPopup(false);
+                                                navigation.navigate(
+                                                    // @ts-ignore
+                                                    "VehicleDetailScreen",
+                                                    {
+                                                        vehicleId: item.id,
+                                                        parentScreenName:
+                                                            "OwnerVehiclesScreen",
+                                                    }
+                                                );
                                             }}
                                         >
                                             <View style={styles.titleContainer}>
@@ -133,42 +194,10 @@ export function OwnerVehiclesScreen() {
                         />
                     </View>
 
-                    {/* {showSortPopup && (
-                        <View style={styles.sortingContainer}>
-                            <Pressable
-                                onPress={() => {
-                                    setShowSortPopup(true);
-                                }}
-                            >
-                                {sortingCriteriasArray.map((criteria) => {
-                                    return (
-                                        <View
-                                            style={styles.sortingCriteria}
-                                            key={criteria}
-                                        >
-                                            <Text
-                                                style={
-                                                    styles.sortingCriteriaText
-                                                }
-                                                onPress={() =>
-                                                    sortVehiclesByCriteriaHandler(
-                                                        criteria
-                                                    )
-                                                }
-                                            >
-                                                {criteria}
-                                            </Text>
-                                        </View>
-                                    );
-                                })}
-                            </Pressable>
-                        </View>
-                    )} */}
-
                     <Modal
-                        animationType="fade"
+                        animationType="none"
                         transparent={true}
-                        visible={showSortPopup}
+                        visible={true}
                         onRequestClose={() => setShowSortPopup(false)}
                     >
                         <TouchableWithoutFeedback
@@ -176,25 +205,64 @@ export function OwnerVehiclesScreen() {
                         >
                             <View style={styles.modalOverlay}>
                                 <View style={styles.modalContent}>
-                                    {sortingCriteriasArray.map((criteria) => (
-                                        <Pressable
-                                            key={criteria}
-                                            style={styles.sortingCriteria}
-                                            onPress={() =>
-                                                sortVehiclesByCriteriaHandler(
-                                                    criteria
-                                                )
-                                            }
-                                        >
-                                            <Text
-                                                style={
-                                                    styles.sortingCriteriaText
+                                    <View style={styles.topContainer}>
+                                        <Text style={styles.topContainerText}>
+                                            Filters
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.textInputContainer}>
+                                        <AntDesign
+                                            name="search1"
+                                            size={20}
+                                            color="#484747"
+                                        />
+                                        <TextInput
+                                            value={searchCriteria}
+                                            onChangeText={setSearchCriteria}
+                                            placeholderTextColor={"#484747"}
+                                            placeholder="Vehicle's license plate..."
+                                            style={styles.textInput}
+                                            clearButtonMode={"always"}
+                                            maxLength={50}
+                                        />
+                                    </View>
+
+                                    {Object.keys(sortingCriteriaObject).map(
+                                        (key) => (
+                                            <Pressable
+                                                key={
+                                                    sortingCriteriaObject[key]
+                                                        .criteria
+                                                }
+                                                style={styles.sortingCriteria}
+                                                onPress={() =>
+                                                    sortVehiclesByCriteriaHandler(
+                                                        sortingCriteriaObject[
+                                                            key
+                                                        ].criteria
+                                                    )
                                                 }
                                             >
-                                                {criteria}
-                                            </Text>
-                                        </Pressable>
-                                    ))}
+                                                <Text
+                                                    style={
+                                                        styles.sortingCriteriaText
+                                                    }
+                                                >
+                                                    {
+                                                        sortingCriteriaObject[
+                                                            key
+                                                        ].criteria
+                                                    }
+                                                </Text>
+
+                                                {sortingCriteriaObject[key]
+                                                    .selected && (
+                                                    <Text>Selected</Text>
+                                                )}
+                                            </Pressable>
+                                        )
+                                    )}
                                 </View>
                             </View>
                         </TouchableWithoutFeedback>
@@ -286,17 +354,52 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.4)",
         justifyContent: "flex-end",
+        paddingHorizontal: 8,
     },
-    
+
     modalContent: {
         backgroundColor: "#fff",
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        height: 320, // taller modal
+        // height: 320, // taller modal
         paddingHorizontal: 24,
-        paddingTop: 30,
+        paddingTop: 12,
         paddingBottom: 50,
-    }
-    
-    
+    },
+
+    textInputContainer: {
+        height: 48,
+        marginBottom: 24,
+        backgroundColor: "#f7fafb",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexDirection: "row",
+        borderRadius: 6,
+        paddingLeft: 8,
+        borderWidth: 1,
+        borderColor: "#becfd5",
+    },
+
+    textInput: {
+        // backgroundColor: "black",
+        // width: "100%",
+        flex: 1,
+        marginLeft: 12,
+        height: 42,
+    },
+
+    //// topContaine
+    topContainer: {
+        height: 40,
+        // backgroundColor: "black",
+        marginBottom: 16,
+        alignContent: "center",
+        justifyContent: "center",
+    },
+    topContainerText: {
+        fontSize: 20,
+        width: "100%",
+        textAlign: "center",
+        fontWeight: 500,
+    },
 });

@@ -138,7 +138,9 @@ function RootNavigator() {
             <RootStack.Screen
                 name="EditVehicleScreen"
                 component={EditVehicleScreen}
-                options={{ title: "Edit Vehicle Details" }}
+                options={{ title: "Edit Vehicle Details",
+                    headerBackTitle: ""
+                 }}
             />
             <RootStack.Screen
                 name="MyProfileScreen"
@@ -153,7 +155,9 @@ function RootNavigator() {
             <RootStack.Screen
                 name="OwnerVehiclesScreen"
                 component={OwnerVehiclesScreen}
-                options={{ title: "Your Vehicles" }}
+                options={{ title: "Your Vehicles",
+                    headerBackTitle: "Back"
+                 }}
             />
             {/* Add more global screens here if needed */}
         </RootStack.Navigator>

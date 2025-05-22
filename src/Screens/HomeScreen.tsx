@@ -184,6 +184,7 @@ const HomeScreen = () => {
                                             "VehicleDetailScreen",
                                             {
                                                 vehicleId: item.id,
+                                                parentScreenName: "HomeScreen"
                                             }
                                         );
                                     }}

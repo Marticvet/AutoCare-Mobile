@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -18,10 +18,18 @@ import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
 
 const VehicleDetailScreen = ({ route }: any) => {
     const navigation = useNavigation();
-    const { vehicleId } = route.params;
+    const { vehicleId, parentScreenName } = route.params;
     const { userProfile } = useContext(ProfileContext);
 
     const { mutate: deleteVehicle, isPending } = useDeleteVehicle();
+
+    console.log(route, `name.params`);
+
+    useEffect(() => {
+        navigation.setOptions({
+            headerBackTitle: parentScreenName === "OwnerVehiclesScreen" ? "Back" : "Edit Vehicle Details",
+        });
+    }, []);
 
     const {
         data: vehicle,
