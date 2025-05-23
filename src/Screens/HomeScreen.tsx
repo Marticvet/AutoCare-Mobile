@@ -261,11 +261,11 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
     cardWrapper: {
-        marginTop: 48,
+        paddingBottom: 56,
         width: ITEM_WIDTH,
         ////// this makes the carouse in the middle
-        // justifyContent: "center",
-        // alignItems: "center",
+        justifyContent: "center",
+        alignItems: "center",
     },
     card: {
         width: ITEM_WIDTH,
