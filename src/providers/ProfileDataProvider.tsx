@@ -31,6 +31,9 @@ interface ProfileContextData {
     expenses?: any[];
     insuranceExpenses?: Insurance_Expenses[];
     serviceExpenses?: Service_Expenses[];
+    locations?: string[];
+    gasStations?: string[];
+    userVehiclesFuelType?: string[];
     refreshing: boolean;
     setRefreshing: (refreshing: boolean) => void;
 }
@@ -48,6 +51,9 @@ const ProfileContext = createContext<ProfileContextData>({
     expenses: [],
     insuranceExpenses: [],
     serviceExpenses: [],
+    locations: [],
+    gasStations: [],
+    userVehiclesFuelType: [],
 });
 
 const ProfileDataProvider = ({ children }: PropsWithChildren) => {
@@ -56,11 +62,23 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
 
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
     const [vehicles, setVehicles] = useState<VehicleData[]>([]);
-    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
+    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(
+        null
+    );
     const [fuelExpenses, setFuelExpenses] = useState<Fuel_Expenses[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
-    const [insuranceExpenses, setInsuranceExpenses] = useState<Insurance_Expenses[]>([]);
-    const [serviceExpenses, setServiceExpenses] = useState<Service_Expenses[]>([]);
+    const [insuranceExpenses, setInsuranceExpenses] = useState<
+        Insurance_Expenses[]
+    >([]);
+    const [serviceExpenses, setServiceExpenses] = useState<Service_Expenses[]>(
+        []
+    );
+    const [locations, setLocations] = useState<string[]>([]);
+    const [gasStations, setGasStations] = useState<string[]>([]);
+    const [userVehiclesFuelType, setUserVehiclesFuelType] = useState<string[]>(
+        []
+    );
+
     const [refreshing, setRefreshing] = useState<boolean>(false);
 
     // --- API Hooks with refetch support
@@ -97,7 +115,10 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         isLoading: isInsuranceExpensesLoading,
         error: errorInsuranceExpenses,
         refetch: refetchInsuranceExpenses,
-    } = useInsuranceExpensesList(userId, userProfile?.selected_vehicle_id || "");
+    } = useInsuranceExpensesList(
+        userId,
+        userProfile?.selected_vehicle_id || ""
+    );
 
     const {
         data: servicexpensesData,
@@ -141,6 +162,41 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     useEffect(() => {
         if (servicexpensesData) setServiceExpenses(servicexpensesData);
     }, [servicexpensesData]);
+
+    useEffect(() => {
+        const gasStationsArray: string[] = [];
+        const allLocations: string[] = [];
+        const userVehiclesFuelTypeArray: string[] = [];
+
+        setLocations(gasStationsArray);
+        setGasStations(allLocations);
+        setUserVehiclesFuelType(userVehiclesFuelTypeArray);
+
+        if (fuelExpenses.length > 0) {
+            fuelExpenses.forEach((fuelExpense) => {
+                if (fuelExpense.location_name) {
+                    allLocations.push(fuelExpense.location_name);
+                    gasStationsArray.push(fuelExpense.location_name);
+                }
+
+                if (fuelExpense.fuel_type) {
+                    userVehiclesFuelTypeArray.push(fuelExpense.fuel_type);
+                }
+            });
+
+            setGasStations(gasStationsArray);
+            setUserVehiclesFuelType(userVehiclesFuelTypeArray);
+        }
+
+        if (serviceExpenses.length > 0) {
+            serviceExpenses.forEach((serviceExpense) => {
+                if (serviceExpense.location_name) {
+                    allLocations.push(serviceExpense.location_name);
+                }
+            });
+        }
+        setLocations(allLocations);
+    }, [fuelExpensesData, servicexpensesData]);
 
     // Realtime: Refresh on changes from other devices
     useEffect(() => {
@@ -223,6 +279,9 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             serviceExpenses,
             refreshing,
             setRefreshing,
+            locations,
+            gasStations,
+            userVehiclesFuelType,
         }),
         [
             userProfile,
@@ -237,6 +296,9 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             insuranceExpenses,
             serviceExpenses,
             refreshing,
+            locations,
+            gasStations,
+            userVehiclesFuelType,
         ]
     );
 
@@ -248,4 +310,3 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
 };
 
 export { ProfileContext, ProfileDataProvider };
-

@@ -45,7 +45,7 @@ const DATA = [
     {
         title: "Fuel & Places",
         data: [
-            { title: "Fuel", screen: "FuelScreen", icon: "fuel" }, // MaterialCommunityIcons
+            { title: "Fuel", screen: "FuelTypeScreen", icon: "fuel" }, // MaterialCommunityIcons
             {
                 title: "Gas stations",
                 screen: "GasStationsScreen",
