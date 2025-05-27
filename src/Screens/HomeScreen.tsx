@@ -108,8 +108,8 @@ const HomeScreen = () => {
                 <Text style={styles.sectionTitle}>Your Vehicles</Text>
             </View>
 
-            {isVehiclesLoading && <Loader text={"Your vehicles are loading..."}/>}
-            {errorVehicles && (
+            {errorVehicles == false && isVehiclesLoading == true && vehicles && vehicles.length === 0 &&<Loader text={"Your vehicles are loading..."}/>}
+            {errorVehicles && isVehiclesLoading == false && vehicles && vehicles.length === 0 && (
                 <View style={styles.errorVehiclesContainer}>
                     <Text style={styles.errorVehiclesText}>
                         Error while loading your vehicles!

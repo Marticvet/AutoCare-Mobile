@@ -37,7 +37,7 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
         setVisible(false);
 
         if (!vehicleId || !userId) {
-            console.error("🚨 Missing required values. Cannot update vehicle.");
+            console.warn("🚨 Missing required values. Cannot update vehicle.");
             return;
         }
 
@@ -52,7 +52,7 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
                     console.log("✅ Profile updated successfully!");
                 },
                 onError: (error) => {
-                    console.error("🚨 Error updating Profile:", error);
+                    console.warn("🚨 Error updating Profile:", error);
                 },
             }
         );

@@ -101,7 +101,7 @@ const ServiceExpenseScreen = () => {
                             console.log("✅ Vehicle updated successfully!");
                         },
                         onError: (error) => {
-                            console.error("🚨 Error updating vehicle:", error);
+                            console.warn("🚨 Error updating vehicle:", error);
                             return;
                         },
                     }
@@ -127,7 +127,7 @@ const ServiceExpenseScreen = () => {
             },
             // @ts-ignore
             onError: (err) => {
-                console.error("Error inserting Service Expense:", err.message);
+                console.warn("Error inserting Service Expense:", err.message);
             },
         });
     }

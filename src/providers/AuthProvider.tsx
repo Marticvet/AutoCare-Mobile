@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             .single();
 
         if (error) {
-            console.error("Error fetching profile:", error);
+            console.warn("Error fetching profile:", error);
             setProfile(null);
         } else {
             setProfile(data);
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                     const { data: restoredSession, error } =
                         await supabase.auth.setSession(parsed);
                     if (error) {
-                        console.error("Error restoring session:", error);
+                        console.warn("Error restoring session:", error);
                     } else {
                         setSession(restoredSession.session);
                         if (restoredSession.session?.user?.id) {
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const logout = async () => {
         const { error } = await supabase.auth.signOut();
         if (error) {
-            console.error("Logout error:", error);
+            console.warn("Logout error:", error);
         }
         setSession(null);
         setProfile(null);
@@ -152,7 +152,7 @@ const useTokenRefresher = (
                         await supabase.auth.getSession();
                     }
                 } catch (error) {
-                    console.error("Error decoding token:", error);
+                    console.warn("Error decoding token:", error);
                     await logout();
                 }
             }

@@ -89,7 +89,7 @@ export default function MapScreen({ route }: any) {
             });
         } catch (error) {
             Alert.alert("Error", "Failed to fetch current location");
-            console.error(error);
+            console.warn(error);
         }
     }
 
@@ -123,7 +123,7 @@ export default function MapScreen({ route }: any) {
                 setSuggestions([]);
             }
         } catch (error) {
-            console.error("Error fetching suggestions:", error);
+            console.warn("Error fetching suggestions:", error);
         }
     };
 
@@ -162,7 +162,7 @@ export default function MapScreen({ route }: any) {
                 console.warn("Place details error:", data.status);
             }
         } catch (error) {
-            console.error("Error fetching place details:", error);
+            console.warn("Error fetching place details:", error);
         }
     };
 

@@ -70,7 +70,7 @@ const VehicleDetailScreen = ({ route }: any) => {
                         {
                             onSuccess: () => navigation.goBack(),
                             onError: (error) =>
-                                console.error("Error deleting vehicle:", error),
+                                console.warn("Error deleting vehicle:", error),
                         }
                     );
                 },

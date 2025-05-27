@@ -17,6 +17,8 @@ import { Insurance_Expenses } from "../../types/insurance_expenses";
 import { useInsuranceExpensesList } from "../api/insurance_expenses";
 import { useServiceExpensesList } from "../api/service_expenses";
 import { supabase } from "../lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 
 interface ProfileContextData {
     userProfile: Profile | null;
@@ -136,31 +138,70 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
 
     // Update local state when data changes
     useEffect(() => {
-        if (userProfileData) setUserProfile(userProfileData);
+        if (userProfileData) {
+            setUserProfile(userProfileData);
+            AsyncStorage.setItem(
+                "cachedUserProfile",
+                JSON.stringify(userProfileData)
+            );
+        }
     }, [userProfileData]);
 
     useEffect(() => {
-        if (vehicleList) setVehicles(vehicleList);
+        if (vehicleList) {
+            setVehicles(vehicleList);
+            AsyncStorage.setItem("cachedVehicles", JSON.stringify(vehicleList));
+        }
     }, [vehicleList]);
 
     useEffect(() => {
-        if (vehicleData) setSelectedVehicle(vehicleData);
+        if (vehicleData) {
+            setSelectedVehicle(vehicleData);
+            AsyncStorage.setItem(
+                "cachedSelectedVehicle",
+                JSON.stringify(vehicleData)
+            );
+        }
     }, [vehicleData]);
 
     useEffect(() => {
-        if (fuelExpensesData) setFuelExpenses(fuelExpensesData);
+        if (fuelExpensesData) {
+            setFuelExpenses(fuelExpensesData);
+            AsyncStorage.setItem(
+                "cachedFuelExpenses",
+                JSON.stringify(fuelExpensesData)
+            );
+        }
     }, [fuelExpensesData]);
 
     useEffect(() => {
-        if (expensesData) setExpenses(expensesData);
+        if (expensesData) {
+            setExpenses(expensesData);
+            AsyncStorage.setItem(
+                "cachedExpenses",
+                JSON.stringify(expensesData)
+            );
+        }
     }, [expensesData]);
 
     useEffect(() => {
-        if (insuranceExpensesData) setInsuranceExpenses(insuranceExpensesData);
+        if (insuranceExpensesData) {
+            setInsuranceExpenses(insuranceExpensesData);
+            AsyncStorage.setItem(
+                "cachedInsuranceExpenses",
+                JSON.stringify(insuranceExpensesData)
+            );
+        }
     }, [insuranceExpensesData]);
 
     useEffect(() => {
-        if (servicexpensesData) setServiceExpenses(servicexpensesData);
+        if (servicexpensesData) {
+            setServiceExpenses(servicexpensesData);
+            AsyncStorage.setItem(
+                "cachedServiceExpenses",
+                JSON.stringify(servicexpensesData)
+            );
+        }
     }, [servicexpensesData]);
 
     useEffect(() => {
@@ -197,6 +238,75 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         }
         setLocations(allLocations);
     }, [fuelExpensesData, servicexpensesData]);
+
+    // async sync storage
+    useEffect(() => {
+        const loadCachedData = async () => {
+            try {
+                const [
+                    cachedProfile,
+                    cachedVehicles,
+                    cachedSelectedVehicle,
+                    cachedFuelExpenses,
+                    cachedExpenses,
+                    cachedInsuranceExpenses,
+                    cachedServiceExpenses,
+                ] = await Promise.all([
+                    AsyncStorage.getItem("cachedUserProfile"),
+                    AsyncStorage.getItem("cachedVehicles"),
+                    AsyncStorage.getItem("cachedSelectedVehicle"),
+                    AsyncStorage.getItem("cachedFuelExpenses"),
+                    AsyncStorage.getItem("cachedExpenses"),
+                    AsyncStorage.getItem("cachedInsuranceExpenses"),
+                    AsyncStorage.getItem("cachedServiceExpenses"),
+                ]);
+
+                if (cachedProfile) setUserProfile(JSON.parse(cachedProfile));
+                if (cachedVehicles) setVehicles(JSON.parse(cachedVehicles));
+                if (cachedSelectedVehicle)
+                    setSelectedVehicle(JSON.parse(cachedSelectedVehicle));
+                if (cachedFuelExpenses)
+                    setFuelExpenses(JSON.parse(cachedFuelExpenses));
+                if (cachedExpenses) setExpenses(JSON.parse(cachedExpenses));
+                if (cachedInsuranceExpenses)
+                    setInsuranceExpenses(JSON.parse(cachedInsuranceExpenses));
+                if (cachedServiceExpenses)
+                    setServiceExpenses(JSON.parse(cachedServiceExpenses));
+            } catch (err) {
+                console.warn("Error loading cached data:", err);
+            }
+        };
+
+        loadCachedData();
+    }, []);
+
+    const syncPendingUpdates = async () => {
+        const pending = await AsyncStorage.getItem("pendingProfileUpdate");
+        if (pending) {
+            const parsed = JSON.parse(pending);
+            const { error } = await supabase
+                .from("profiles")
+                .update(parsed)
+                .eq("id", parsed.id);
+    
+            if (!error) {
+                await AsyncStorage.removeItem("pendingProfileUpdate");
+                console.log("Synced pending profile update");
+            } else {
+                console.warn("Failed to sync pending profile update:", error);
+            }
+        }
+    };
+    
+    useEffect(() => {
+        const unsubscribe = NetInfo.addEventListener((state) => {
+            if (state.isConnected && profile?.id) {
+                syncPendingUpdates();
+            }
+        });
+    
+        return () => unsubscribe();
+    }, [profile?.id]);
 
     // Realtime: Refresh on changes from other devices
     useEffect(() => {
@@ -253,7 +363,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
                     refetchExpenses(),
                 ]);
             } catch (err) {
-                console.error("🔁 Refresh error:", err);
+                console.warn("🔁 Refresh error:", err);
             } finally {
                 setRefreshing(false);
             }

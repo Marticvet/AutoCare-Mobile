@@ -89,7 +89,7 @@ function AddVehicleScreen(props: any) {
                 setBrands(filteredData);
                 setSelectedVehicleBrand(filteredData[0]?.make_display ?? "");
             } catch (error) {
-                console.error("Error fetching brands:", error);
+                console.warn("Error fetching brands:", error);
             }
         }
 
@@ -132,7 +132,7 @@ function AddVehicleScreen(props: any) {
                     previousModels.current = models;
                 }
             } catch (error) {
-                console.error(
+                console.warn(
                     `Error fetching models for ${selectedVehicleBrand}:`,
                     error
                 );
@@ -187,7 +187,7 @@ function AddVehicleScreen(props: any) {
             },
             // @ts-ignore
             onError: (err) => {
-                console.error("Error inserting vehicle:", err.message);
+                console.warn("Error inserting vehicle:", err.message);
             },
         });
     };

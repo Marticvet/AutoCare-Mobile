@@ -138,7 +138,7 @@ export const FuelExpenseScreen = () => {
                             console.log("✅ Vehicle updated successfully!");
                         },
                         onError: (error) => {
-                            console.error("🚨 Error updating vehicle:", error);
+                            console.warn("🚨 Error updating vehicle:", error);
                             return;
                         },
                     }
@@ -168,7 +168,7 @@ export const FuelExpenseScreen = () => {
             },
 
             onError: (err: any) => {
-                console.error("❌ Error inserting Fuel Expense:", err.message);
+                console.warn("❌ Error inserting Fuel Expense:", err.message);
             },
         });
     };

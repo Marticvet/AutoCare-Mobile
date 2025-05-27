@@ -108,7 +108,7 @@ function EditVehicleScreen({ route }: any) {
                 setBrands(filteredData);
                 setSelectedVehicleBrand(filteredData[0]?.make_display ?? "");
             } catch (error) {
-                console.error("Error fetching brands:", error);
+                console.warn("Error fetching brands:", error);
             }
         }
 
@@ -150,7 +150,7 @@ function EditVehicleScreen({ route }: any) {
                     previousModels.current = models;
                 }
             } catch (error) {
-                console.error(
+                console.warn(
                     `Error fetching models for ${selectedVehicleBrand}:`,
                     error
                 );
@@ -211,7 +211,7 @@ function EditVehicleScreen({ route }: any) {
                 onSuccess: () => navigation.goBack(),
                 // @ts-ignore
                 onError: (error) =>
-                    console.error("Error updating vehicle:", error),
+                    console.warn("Error updating vehicle:", error),
             }
         );
     };

@@ -108,7 +108,7 @@ export const InsuranceExpenseScreen = () => {
             },
             // @ts-ignore
             onError: (err) => {
-                console.error(
+                console.warn(
                     "Error inserting Insurance Expense:",
                     err.message
                 );

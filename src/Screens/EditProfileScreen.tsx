@@ -96,7 +96,7 @@ export const EditProfileScreen = () => {
             const cropSize = Math.min(asset.width ?? 0, asset.height ?? 0);
 
             if (!asset.uri || cropSize === 0) {
-                console.error("No valid image selected.");
+                console.warn("No valid image selected.");
                 return;
             }
 
@@ -121,7 +121,7 @@ export const EditProfileScreen = () => {
             );
 
             if (!manipulated.base64) {
-                console.error("Cropping succeeded but no base64 found.");
+                console.warn("Cropping succeeded but no base64 found.");
                 return;
             }
 
@@ -160,7 +160,7 @@ export const EditProfileScreen = () => {
                     navigation.goBack();
                 },
                 onError: (error: any) => {
-                    console.error("🚨 Error updating Profile:", error);
+                    console.warn("🚨 Error updating Profile:", error);
                 },
             }
         );
@@ -186,7 +186,7 @@ export const EditProfileScreen = () => {
                 }
             }
         } catch (error) {
-            console.error("Document picker error:", error);
+            console.warn("Document picker error:", error);
         }
     };
 
