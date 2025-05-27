@@ -172,8 +172,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         setGasStations(allLocations);
         setUserVehiclesFuelType(userVehiclesFuelTypeArray);
 
-        if (fuelExpenses.length > 0) {
-            fuelExpenses.forEach((fuelExpense) => {
+        if (fuelExpensesData && fuelExpensesData.length > 0) {
+            fuelExpensesData.forEach((fuelExpense) => {
                 if (fuelExpense.location_name) {
                     allLocations.push(fuelExpense.location_name);
                     gasStationsArray.push(fuelExpense.location_name);
@@ -188,8 +188,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             setUserVehiclesFuelType(userVehiclesFuelTypeArray);
         }
 
-        if (serviceExpenses.length > 0) {
-            serviceExpenses.forEach((serviceExpense) => {
+        if (servicexpensesData && servicexpensesData.length > 0) {
+            servicexpensesData.forEach((serviceExpense) => {
                 if (serviceExpense.location_name) {
                     allLocations.push(serviceExpense.location_name);
                 }
