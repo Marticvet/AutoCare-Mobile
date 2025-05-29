@@ -19,24 +19,33 @@ import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
 const VehicleDetailScreen = ({ route }: any) => {
     const navigation = useNavigation();
     const { vehicleId, parentScreenName } = route.params;
-    const { userProfile } = useContext(ProfileContext);
+    const { userProfile, vehicles } = useContext(ProfileContext);
 
     const { mutate: deleteVehicle, isPending } = useDeleteVehicle();
 
-    console.log(route, `name.params`);
-
     useEffect(() => {
         navigation.setOptions({
-            headerBackTitle: parentScreenName === "OwnerVehiclesScreen" ? "Back" : "Edit Vehicle Details",
+            headerBackTitle:
+                parentScreenName === "OwnerVehiclesScreen"
+                    ? "Back"
+                    : "Edit Vehicle Details",
         });
     }, []);
 
-    const {
+    let {
         data: vehicle,
         isLoading,
         error,
     } = useVehicle(userProfile?.id || "", vehicleId);
     const [modalVisible, setModalVisible] = useState(false);
+
+    useEffect(() => {
+        if (vehicles && vehicles.length > 0) {
+            vehicle = vehicles?.filter(
+                (vehicleData) => vehicleData.id === vehicleId
+            );
+        }
+    }, [isLoading]);
 
     if (isLoading) {
         return <Loader text={"Vehicle's data is loading..."} />;
