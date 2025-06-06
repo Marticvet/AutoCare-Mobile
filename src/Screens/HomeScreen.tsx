@@ -21,8 +21,6 @@ const ITEM_WIDTH = width * 0.75;
 const ITEM_HEIGHT = 200;
 const ITEM_SPACER = (width - ITEM_WIDTH) / 2;
 
-import * as Notifications from 'expo-notifications';
-
 const HomeScreen = () => {
     const navigation = useNavigation();
     const {
@@ -82,21 +80,21 @@ const HomeScreen = () => {
     };
 
 
-    useEffect(() => {
+    // useEffect(() => {
 
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Local sync done!",
-            body: "Your data has been saved locally.",
-          },
-          trigger: null, // Trigger immediately
-        });
+    //     Notifications.scheduleNotificationAsync({
+    //       content: {
+    //         title: "Local sync done!",
+    //         body: "Your data has been saved locally.",
+    //       },
+    //       trigger: null, // Trigger immediately
+    //     });
 
 
-        console.log("de");
+    //     console.log("de");
         
         
-    }, []);
+    // }, []);
 
     return (
         <View style={styles.container}>

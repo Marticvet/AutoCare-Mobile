@@ -22,7 +22,10 @@
         "backgroundColor": "#ffffff",
         "userInterfaceStyle": "light"
       },
-      "package": "com.marticvet.AutoCareMobile"
+      "package": "com.marticvet.AutoCareMobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -40,10 +43,23 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./local/assets/icon.png",
+          "color": "#ffffff"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "328791db-8e15-4bb1-928d-dddadb59567e"
+      }
+    },
+    "owner": "marticvet"
   }
 }

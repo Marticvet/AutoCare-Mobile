@@ -182,6 +182,9 @@ function EditVehicleScreen({ route }: any) {
         }
     };
 
+    console.log(isPending);
+    
+
     const updateVehicleHandler = () => {
         if (
             !selectedVehicleBrand.trim() ||
