@@ -30,11 +30,11 @@ function EditVehicleScreen({ route }: any) {
     const { userProfile } = useContext(ProfileContext);
     const userId = userProfile?.id;
     const { vehicle } = route.params;
-
+    
     if (!vehicle) {
         return <Loader text={"Vehicle's data is loading..."}/>;
     }
-
+    
     const navigation = useNavigation();
     const [selectedVehicleBrand, setSelectedVehicleBrand] = useState<string>(
         vehicle.vehicle_brand
@@ -42,14 +42,12 @@ function EditVehicleScreen({ route }: any) {
     const [selectedModel, setSelectedModel] = useState<string>(
         vehicle.vehicle_model
     );
-
     const [selectedCarType, setSelectedCarType] = useState<string>(
         vehicle.vehicle_car_type
     );
     const [vehicleLicensePlate, setVehicleLicensePlate] = useState<string>(
         vehicle.vehicle_license_plate
     );
-
     const [vehicleIdentificationNumber, setVehicleIdentificationNumber] =
         useState<string>(vehicle.vehicle_identification_number);
 
@@ -181,9 +179,6 @@ function EditVehicleScreen({ route }: any) {
             setVehicleCurrentMileage(value);
         }
     };
-
-    console.log(isPending);
-    
 
     const updateVehicleHandler = () => {
         if (

@@ -1,4 +1,11 @@
-import { View, Text, StyleSheet, Dimensions, Pressable } from "react-native";
+import {
+    View,
+    Text,
+    StyleSheet,
+    Dimensions,
+    Pressable,
+    ScrollView,
+} from "react-native";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { DateType } from "react-native-ui-datepicker";
@@ -10,6 +17,9 @@ import { BarChart } from "react-native-chart-kit";
 import React from "react";
 import { ChartData } from "../../types/chart_data";
 import { formattedDate } from "../../types/formatteddateTime";
+import FuelExpensesDataScreen from "./FuelExpensesDataScreen";
+
+import { LinearGradientExpenses } from "./LinearGradientExpenses";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -164,7 +174,7 @@ export const FuelExpensesScreen = () => {
     }, [selectedDate, selectedDueDate]);
 
     return (
-        <View style={styles.expensesContainer}>
+        <ScrollView style={styles.expensesContainer}>
             {/* Title */}
             <Text
                 style={{
@@ -281,63 +291,93 @@ export const FuelExpensesScreen = () => {
             {chartdata.labels && chartdata.labels.length > 0 && (
                 <React.Fragment>
                     {/* Balance Section */}
-                    <View style={styles.sections}>
-                        <Text style={styles.sectionTitle}>Cost</Text>
 
+                    <LinearGradientExpenses>
+                        <Text style={styles.sectionTitle}>Costs</Text>
                         <View style={styles.innerSection}>
-                            <View style={styles.column}>
-                                <Text>Min Cost</Text>
-                                <Text style={[styles.columnRightWithBorder]}>
-                                    {minTotalCost.toFixed(2)} €
-                                </Text>
+                            <View style={styles.leftColumn}>
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {minTotalCost.toFixed(2)} €
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        Minimum cost
+                                    </Text>
+                                </View>
+
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {maxTotalCost.toFixed(2)} €
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        Maximum cost
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={styles.column}>
-                                <Text>Max Cost</Text>
-                                <Text style={[styles.columnRightWithBorder]}>
-                                    {maxTotalCost.toFixed(2)} €
-                                </Text>
-                            </View>
-                            <View style={styles.column}>
-                                <Text>Avg. Cost</Text>
-                                <Text style={[styles.columnRightWithBorder]}>
-                                    {avgTotalCost.toFixed(2)} €
-                                </Text>
-                            </View>
-                            <View style={styles.column}>
-                                <Text style={styles.redText}>Total price</Text>
-                                <Text>{totalCost.toFixed(2)} €</Text>
+
+                            <View style={styles.rightColumn}>
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {avgTotalCost.toFixed(2)} €
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        Avarage cost
+                                    </Text>
+                                </View>
+
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {totalCost.toFixed(2)} €
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        Total cost
+                                    </Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
+                    </LinearGradientExpenses>
 
                     {/* Distance Section */}
-                    <View style={styles.sections}>
+                    <LinearGradientExpenses>
                         <Text style={styles.sectionTitle}>Distance</Text>
 
                         <View style={styles.innerSection}>
-                            <View style={styles.column}>
-                                <Text>Start Distance</Text>
-                                <Text style={[styles.columnRightWithBorder]}>
-                                    {startDistance} km
-                                </Text>
+                            <View style={styles.leftColumn}>
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {startDistance} km
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        Start Distance
+                                    </Text>
+                                </View>
+
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {endDistance} km
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        End Distance
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={styles.column}>
-                                <Text>End Distance</Text>
-                                <Text style={[styles.columnRightWithBorder]}>
-                                    {endDistance} km
-                                </Text>
-                            </View>
-                            <View style={styles.column}>
-                                <Text style={styles.redText}>
-                                    Total Distance
-                                </Text>
-                                <Text>{totalDistance} km</Text>
+
+                            <View style={styles.rightColumn}>
+                                <View style={styles.innerSectionInnerContainer}>
+                                    <Text style={styles.textCostValues}>
+                                        {totalDistance} km
+                                    </Text>
+                                    <Text style={styles.textCostInfo}>
+                                        Total Distance
+                                    </Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
+                    </LinearGradientExpenses>
+                    <FuelExpensesDataScreen fuelEntries={fuelExpenses} />
                 </React.Fragment>
             )}
-        </View>
+        </ScrollView>
     );
 };
 
@@ -398,13 +438,6 @@ const styles = StyleSheet.create({
         color: "#555",
         marginLeft: 8,
     },
-    ////////
-    sections: {
-        backgroundColor: "white",
-        padding: 10,
-        marginBottom: 10,
-        borderRadius: 5,
-    },
     sectionTitle: {
         fontSize: 16,
         fontWeight: "bold",
@@ -421,11 +454,11 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: "#c4c0c0",
     },
-    innerSection: {
-        marginTop: 8,
-        flexDirection: "row",
-        flexGrow: 1,
-    },
+    // innerSection: {
+    //     marginTop: 8,
+    //     flexDirection: "row",
+    //     flexGrow: 1,
+    // },
     columnRightWithBorder: {
         borderRightWidth: 1,
         borderRightColor: "#c4c0c0",
@@ -447,7 +480,6 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginVertical: 16,
     },
-
     chartPlaceholderText: {
         marginTop: 12,
         fontSize: 16,
@@ -456,5 +488,30 @@ const styles = StyleSheet.create({
     },
     chartContainer: {
         width: "100%",
+    },
+    /////
+    innerSection: {
+        flexDirection: "row",
+    },
+    leftColumn: {
+        flexGrow: 0.5,
+        // backgroundColor: "red",
+        height: 110,
+    },
+    rightColumn: {
+        flexGrow: 0.5,
+        // backgroundColor: "white",
+    },
+    innerSectionInnerContainer: {
+        marginVertical: 8,
+    },
+    textCostValues: {
+        color: "white",
+        fontWeight: 700,
+        fontSize: 20,
+    },
+    textCostInfo: {
+        color: "#d7d5d5",
+        fontWeight: 500,
     },
 });

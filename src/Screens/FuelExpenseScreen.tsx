@@ -52,8 +52,6 @@ export const FuelExpenseScreen = () => {
         mimeType: string;
     } | null>(null);
 
-    console.log(attachment, "attachment");
-
     // References for each input field to manage focus
     const odometerRef = useRef(null);
     const fuelTypeRef = useRef(null);

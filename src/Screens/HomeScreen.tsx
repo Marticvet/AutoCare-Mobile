@@ -7,6 +7,7 @@ import {
     Animated,
     FlatList,
     TouchableOpacity,
+    Pressable,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
@@ -14,6 +15,9 @@ import HomeScreenDropdown from "./HomeScreenDropdown";
 import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Loader } from "./Loader";
+import { fetchStations } from "../utils/location";
+import TotalExpensesScreen from "./TotalExpensesScreen";
+import { ScrollView } from "react-native-gesture-handler";
 
 const { width } = Dimensions.get("window");
 
@@ -79,7 +83,6 @@ const HomeScreen = () => {
         }
     };
 
-
     // useEffect(() => {
 
     //     Notifications.scheduleNotificationAsync({
@@ -90,14 +93,12 @@ const HomeScreen = () => {
     //       trigger: null, // Trigger immediately
     //     });
 
-
     //     console.log("de");
-        
-        
+
     // }, []);
 
     return (
-        <View style={styles.container}>
+        <ScrollView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>
@@ -107,6 +108,8 @@ const HomeScreen = () => {
                     Keep track of your car's health
                 </Text>
             </View>
+
+            {/* <Pressable onPress={fetchStations}><Text>fetchStations</Text></Pressable> */}
 
             {/* Dropdown */}
             <View style={styles.dropdownContainer}>
@@ -120,22 +123,31 @@ const HomeScreen = () => {
             {/* Vehicle Info */}
             <View style={styles.contentContainer}>
                 <Text style={styles.infoText}>
-                    Selected Vehicle: {selectedVehicle?.id}
+                    Main Vehicle: {selectedVehicle?.vehicle_brand} | {selectedVehicle?.vehicle_model} | {selectedVehicle?.vehicle_license_plate}
+
                 </Text>
                 <Text style={styles.sectionTitle}>Your Vehicles</Text>
             </View>
 
-            {errorVehicles == false && isVehiclesLoading == true && vehicles && vehicles.length === 0 &&<Loader text={"Your vehicles are loading..."}/>}
-            {errorVehicles && isVehiclesLoading == false && vehicles && vehicles.length === 0 && (
-                <View style={styles.errorVehiclesContainer}>
-                    <Text style={styles.errorVehiclesText}>
-                        Error while loading your vehicles!
-                    </Text>
-                    <Text style={styles.errorVehiclesText}>
-                        Please try later...
-                    </Text>
-                </View>
-            )}
+            {errorVehicles == false &&
+                isVehiclesLoading == true &&
+                vehicles &&
+                vehicles.length === 0 && (
+                    <Loader text={"Your vehicles are loading..."} />
+                )}
+            {errorVehicles &&
+                isVehiclesLoading == false &&
+                vehicles &&
+                vehicles.length === 0 && (
+                    <View style={styles.errorVehiclesContainer}>
+                        <Text style={styles.errorVehiclesText}>
+                            Error while loading your vehicles!
+                        </Text>
+                        <Text style={styles.errorVehiclesText}>
+                            Please try later...
+                        </Text>
+                    </View>
+                )}
 
             {/* Animated FlatList */}
             {vehicles && vehicles?.length > 0 && (
@@ -201,7 +213,7 @@ const HomeScreen = () => {
                                             "VehicleDetailScreen",
                                             {
                                                 vehicleId: item.id,
-                                                parentScreenName: "HomeScreen"
+                                                parentScreenName: "HomeScreen",
                                             }
                                         );
                                     }}
@@ -235,7 +247,9 @@ const HomeScreen = () => {
                     }}
                 />
             )}
-        </View>
+
+            <TotalExpensesScreen hideUIElements={true}/>
+        </ScrollView>
     );
 };
 

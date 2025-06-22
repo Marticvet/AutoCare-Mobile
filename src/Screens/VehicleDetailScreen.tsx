@@ -43,7 +43,7 @@ const VehicleDetailScreen = ({ route }: any) => {
         if (vehicles && vehicles.length > 0) {
             vehicle = vehicles?.filter(
                 (vehicleData) => vehicleData.id === vehicleId
-            );
+            )[0];
         }
     }, [isLoading]);
 

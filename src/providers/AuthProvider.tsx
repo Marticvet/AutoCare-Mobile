@@ -26,10 +26,23 @@ const AuthContext = createContext<AuthData>({
     isAuthenticated: false,
 });
 
+import { AppState } from 'react-native'
+
 export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    // make sure you register this only once!
+AppState.addEventListener('change', (state) => {
+    console.log(state === 'active', `state === 'active'`);
+    
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh()
+  } else {
+    supabase.auth.stopAutoRefresh()
+  }
+});
 
     // Fetch user profile from Supabase 'profiles' table
     const fetchProfile = async (userId: string) => {

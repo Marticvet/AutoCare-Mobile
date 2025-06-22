@@ -8,7 +8,6 @@ import {
     Modal,
     FlatList,
 } from "react-native";
-import { useAuth } from "../providers/AuthProvider";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { useUpdateProfile } from "../api/profiles";
 
@@ -49,10 +48,10 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
             },
             {
                 onSuccess: () => {
-                    console.log("✅ Profile updated successfully!");
+                    console.log("Profile updated successfully!");
                 },
                 onError: (error) => {
-                    console.warn("🚨 Error updating Profile:", error);
+                    console.warn("Error updating Profile:", error);
                 },
             }
         );
@@ -85,7 +84,7 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
                                     onPress={() => handleSelect(item.id)}
                                 >
                                     <Text style={styles.itemText}>
-                                        {item.id}
+                                        {item.vehicle_brand} | {item.vehicle_model} | {item.vehicle_license_plate}
                                     </Text>
                                 </Pressable>
                             )}
