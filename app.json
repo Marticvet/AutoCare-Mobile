@@ -43,13 +43,6 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./local/assets/icon.png",
-          "color": "#ffffff"
-        }
       ]
     ],
     "experiments": {
