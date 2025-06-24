@@ -231,7 +231,7 @@ function RootNavigator() {
             />
             <RootStack.Screen
                 name="ReportsScreen"
-                component={ReportsScreen}
+                component={() => <ReportsScreen hideUIElements />}
                 options={{ title: "Reports" }}
             />
             <RootStack.Screen
