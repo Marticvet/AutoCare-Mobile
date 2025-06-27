@@ -1,4 +1,6 @@
 // App.tsx
+import "@azure/core-asynciterator-polyfill";
+
 import * as React from "react";
 import { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -30,7 +32,9 @@ import { OwnerVehiclesScreen } from "./src/Screens/OwnerVehiclesScreen";
 import { FuelTypeScreen } from "./src/Screens/FuelTypeScreen";
 import { GasStationsScreen } from "./src/Screens/GasStationsScreen";
 
-import { Alert, Button, Platform, View } from "react-native";
+import { Alert, Button, Platform, View, Text } from "react-native";
+import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
+import { useSystem } from "./src/powersync/PowerSync";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -54,7 +58,32 @@ const MyTheme = {
 };
 
 function App() {
-   
+    const system = useSystem();
+    const { supabaseConnector } = useSystem();
+
+    useEffect(() => {
+        system.init();
+    }, []);
+
+    return (
+        <PowerSyncProvider>
+            <ActionSheetProvider>
+                <QueryProvider>
+                    <AuthProvider>
+                        <ProfileDataProvider>
+                            <NavigationContainer
+                                // @ts-ignore
+                                theme={MyTheme}
+                            >
+                                <RootNavigator />
+                            </NavigationContainer>
+                        </ProfileDataProvider>
+                    </AuthProvider>
+                </QueryProvider>
+            </ActionSheetProvider>
+        </PowerSyncProvider>
+    );
+
     return (
         <ActionSheetProvider>
             <QueryProvider>

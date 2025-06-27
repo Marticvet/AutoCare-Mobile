@@ -16,7 +16,6 @@ import { useExpensesList } from "../api/expenses/expenses";
 import { Insurance_Expenses } from "../../types/insurance_expenses";
 import { useInsuranceExpensesList } from "../api/insurance_expenses";
 import { useServiceExpensesList } from "../api/service_expenses";
-import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 
@@ -281,21 +280,21 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     }, []);
 
     const syncPendingUpdates = async () => {
-        const pending = await AsyncStorage.getItem("pendingProfileUpdate");
-        if (pending) {
-            const parsed = JSON.parse(pending);
-            const { error } = await supabase
-                .from("profiles")
-                .update(parsed)
-                .eq("id", parsed.id);
+        // const pending = await AsyncStorage.getItem("pendingProfileUpdate");
+        // if (pending) {
+        //     const parsed = JSON.parse(pending);
+        //     const { error } = await supabase
+        //         .from("profiles")
+        //         .update(parsed)
+        //         .eq("id", parsed.id);
     
-            if (!error) {
-                await AsyncStorage.removeItem("pendingProfileUpdate");
-                console.log("Synced pending profile update");
-            } else {
-                console.warn("Failed to sync pending profile update:", error);
-            }
-        }
+        //     if (!error) {
+        //         await AsyncStorage.removeItem("pendingProfileUpdate");
+        //         console.log("Synced pending profile update");
+        //     } else {
+        //         console.warn("Failed to sync pending profile update:", error);
+        //     }
+        // }
     };
     
     useEffect(() => {
@@ -309,43 +308,43 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     }, [profile?.id]);
 
     // Realtime: Refresh on changes from other devices
-    useEffect(() => {
-        if (!userId) return;
+    // useEffect(() => {
+    //     if (!userId) return;
 
-        const channel = supabase
-            .channel("realtime:profile_sync")
-            .on(
-                "postgres_changes",
-                {
-                    event: "*",
-                    schema: "public",
-                    table: "profiles",
-                    filter: `id=eq.${userId}`,
-                },
-                (payload) => {
-                    console.log("🔁 Realtime update from 'profiles':", payload);
-                    setRefreshing(true);
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "*",
-                    schema: "public",
-                    table: "vehicles",
-                    filter: `user_id=eq.${userId}`,
-                },
-                (payload) => {
-                    console.log("🔁 Realtime update from 'vehicles':", payload);
-                    setRefreshing(true);
-                }
-            )
-            .subscribe();
+    //     const channel = supabase
+    //         .channel("realtime:profile_sync")
+    //         .on(
+    //             "postgres_changes",
+    //             {
+    //                 event: "*",
+    //                 schema: "public",
+    //                 table: "profiles",
+    //                 filter: `id=eq.${userId}`,
+    //             },
+    //             (payload) => {
+    //                 console.log("Realtime update from 'profiles':", payload);
+    //                 setRefreshing(true);
+    //             }
+    //         )
+    //         .on(
+    //             "postgres_changes",
+    //             {
+    //                 event: "*",
+    //                 schema: "public",
+    //                 table: "vehicles",
+    //                 filter: `user_id=eq.${userId}`,
+    //             },
+    //             (payload) => {
+    //                 console.log("🔁 Realtime update from 'vehicles':", payload);
+    //                 setRefreshing(true);
+    //             }
+    //         )
+    //         .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [userId]);
+    //     return () => {
+    //         supabase.removeChannel(channel);
+    //     };
+    // }, [userId]);
 
     // Manual refresh logic
     useEffect(() => {
@@ -363,7 +362,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
                     refetchExpenses(),
                 ]);
             } catch (err) {
-                console.warn("🔁 Refresh error:", err);
+                console.warn("Refresh error:", err);
             } finally {
                 setRefreshing(false);
             }

@@ -14,7 +14,7 @@ import {
 import Entypo from "@expo/vector-icons/Entypo";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useNavigation, CommonActions } from "@react-navigation/native";
-import { supabase } from "../lib/supabase";
+import { useSystem } from "../powersync/PowerSync";
 
 interface LoginFormInterface {
     email: string;
@@ -22,6 +22,8 @@ interface LoginFormInterface {
 }
 
 function LoginScreen() {
+    const { supabaseConnector } = useSystem();
+
     const navigation = useNavigation();
     const [loginForm, setLoginForm] = useState<LoginFormInterface>({
         // email: "martigiant2@gmail.com",
@@ -33,14 +35,14 @@ function LoginScreen() {
     async function submitLoginFormHandler() {
         const { email, password } = loginForm;
 
-        const { error, data } = await supabase.auth.signInWithPassword({
+        await supabaseConnector.login(
             // email: email,
             // password,
-            email: "martigiant@gmail.com",
-            password: "Marticvet",
-        });
+            "martigiant@gmail.com",
+            "Marticvet"
+        );
 
-        if (error) Alert.alert(error.message);
+        // if (error) Alert.alert(error.message);
 
         setLoginForm({
             email: "",
@@ -77,7 +79,6 @@ function LoginScreen() {
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.innerKeyboardContainer}>
-
                     <View style={styles.loginContainer}>
                         <View style={styles.loginLabelContainer}>
                             <Text style={styles.loginLabelContainerTop}>
@@ -102,7 +103,7 @@ function LoginScreen() {
                                 value={loginForm.email}
                                 autoCorrect={false}
                                 autoCapitalize="none"
-                                clearButtonMode={'always'}
+                                clearButtonMode={"always"}
                             />
 
                             <Text style={styles.loginTextLabel}>Password</Text>
@@ -114,9 +115,9 @@ function LoginScreen() {
                                     loginFormHandler("password", value)
                                 }
                                 value={loginForm.password}
-                                secureTextEntry={true} 
-                                clearButtonMode={'always'}
-                                textContentType={'oneTimeCode'}
+                                secureTextEntry={true}
+                                clearButtonMode={"always"}
+                                textContentType={"oneTimeCode"}
                             />
                         </View>
 

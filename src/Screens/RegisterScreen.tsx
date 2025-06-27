@@ -15,7 +15,7 @@ import {
 import Entypo from "@expo/vector-icons/Entypo";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useNavigation, CommonActions } from "@react-navigation/native";
-import { supabase } from "../lib/supabase";
+import { useSystem } from "../powersync/PowerSync";
 
 // import * as Linking from "expo-linking";
 
@@ -27,6 +27,8 @@ interface RegisterFormInterface {
 }
 
 function RegisterScreen() {
+    const { supabaseConnector } = useSystem();
+
     // const { authState, login, logout } = useAuth();
     const navigation = useNavigation();
     const [registerForm, setRegisterForm] = useState<RegisterFormInterface>({
@@ -68,42 +70,39 @@ function RegisterScreen() {
             return;
         }
 
-        const {
-            error,
-            data: { user },
-        } = await supabase.auth.signUp({
+        await supabaseConnector.client.auth.signUp({
             email: "martigiant@gmail.com",
             password: "Marticvet",
         });
 
-        if (error) {
-            Alert.alert(error.message);
+        // if (error) {
+        //     Alert.alert(error.message);
 
-            // Reset form and show alert
-            setRegisterForm({
-                ...registerForm,
-                password: "",
-                confirmPassword: "",
-            });
-            return;
-        }
+        //     // Reset form and show alert
+        //     setRegisterForm({
+        //         ...registerForm,
+        //         password: "",
+        //         confirmPassword: "",
+        //     });
+        //     return;
+        // }
 
-        if (user !== null) {
-            const { error: profileError } = await supabase
-                .from("profiles")
-                .update({
-                    email: "martigiant@gmail.com",
-                    full_name: "Martin Tsvetanov",
-                    avatar_url: "avatar_url",
-                })
-                .eq("id", user.id);
+        // if (user !== null) {
+        //     const { error: profileError } = await supabase
+        //         .from("profiles")
+        //         .update({
+        //             email: "martigiant@gmail.com",
+        //             full_name: "Martin Tsvetanov",
+        //             avatar_url: "avatar_url",
+        //         })
+        //         .eq("id", user.id);
 
-            if (profileError) {
-                console.log("profile error: " + profileError.message);
-            } else {
-                console.log("Profile inserted successfully!");
-            }
-        }
+        //     if (profileError) {
+        //         console.log("profile error: " + profileError.message);
+        //     } else {
+        //         console.log("Profile inserted successfully!");
+        //     }
+        // }
     }
 
     function registerFormHandler(field: string, value: string) {
@@ -129,11 +128,9 @@ function RegisterScreen() {
 
     async function forgotPasswordHandler() {
         // const resetPasswordURL = Linking.createURL("/LoginScreen");
-
         // const { data, error } = await supabase.auth.resetPasswordForEmail("martigiant@gmail.com", {
         //   redirectTo: resetPasswordURL,
         // });
-      
         // return { data, error };
     }
 

@@ -15,8 +15,12 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "@azure/core-asynciterator-polyfill": "^1.0.2",
     "@expo/react-native-action-sheet": "^4.1.1",
     "@expo/vector-icons": "^14.0.2",
+    "@journeyapps/react-native-quick-sqlite": "^2.4.5",
+    "@powersync/kysely-driver": "^1.2.0",
+    "@powersync/react-native": "^1.22.0",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-google-signin/google-signin": "^13.2.0",
@@ -77,10 +81,12 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
-    "react-native-webview": "13.12.5"
+    "react-native-webview": "13.12.5",
+    "expo-crypto": "~14.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@babel/plugin-transform-async-generator-functions": "^7.27.1",
     "@react-native-community/cli": "^18.0.0",
     "@types/jest": "^29.5.12",
     "@types/react": "~18.3.12",
