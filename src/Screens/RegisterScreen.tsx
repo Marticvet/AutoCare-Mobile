@@ -70,22 +70,25 @@ function RegisterScreen() {
             return;
         }
 
-        await supabaseConnector.client.auth.signUp({
-            email: "martigiant@gmail.com",
-            password: "Marticvet",
+        const {
+            data: { session },
+            error,
+        } = await supabaseConnector.client.auth.signUp({
+            email: email,
+            password: password,
         });
 
-        // if (error) {
-        //     Alert.alert(error.message);
+        if (error) {
+            Alert.alert(error.message);
 
-        //     // Reset form and show alert
-        //     setRegisterForm({
-        //         ...registerForm,
-        //         password: "",
-        //         confirmPassword: "",
-        //     });
-        //     return;
-        // }
+            // Reset form and show alert
+            setRegisterForm({
+                ...registerForm,
+                password: "",
+                confirmPassword: "",
+            });
+            return;
+        }
 
         // if (user !== null) {
         //     const { error: profileError } = await supabase

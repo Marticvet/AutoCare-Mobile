@@ -1,79 +1,68 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { VehicleData } from "../../../types/vehicle";
 import { useSystem } from "../../powersync/PowerSync";
+import { Vehicle } from "../../powersync/AppSchema";
 
 let queryKey: string = "vehicles";
 
-export const useVehicleList = (id: string) => {
-    const { supabaseConnector } = useSystem();
+export const useVehicleList = (userId: string) => {
+    const { db } = useSystem();
 
     return useQuery({
-        queryKey: [queryKey],
+        queryKey: ["vehicles", userId],
         queryFn: async () => {
-            const { data, error } = await supabaseConnector
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id); // Filter by user_id
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
+            return await db
+                .selectFrom("vehicles")
+                .selectAll()
+                .where("user_id", "=", userId)
+                .execute();
         },
     });
 };
 
-export const useVehicle = (id: string, vehicleId: string) => {
-    const { supabaseConnector } = useSystem();
+export const useVehicle = (userId: string, vehicleId: string) => {
+    const { db } = useSystem();
 
     return useQuery({
-        queryKey: [queryKey, id, vehicleId],
+        queryKey: ["vehicles", userId, vehicleId],
         queryFn: async () => {
-            const { data, error } = await supabaseConnector
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("id", vehicleId)
-                .single();
+            const result = await db
+                .selectFrom("vehicles")
+                .selectAll()
+                .where("user_id", "=", userId)
+                .where("id", "=", vehicleId) // assuming `id` is an integer
+                .execute();
 
-            if (error) {
-                throw new Error(error.message);
+            // If you expect a single row, extract it
+            if (result.length === 0) {
+                throw new Error("Vehicle not found");
             }
-            return data;
+
+            return result[0];
         },
     });
 };
 
 export const useInsertVehicle = () => {
-    const { supabaseConnector } = useSystem();
-
+    const { db } = useSystem(); // use PowerSync db
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (vehicle: VehicleData) => {
-            const { error, data: newVehicle } = await supabaseConnector
-                .from(queryKey) // Corrected table name
-                .insert([vehicle])
-                .eq("user_id", vehicle.user_id)
-                .single();
-
-            if (error) {
-                console.error("Error inserting vehicle:", error.message);
-                throw new Error(error.message);
-            }
-
-            console.log("New Vehicle Inserted:", newVehicle);
-            return newVehicle;
+        mutationFn: async (vehicle: Vehicle) => {
+            await db.insertInto("vehicles").values(vehicle).execute();
+            return vehicle;
         },
         onSuccess: async () => {
             // @ts-ignore
-            await queryClient.invalidateQueries([queryKey]); // Ensure data updates
+            await queryClient.invalidateQueries([queryKey]);
+        },
+        onError: (error) => {
+            console.error("Failed to insert vehicle:", error);
         },
     });
 };
 
 export const useUpdateVehicle = () => {
-    const { supabaseConnector } = useSystem();
-
+    const { db } = useSystem(); // PowerSync local db
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -82,63 +71,54 @@ export const useUpdateVehicle = () => {
             vehicleId,
             userId,
         }: {
-            vehicle: VehicleData;
+            vehicle: Vehicle;
             vehicleId: string;
             userId: string;
         }) => {
-            const { error, data: updatedVehicle } = await supabaseConnector
-                .from(queryKey) // Use correct table name
-                .update(vehicle) // Only update the fields inside `vehicle`
-                .eq("id", vehicleId) // Update only the selected vehicle
-                .eq("user_id", userId) // Ensure user is the owner
-                .select()
-                .single();
+            await db
+                .updateTable("vehicles")
+                .set(vehicle)
+                .where("id", "=", vehicleId)
+                .where("user_id", "=", userId)
+                .execute();
 
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            return updatedVehicle;
+            return vehicle;
         },
-        onSuccess: async (_, { vehicleId }) => {
-            console.log("Vehicle updated successfully!");
-
-            // Refresh the list and the updated vehicle
+        onSuccess: async () => {
             // @ts-ignore
-            await queryClient.invalidateQueries(["vehicles"]); // Refresh all vehicles
+            await queryClient.invalidateQueries(["vehicles"]);
+        },
+        onError: (error) => {
+            console.error("Update failed:", error);
         },
     });
 };
 
 export const useDeleteVehicle = () => {
-    const { supabaseConnector } = useSystem();
-
+    const { db } = useSystem(); // PowerSync local db
     const queryClient = useQueryClient();
 
     return useMutation({
-        async mutationFn({
+        mutationFn: async ({
             vehicleId,
             userId,
         }: {
             vehicleId: string;
             userId: string;
-        }) {
-            const { error } = await supabaseConnector
-                .from("vehicles")
-                .delete()
-                .eq("id", vehicleId)
-                .eq("user_id", userId); // Ensures user owns the vehicle
-            // .eq("user_id", (await supabase.auth.getUser()).data.user?.id); // Ensures user owns the vehicle
-
-            if (error) {
-                console.error("Error deleting vehicle:", error);
-                throw new Error(error.message);
-            }
+        }) => {
+            await db
+                .deleteFrom("vehicles")
+                .where("id", "=", vehicleId)
+                .where("user_id", "=", userId)
+                .execute();
         },
-        onSuccess: () => {
-            console.log("Vehicle deleted! Refreshing data...");
+        onSuccess: async () => {
+            console.log("Vehicle deleted from local DB.");
             // @ts-ignore
-            queryClient.invalidateQueries(["vehicles"]); // Refresh vehicle list
+            await queryClient.invalidateQueries(["vehicles"]);
+        },
+        onError: (error) => {
+            console.error("Delete failed:", error);
         },
     });
 };

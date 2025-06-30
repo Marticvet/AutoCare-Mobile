@@ -1,32 +1,33 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Profile } from "../../../types/profile";
 import { useSystem } from "../../powersync/PowerSync";
+import { Profile } from "../../powersync/AppSchema";
 
-let queryKey: string = "profiles";
+const queryKey = "profiles";
 
 export const useProfile = (id: string) => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // PowerSync Kysely DB
 
     return useQuery({
         queryKey: [queryKey, id],
         queryFn: async () => {
-            const { data, error } = await supabaseConnector
-                .from(queryKey)
-                .select("*")
-                .eq("id", id)
-                .single();
+            const result = await db
+                .selectFrom("profiles")
+                .selectAll()
+                .where("id", "=", id)
+                .execute();
 
-            if (error) {
-                throw new Error(error.message);
+            if (result.length === 0) {
+                throw new Error("Profile not found");
             }
-            return data;
+
+            return result[0];
         },
     });
 };
 
 export const useUpdateProfile = () => {
     const queryClient = useQueryClient();
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem();
 
     return useMutation({
         mutationFn: async ({
@@ -36,27 +37,24 @@ export const useUpdateProfile = () => {
             profile: Profile;
             userId: string;
         }) => {
-            const { error, data: updateProfile } = await supabaseConnector
-                .from(queryKey) // Use correct table name
-                .update(profile) // Only update the fields inside `profile`
-                .eq("id", userId) // Update only the selected profile
-                .select()
-                .single();
+            await db
+                .updateTable("profiles")
+                .set(profile)
+                .where("id", "=", userId)
+                .execute();
 
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            return updateProfile;
+            return profile;
         },
         onSuccess: async (_, { userId }) => {
-            console.log("Profile updated successfully!");
+            console.log("Profile updated successfully");
 
-            //  Refresh the updated profile
             // @ts-ignore
-            await queryClient.invalidateQueries(["profiles"]); // efresh the updated profile
+            await queryClient.invalidateQueries(["profiles"]);
             // @ts-ignore
-            await queryClient.invalidateQueries(["profiles", userId]); // Refresh specific profile
+            await queryClient.invalidateQueries(["profiles", userId]);
+        },
+        onError: (error) => {
+            console.error("Failed to update profile:", error);
         },
     });
 };

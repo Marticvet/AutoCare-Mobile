@@ -1,58 +1,53 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSystem } from "../../powersync/PowerSync";
+import { ServiceExpense } from "../../powersync/AppSchema";
 
-const queryKey: string = "service_expenses";
+const queryKey = "service_expenses";
 
 export const useServiceExpensesList = (
     id: string,
     selected_vehicle_id: string
 ) => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // use PowerSync db
 
     return useQuery({
         queryKey: [queryKey, id, selected_vehicle_id],
         queryFn: async () => {
-            const { data, error } = await supabaseConnector
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("selected_vehicle_id", selected_vehicle_id); // Filter by selected_vehicle_id
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
+            return await db
+                .selectFrom("service_expenses")
+                .selectAll()
+                .where("user_id", "=", id)
+                .where("selected_vehicle_id", "=", selected_vehicle_id)
+                .execute();
         },
     });
 };
 
 export const useInsertServiceExpense = () => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // use PowerSync db
+    const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (service_expenses: Service_Expenses) => {
-            if (!service_expenses.selected_vehicle_id) {
-                console.error("Error: No vehicle ID provided.");
+        mutationFn: async (service_expense: ServiceExpense) => {
+            if (!service_expense.selected_vehicle_id) {
                 throw new Error(
                     "Vehicle ID is required to insert service expense."
                 );
             }
 
-            const { error, data: newServiceExpenses } = await supabaseConnector
-                .from(queryKey) // Ensure correct table name
-                .insert([service_expenses])
-                .select()
-                .single();
+            await db
+                .insertInto("service_expenses")
+                .values(service_expense)
+                .execute();
 
-            if (error) {
-                console.error(
-                    "Error inserting service expense:",
-                    error.message
-                );
-                throw new Error(error.message);
-            }
-
-            console.log("New Service Expense Inserted:", newServiceExpenses);
-            return newServiceExpenses;
+            return service_expense;
+        },
+        onSuccess: async () => {
+            // @ts-ignore
+            await queryClient.invalidateQueries([queryKey]); // Refresh local cache
+        },
+        onError: (err) => {
+            console.error("Insert service expense error:", err);
         },
     });
 };

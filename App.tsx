@@ -59,11 +59,24 @@ const MyTheme = {
 
 function App() {
     const system = useSystem();
-    const { supabaseConnector } = useSystem();
 
     useEffect(() => {
         system.init();
     }, []);
+
+    useEffect(() => {
+        // loadTodos();
+    }, []);
+
+    const loadTodos = async () => {
+        // const result = await system.db
+        //     .selectFrom("profiles")
+        //     .selectAll()
+        //     .where('id', '=', user)
+        //     .execute();
+
+        // console.log(result, `todossss`);
+    };
 
     return (
         <PowerSyncProvider>

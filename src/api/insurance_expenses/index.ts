@@ -1,59 +1,51 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Insurance_Expenses } from "../../../types/insurance_expenses";
 import { useSystem } from "../../powersync/PowerSync";
+import { Insurance_Expenses } from "../../../types/insurance_expenses";
 
-const queryKey: string = "insurance_expenses";
+const queryKey = "insurance_expenses";
 
 export const useInsuranceExpensesList = (
     id: string,
     selected_vehicle_id: string
 ) => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // PowerSync Kysely DB
 
     return useQuery({
         queryKey: [queryKey, id, selected_vehicle_id],
         queryFn: async () => {
-            const { data, error } = await supabaseConnector
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("selected_vehicle_id", selected_vehicle_id); // Filter by selected_vehicle_id
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
+            const results = await db
+                .selectFrom("insurance_expenses")
+                .selectAll()
+                .where("user_id", "=", id)
+                .where("selected_vehicle_id", "=", selected_vehicle_id)
+                .execute();
+
+            return results;
         },
     });
 };
 
 export const useInsertInsuranceExpense = () => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // PowerSync Kysely DB
 
     return useMutation({
-        mutationFn: async (insurance_expenses: Insurance_Expenses) => {
-            if (!insurance_expenses.selected_vehicle_id) {
-                console.error("Error: No vehicle ID provided.");
+        mutationFn: async (insurance_expense: Insurance_Expenses) => {
+            if (!insurance_expense.selected_vehicle_id) {
                 throw new Error(
-                    "Vehicle ID is required to insert fuel expense."
+                    "Vehicle ID is required to insert insurance expense."
                 );
             }
 
-            const { error, data: newInsuranceExpense } = await supabaseConnector
-                .from(queryKey) // Ensure correct table name
-                .insert([insurance_expenses])
-                .select()
-                .single();
+            await db
+                .insertInto("insurance_expenses")
+                // @ts-ignore
+                .values(insurance_expense)
+                .execute();
 
-            if (error) {
-                console.error(
-                    "❌ Error inserting fuel expense:",
-                    error.message
-                );
-                throw new Error(error.message);
-            }
-
-            console.log("✅ New Fuel Expense Inserted:", newInsuranceExpense);
-            return newInsuranceExpense;
+            return insurance_expense;
+        },
+        onError: (error) => {
+            console.error("Error inserting insurance expense:", error);
         },
     });
 };

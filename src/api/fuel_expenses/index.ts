@@ -1,56 +1,50 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Fuel_Expenses } from "../../../types/fuel_expenses";
 import { useSystem } from "../../powersync/PowerSync";
+import { FuelExpense } from "../../powersync/AppSchema";
 
-const queryKey: string = "fuel_expenses";
+const queryKey = "fuel_expenses";
 
 export const useFuelExpensesList = (
     id: string,
     selected_vehicle_id: string
 ) => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // Kysely DB from PowerSync
 
     return useQuery({
         queryKey: [queryKey, id, selected_vehicle_id],
         queryFn: async () => {
-            const { data, error } = await supabaseConnector
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("selected_vehicle_id", selected_vehicle_id); // Filter by selected_vehicle_id
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
+            return await db
+                .selectFrom("fuel_expenses")
+                .selectAll()
+                .where("user_id", "=", id)
+                .where("selected_vehicle_id", "=", selected_vehicle_id)
+                .execute();
         },
     });
 };
 
 export const useInsertFuelExpense = () => {
-    const { supabaseConnector } = useSystem();
+    const { db } = useSystem(); // Kysely DB from PowerSync
+    const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (fuel_expense: Fuel_Expenses) => {
+        mutationFn: async (fuel_expense: FuelExpense) => {
             if (!fuel_expense.selected_vehicle_id) {
-                console.error("Error: No vehicle ID provided.");
                 throw new Error(
                     "Vehicle ID is required to insert fuel expense."
                 );
             }
 
-            const { error, data: newFuelExpense } = await supabaseConnector
-                .from(queryKey) // Ensure correct table name
-                .insert([fuel_expense])
-                .select()
-                .single();
+            await db.insertInto("fuel_expenses").values(fuel_expense).execute();
 
-            if (error) {
-                console.error("Error inserting fuel expense:", error.message);
-                throw new Error(error.message);
-            }
-
-            console.log("New Fuel Expense Inserted:", newFuelExpense);
-            return newFuelExpense;
+            return fuel_expense;
+        },
+        onSuccess: () => {
+            // @ts-ignore
+            queryClient.invalidateQueries([queryKey]);
+        },
+        onError: (error) => {
+            console.error("Error inserting fuel expense:", error);
         },
     });
 };

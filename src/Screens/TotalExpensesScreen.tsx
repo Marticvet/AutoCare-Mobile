@@ -45,6 +45,10 @@ const normalizeToLocalDate = (date: Date) => {
 const TotalExpensesScreen = ({ hideUIElements }: TotalExpensesProps) => {
     const { expenses } = useContext(ProfileContext);
 
+    console.log(expenses);
+    
+    return;
+
     // Get a date object for the current time
     const now = new Date();
     const oneMonthAgo = new Date(now);

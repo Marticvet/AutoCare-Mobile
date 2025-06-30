@@ -15,6 +15,7 @@ import Entypo from "@expo/vector-icons/Entypo";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { useSystem } from "../powersync/PowerSync";
+import { SupabaseConnector } from "../powersync/SupabaseConnector";
 
 interface LoginFormInterface {
     email: string;
@@ -35,14 +36,13 @@ function LoginScreen() {
     async function submitLoginFormHandler() {
         const { email, password } = loginForm;
 
-        await supabaseConnector.login(
-            // email: email,
-            // password,
-            "martigiant@gmail.com",
-            "Marticvet"
-        );
-
-        // if (error) Alert.alert(error.message);
+        await supabaseConnector.login("martigiant@gmail.com", "Marticvet");
+        // await supabaseConnector.login(
+        //     // email: email,
+        //     // password,
+        //     "martigiant@gmail.com",
+        //     "Marticvet"
+        // );
 
         setLoginForm({
             email: "",
