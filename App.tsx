@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
 import LoginScreen from "./src/Screens/LoginScreen";
 import RegisterScreen from "./src/Screens/RegisterScreen";
 import QueryProvider from "./src/providers/QueryProvider";
-import { ProfileDataProvider } from "./src/providers/ProfileDataProvider";
+import { ProfileContext, ProfileDataProvider } from "./src/providers/ProfileDataProvider";
 
 // Navigators & Global Screens
 import SidebarNavigator from "./src/Screens/Navigators/SidebarNavigator";
@@ -59,24 +59,32 @@ const MyTheme = {
 
 function App() {
     const system = useSystem();
+    const { userProfile } = React.useContext(ProfileContext);
 
     useEffect(() => {
         system.init();
     }, []);
 
+    const { db } = useSystem();
+
     useEffect(() => {
-        // loadTodos();
-    }, []);
+        const fetchVehicles = async () => {
+            try {
+                const result = await db
+                    .selectFrom("vehicles")
+                    .selectAll()
+                    .where("user_id", "=", useAuth().profile?.id)
+                    .execute();
 
-    const loadTodos = async () => {
-        // const result = await system.db
-        //     .selectFrom("profiles")
-        //     .selectAll()
-        //     .where('id', '=', user)
-        //     .execute();
+                    console.log(result);
+                    
+            } catch (err: any) {
+                console.log("Failed to fetch vehicles:", err);
+            } 
+        };
 
-        // console.log(result, `todossss`);
-    };
+        fetchVehicles();
+    }, [userProfile?.id, db]);
 
     return (
         <PowerSyncProvider>

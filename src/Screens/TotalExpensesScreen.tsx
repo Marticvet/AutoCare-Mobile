@@ -44,8 +44,6 @@ const normalizeToLocalDate = (date: Date) => {
 
 const TotalExpensesScreen = ({ hideUIElements }: TotalExpensesProps) => {
     const { expenses } = useContext(ProfileContext);
-
-    console.log(expenses);
     
     return;
 

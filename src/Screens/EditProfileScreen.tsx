@@ -156,7 +156,7 @@ export const EditProfileScreen = () => {
             },
             {
                 onSuccess: () => {
-                    console.log("✅ Profile updated successfully!");
+                    console.log("Profile updated successfully!");
                     navigation.goBack();
                 },
                 onError: (error: any) => {

@@ -47,7 +47,6 @@ export const useUpdateProfile = () => {
         },
         onSuccess: async (_, { userId }) => {
             console.log("Profile updated successfully");
-
             // @ts-ignore
             await queryClient.invalidateQueries(["profiles"]);
             // @ts-ignore

@@ -31,7 +31,7 @@ const ServiceExpenseScreen = () => {
         mutate: insertServiceExpense,
         isPending,
         error,
-    } = useInsertServiceExpense(); // ✅ Call Hook at the top level
+    } = useInsertServiceExpense(); // Call Hook at the top level
     const navigation = useNavigation();
 
     const [odometer, setOdometer] = useState<string>("");
@@ -98,7 +98,7 @@ const ServiceExpenseScreen = () => {
                     },
                     {
                         onSuccess: () => {
-                            console.log("✅ Vehicle updated successfully!");
+                            console.log("Vehicle updated successfully!");
                         },
                         onError: (error) => {
                             console.warn("🚨 Error updating vehicle:", error);
@@ -111,18 +111,18 @@ const ServiceExpenseScreen = () => {
                     { text: "OK", onPress: () => console.log("Alert closed") },
                 ]);
 
-                // ✅ OPTIONAL: Auto-close the alert after 1.5 seconds
+                // OPTIONAL: Auto-close the alert after 1.5 seconds
                 setTimeout(() => {
                     console.log("Closing alert...");
                 }, 1500);
 
-                // ✅ Reset All State Values
+                // Reset All State Values
                 setOdometer("");
                 setPlace(undefined);
                 setPaymentMethod("");
                 setNotes("");
 
-                // ✅ Navigate back if needed
+                // Navigate back if needed
                 navigation.goBack();
             },
             // @ts-ignore

@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Fuel_Expenses } from "../../../types/fuel_expenses";
 import { useSystem } from "../../powersync/PowerSync";
 
 const queryKey: string = "vehicles";

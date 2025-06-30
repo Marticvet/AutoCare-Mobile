@@ -36,7 +36,7 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
         setVisible(false);
 
         if (!vehicleId || !userId) {
-            console.warn("🚨 Missing required values. Cannot update vehicle.");
+            console.warn("Missing required values. Cannot update vehicle.");
             return;
         }
 

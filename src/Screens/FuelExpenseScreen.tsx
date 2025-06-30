@@ -31,7 +31,7 @@ export const FuelExpenseScreen = () => {
     const { mutate: updateVehicle } = useUpdateVehicle();
     const { userProfile, selectedVehicle } = useContext(ProfileContext);
     const navigation = useNavigation<any>();
-    const { mutate, isPending, error } = useInsertFuelExpense(); // ✅ Call Hook at the top level
+    const { mutate, isPending, error } = useInsertFuelExpense(); // Call Hook at the top level
     // Retrieve the values provided by ProfileDataProvider
 
     const [selectedDateTime, setSelectedDateTime] = useState<DateType>();
@@ -133,16 +133,16 @@ export const FuelExpenseScreen = () => {
                     },
                     {
                         onSuccess: () => {
-                            console.log("✅ Vehicle updated successfully!");
+                            console.log("Vehicle updated successfully!");
                         },
                         onError: (error) => {
-                            console.warn("🚨 Error updating vehicle:", error);
+                            console.warn("Error updating vehicle:", error);
                             return;
                         },
                     }
                 );
 
-                // ✅ Step 2: Show success alert
+                // Step 2: Show success alert
                 Alert.alert("Success", "Fuel Expense added successfully!", [
                     {
                         text: "OK",
@@ -150,7 +150,7 @@ export const FuelExpenseScreen = () => {
                     },
                 ]);
 
-                // ✅ Step 3: Reset all form values
+                // Step 3: Reset all form values
                 setOdometer("");
                 setFuelType("");
                 setPricePerLiter("");
@@ -161,7 +161,7 @@ export const FuelExpenseScreen = () => {
                 setPaymentMethod("");
                 setNotes("");
 
-                // ✅ Step 4: Navigate back (optional)
+                // Step 4: Navigate back (optional)
                 navigation.goBack();
             },
 
@@ -186,7 +186,7 @@ export const FuelExpenseScreen = () => {
         const uploadResult = await handleAttachFileAndUpload();
 
         if (uploadResult.success && uploadResult.file) {
-            console.log("✅ File picked:", uploadResult.file.name);
+            console.log("File picked:", uploadResult.file.name);
 
             setAttachment({
                 uri: uploadResult.file.uri,
