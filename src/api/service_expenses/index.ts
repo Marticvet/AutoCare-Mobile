@@ -1,53 +1,51 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSystem } from "../../powersync/PowerSync";
-import { ServiceExpense } from "../../powersync/AppSchema";
+import { supabase } from "../../lib/supabase";
 
-const queryKey = "service_expenses";
+const queryKey: string = "service_expenses";
 
-export const useServiceExpensesList = (
-    id: string,
-    selected_vehicle_id: string
-) => {
-    const { db } = useSystem(); // use PowerSync db
-
+export const useServiceExpensesList = (id: string, selected_vehicle_id: string) => {
     return useQuery({
         queryKey: [queryKey, id, selected_vehicle_id],
         queryFn: async () => {
-            return await db
-                .selectFrom("service_expenses")
-                .selectAll()
-                .where("user_id", "=", id)
-                .where("selected_vehicle_id", "=", selected_vehicle_id)
-                .execute();
+            const { data, error } = await supabase
+                .from(queryKey)
+                .select("*")
+                .eq("user_id", id) // Filter by user_id
+                .eq("selected_vehicle_id", selected_vehicle_id); // Filter by selected_vehicle_id
+            if (error) {
+                throw new Error(error.message);
+            }
+            return data;
         },
     });
 };
 
 export const useInsertServiceExpense = () => {
-    const { db } = useSystem(); // use PowerSync db
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (service_expense: ServiceExpense) => {
-            if (!service_expense.selected_vehicle_id) {
+        mutationFn: async (service_expenses: Service_Expenses) => {
+            if (!service_expenses.selected_vehicle_id) {
+                console.error("❌ Error: No vehicle ID provided.");
                 throw new Error(
                     "Vehicle ID is required to insert service expense."
                 );
             }
 
-            await db
-                .insertInto("service_expenses")
-                .values(service_expense)
-                .execute();
+            const { error, data: newServiceExpenses } = await supabase
+                .from(queryKey) // ✅ Ensure correct table name
+                .insert([service_expenses])
+                .select()
+                .single();
 
-            return service_expense;
-        },
-        onSuccess: async () => {
-            // @ts-ignore
-            await queryClient.invalidateQueries([queryKey]); // Refresh local cache
-        },
-        onError: (err) => {
-            console.error("Insert service expense error:", err);
+            if (error) {
+                console.error(
+                    "❌ Error inserting service expense:",
+                    error.message
+                );
+                throw new Error(error.message);
+            }
+
+            console.log("✅ New Service Expense Inserted:", newServiceExpenses);
+            return newServiceExpenses;
         },
     });
 };
