@@ -1,4 +1,8 @@
 // App.tsx
+
+// App.js
+import '@azure/core-asynciterator-polyfill';
+
 import * as React from "react";
 import { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";

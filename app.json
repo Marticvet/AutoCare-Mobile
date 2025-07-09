@@ -43,6 +43,12 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
+      ],
+      [
+        "@journeyapps/react-native-quick-sqlite",
+        {
+          "staticLibrary": true
+        }
       ]
     ],
     "experiments": {
