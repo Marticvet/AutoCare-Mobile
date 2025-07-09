@@ -2,6 +2,9 @@
 import "@azure/core-asynciterator-polyfill";
 import 'react-native-polyfill-globals/auto';
 
+import '@azure/core-asynciterator-polyfill';
+import 'react-native-polyfill-globals/auto';
+
 import * as React from "react";
 import { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -68,24 +71,24 @@ function App() {
 
     const { db } = useSystem();
 
-    useEffect(() => {
-        const fetchVehicles = async () => {
-            try {
-                const result = await db
-                    .selectFrom("vehicles")
-                    .selectAll()
-                    .where("user_id", "=", useAuth().profile?.id)
-                    .execute();
+    // useEffect(() => {
+    //     const fetchVehicles = async () => {
+    //         try {
+    //             const result = await db
+    //                 .selectFrom("vehicles")
+    //                 .selectAll()
+    //                 .where("user_id", "=", useAuth().profile?.id)
+    //                 .execute();
 
-                    console.log(result);
+    //                 console.log(result);
                     
-            } catch (err: any) {
-                console.log("Failed to fetch vehicles:", err);
-            } 
-        };
+    //         } catch (err: any) {
+    //             console.log("Failed to fetch vehicles:", err);
+    //         } 
+    //     };
 
-        fetchVehicles();
-    }, [userProfile?.id, db]);
+    //     fetchVehicles();
+    // }, [userProfile?.id, db]);
 
     return (
         <PowerSyncProvider>

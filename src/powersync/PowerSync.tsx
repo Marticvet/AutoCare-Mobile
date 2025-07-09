@@ -23,7 +23,6 @@ export class System {
 
     this.supabaseConnector = new SupabaseConnector();
     this.powersync = factory.getInstance();
-    // @ts-ignore
     this.db = wrapPowerSyncWithKysely(this.powersync);
   }
 
