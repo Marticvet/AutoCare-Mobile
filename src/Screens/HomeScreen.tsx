@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
     View,
     Text,
@@ -18,6 +18,9 @@ import { Loader } from "./Loader";
 import { fetchStations } from "../utils/location";
 import TotalExpensesScreen from "./TotalExpensesScreen";
 import { ScrollView } from "react-native-gesture-handler";
+import { useSystem } from "../powersync/PowerSync";
+import { Todo } from "../powersync/AppSchema";
+import { uuid } from "../powersync/uuid";
 
 const { width } = Dimensions.get("window");
 
@@ -97,6 +100,37 @@ const HomeScreen = () => {
 
     // }, []);
 
+    const { supabaseConnector, db } = useSystem();
+    const [todos, setTodos] = useState<Todo[]>([]);
+
+    useEffect(() => {
+        loadTodos();
+    }, []);
+
+    const loadTodos = async () => {
+        const result = await db
+            .selectFrom("todos")
+            .selectAll()
+            // @ts-ignore
+            .where("user_id", "=", userProfile?.id)
+            .execute();
+        setTodos(result);
+
+        console.log(result, `result`);
+    };
+
+    const addTodo = async () => {
+        const { userID } = await supabaseConnector.fetchCredentials();
+        const todoId = uuid();
+
+        await db
+            .insertInto("todos")
+            .values({ id: todoId, user_id: userID, is_complete: 0 })
+            .execute();
+
+        loadTodos();
+    };
+
     return (
         <ScrollView style={styles.container}>
             {/* Header */}
@@ -109,7 +143,12 @@ const HomeScreen = () => {
                 </Text>
             </View>
 
-            {/* <Pressable onPress={fetchStations}><Text>fetchStations</Text></Pressable> */}
+            <Pressable onPress={loadTodos}>
+                <Text>fetchStations</Text>
+            </Pressable>
+            <Pressable onPress={addTodo}>
+                <Text>add</Text>
+            </Pressable>
 
             {/* Dropdown */}
             <View style={styles.dropdownContainer}>
@@ -123,8 +162,9 @@ const HomeScreen = () => {
             {/* Vehicle Info */}
             <View style={styles.contentContainer}>
                 <Text style={styles.infoText}>
-                    Main Vehicle: {selectedVehicle?.vehicle_brand} | {selectedVehicle?.vehicle_model} | {selectedVehicle?.vehicle_license_plate}
-
+                    Main Vehicle: {selectedVehicle?.vehicle_brand} |{" "}
+                    {selectedVehicle?.vehicle_model} |{" "}
+                    {selectedVehicle?.vehicle_license_plate}
                 </Text>
                 <Text style={styles.sectionTitle}>Your Vehicles</Text>
             </View>
@@ -248,7 +288,7 @@ const HomeScreen = () => {
                 />
             )}
 
-            <TotalExpensesScreen hideUIElements={true}/>
+            <TotalExpensesScreen hideUIElements={true} />
         </ScrollView>
     );
 };

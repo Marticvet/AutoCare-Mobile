@@ -16,6 +16,7 @@ import Entypo from "@expo/vector-icons/Entypo";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
+import { useSystem } from "../powersync/PowerSync";
 
 // import * as Linking from "expo-linking";
 
@@ -28,6 +29,7 @@ interface RegisterFormInterface {
 
 function RegisterScreen() {
     // const { authState, login, logout } = useAuth();
+    const {supabaseConnector} = useSystem();
     const navigation = useNavigation();
     const [registerForm, setRegisterForm] = useState<RegisterFormInterface>({
         email: "",
@@ -69,12 +71,19 @@ function RegisterScreen() {
         }
 
         const {
+            data: {session, user},
             error,
-            data: { user },
-        } = await supabase.auth.signUp({
-            email: "martigiant@gmail.com",
-            password: "Marticvet",
-        });
+          } = await supabaseConnector.client.auth.signUp({
+            email: email,
+            password: password,
+          });
+
+          if (error) {
+            Alert.alert(error.message);
+          } else if (!session) {
+            Alert.alert('Please check your inbox for email verification!');
+          }
+
 
         if (error) {
             Alert.alert(error.message);

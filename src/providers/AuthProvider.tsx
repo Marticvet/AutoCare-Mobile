@@ -26,23 +26,25 @@ const AuthContext = createContext<AuthData>({
     isAuthenticated: false,
 });
 
-import { AppState } from 'react-native'
+import { AppState } from "react-native";
+import { useSystem } from "../powersync/PowerSync";
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const { supabaseConnector, powersync } = useSystem();
 
     // make sure you register this only once!
-AppState.addEventListener('change', (state) => {
-    console.log(state === 'active', `state === 'active'`);
-    
-  if (state === 'active') {
-    supabase.auth.startAutoRefresh()
-  } else {
-    supabase.auth.stopAutoRefresh()
-  }
-});
+    AppState.addEventListener("change", (state) => {
+        console.log(state === "active", `state === 'active'`);
+
+        if (state === "active") {
+            supabase.auth.startAutoRefresh();
+        } else {
+            supabase.auth.stopAutoRefresh();
+        }
+    });
 
     // Fetch user profile from Supabase 'profiles' table
     const fetchProfile = async (userId: string) => {
@@ -65,7 +67,7 @@ AppState.addEventListener('change', (state) => {
         const restoreSession = async () => {
             const {
                 data: { session },
-            } = await supabase.auth.getSession();
+            } = await supabaseConnector.client.auth.getSession();
 
             // Optionally load from secure storage if session is null
             if (!session) {
@@ -73,7 +75,7 @@ AppState.addEventListener('change', (state) => {
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     const { data: restoredSession, error } =
-                        await supabase.auth.setSession(parsed);
+                        await supabaseConnector.client.auth.setSession(parsed);
                     if (error) {
                         console.warn("Error restoring session:", error);
                     } else {
@@ -96,22 +98,23 @@ AppState.addEventListener('change', (state) => {
         restoreSession();
 
         // Listen for auth state changes (login, logout, refresh)
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                setSession(session);
-                if (session && session.user.id) {
-                    await fetchProfile(session.user.id);
-                    await SecureStore.setItemAsync(
-                        "session",
-                        JSON.stringify(session)
-                    );
-                } else {
-                    setProfile(null);
-                    setSession(null);
-                    await SecureStore.deleteItemAsync("session");
+        const { data: authListener } =
+            supabaseConnector.client.auth.onAuthStateChange(
+                async (_event, session) => {
+                    setSession(session);
+                    if (session && session.user.id) {
+                        await fetchProfile(session.user.id);
+                        await SecureStore.setItemAsync(
+                            "session",
+                            JSON.stringify(session)
+                        );
+                    } else {
+                        setProfile(null);
+                        setSession(null);
+                        await SecureStore.deleteItemAsync("session");
+                    }
                 }
-            }
-        );
+            );
 
         return () => {
             authListener.subscription.unsubscribe();
@@ -125,10 +128,9 @@ AppState.addEventListener('change', (state) => {
 
     // Logout and cleanup
     const logout = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            console.warn("Logout error:", error);
-        }
+        await powersync.disconnectAndClear();
+        await supabaseConnector.client.auth.signOut();
+
         setSession(null);
         setProfile(null);
         await SecureStore.deleteItemAsync("session");
@@ -154,6 +156,8 @@ const useTokenRefresher = (
     session: Session | null,
     logout: () => Promise<void>
 ) => {
+    const { supabaseConnector } = useSystem();
+
     useEffect(() => {
         const checkTokenExpiration = async () => {
             if (session?.access_token) {
@@ -162,7 +166,7 @@ const useTokenRefresher = (
                     const currentTime = Math.floor(Date.now() / 1000);
                     // Refresh if token expires in less than 1 minute
                     if (decoded.exp - currentTime < 60) {
-                        await supabase.auth.getSession();
+                        await supabaseConnector.client.auth.getSession();
                     }
                 } catch (error) {
                     console.warn("Error decoding token:", error);
