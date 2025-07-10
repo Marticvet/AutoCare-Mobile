@@ -1,7 +1,8 @@
 // App.tsx
 
 // App.js
-import '@azure/core-asynciterator-polyfill';
+import "@azure/core-asynciterator-polyfill";
+import 'react-native-polyfill-globals/auto';
 
 import * as React from "react";
 import { useEffect } from "react";
@@ -35,6 +36,8 @@ import { FuelTypeScreen } from "./src/Screens/FuelTypeScreen";
 import { GasStationsScreen } from "./src/Screens/GasStationsScreen";
 
 import { Alert, Button, Platform, View } from "react-native";
+import { useSystem } from "./src/powersync/PowerSync";
+import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -58,22 +61,30 @@ const MyTheme = {
 };
 
 function App() {
-   
+    const { supabaseConnector } = useSystem();
+    const system = useSystem();
+
+    useEffect(() => {
+        system.init();
+    }, []);
+
     return (
-        <ActionSheetProvider>
-            <QueryProvider>
-                <AuthProvider>
-                    <ProfileDataProvider>
-                        <NavigationContainer
-                            // @ts-ignore
-                            theme={MyTheme}
-                        >
-                            <RootNavigator />
-                        </NavigationContainer>
-                    </ProfileDataProvider>
-                </AuthProvider>
-            </QueryProvider>
-        </ActionSheetProvider>
+        <PowerSyncProvider>
+            <ActionSheetProvider>
+                <QueryProvider>
+                    <AuthProvider>
+                        <ProfileDataProvider>
+                            <NavigationContainer
+                                // @ts-ignore
+                                theme={MyTheme}
+                            >
+                                <RootNavigator />
+                            </NavigationContainer>
+                        </ProfileDataProvider>
+                    </AuthProvider>
+                </QueryProvider>
+            </ActionSheetProvider>
+        </PowerSyncProvider>
     );
 }
 
