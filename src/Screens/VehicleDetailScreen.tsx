@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -9,8 +9,7 @@ import {
     ScrollView,
 } from "react-native";
 import { useDeleteVehicle, useVehicle } from "../api/vehicles";
-import { Loader } from "./Loader";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AddVehicleScreen from "./AddVehicleScreen";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -19,9 +18,22 @@ import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
 const VehicleDetailScreen = ({ route }: any) => {
     const navigation = useNavigation();
     const { vehicleId, parentScreenName } = route.params;
-    const { userProfile, vehicles } = useContext(ProfileContext);
+    const { userProfile } = useContext(ProfileContext);
 
-    const { mutate: deleteVehicle, isPending } = useDeleteVehicle();
+    const { error, isLoading, data: vehicle, refetch} = useVehicle(
+        userProfile?.id || "",
+        vehicleId
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            if (refetch) {
+                refetch(); // re-fetch vehicle data when screen is focused
+            }
+        }, [vehicleId, userProfile?.id])
+    );
+    
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
         navigation.setOptions({
@@ -31,29 +43,6 @@ const VehicleDetailScreen = ({ route }: any) => {
                     : "Edit Vehicle Details",
         });
     }, []);
-
-    let {
-        data: vehicle,
-        isLoading,
-        error,
-    } = useVehicle(userProfile?.id || "", vehicleId);
-    const [modalVisible, setModalVisible] = useState(false);
-
-    useEffect(() => {
-        if (vehicles && vehicles.length > 0) {
-            vehicle = vehicles?.filter(
-                (vehicleData) => vehicleData.id === vehicleId
-            )[0];
-        }
-    }, [isLoading]);
-
-    if (isLoading) {
-        return <Loader text={"Vehicle's data is loading..."} />;
-    }
-
-    if (isPending) {
-        return <Loader text="Vehicle's data is deleting..." />;
-    }
 
     if (error) {
         Alert.alert("Error", error.message);
@@ -71,21 +60,23 @@ const VehicleDetailScreen = ({ route }: any) => {
             {
                 text: "Delete",
                 style: "destructive",
-                onPress: () => {
+                onPress: async () => {
                     if (!userProfile?.id) return;
 
-                    deleteVehicle(
-                        { vehicleId, userId: userProfile.id },
-                        {
-                            onSuccess: () => navigation.goBack(),
-                            onError: (error) =>
-                                console.warn("Error deleting vehicle:", error),
-                        }
-                    );
+                    try {
+                        await useDeleteVehicle(vehicleId, userProfile?.id);
+                        Alert.alert("Success", "Vehicle deleted.");
+                    } catch (err) {
+                        Alert.alert("Error", "Failed to delete vehicle.");
+                    }
                 },
             },
         ]);
     };
+
+    if (!vehicle) {
+        return;
+    }
 
     return (
         <ScrollView
@@ -107,7 +98,8 @@ const VehicleDetailScreen = ({ route }: any) => {
                     <MaterialCommunityIcons
                         // @ts-ignore
                         name={
-                            vehicleTypeIcons[vehicle.vehicle_car_type] || "car"
+                            vehicleTypeIcons[vehicle.vehicle_car_type ?? ""] ||
+                            "car"
                         }
                         size={20}
                         color="#6c6b6b"

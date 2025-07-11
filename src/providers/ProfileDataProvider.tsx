@@ -4,6 +4,7 @@ import React, {
     useEffect,
     useState,
     useMemo,
+    useCallback,
 } from "react";
 import { useAuth } from "./AuthProvider";
 import { useProfile } from "../api/profiles";
@@ -19,16 +20,19 @@ import { useServiceExpensesList } from "../api/service_expenses";
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
+import { Vehicle } from "../powersync/AppSchema";
+import { useSystem } from "../powersync/PowerSync";
+import { useFocusEffect } from "@react-navigation/native";
 
 interface ProfileContextData {
     userProfile: Profile | null;
-    selectedVehicle: VehicleData | null;
-    vehicles?: VehicleData[];
+    selectedVehicle: Vehicle | null;
+    vehicles?: Vehicle[];
     isProfileLoading: boolean;
     isVehiclesLoading: boolean;
     errorProfile?: any;
     errorVehicles?: any;
-    setSelectedVehicle: (vehicle: VehicleData | null) => void;
+    setSelectedVehicle: (vehicle: Vehicle | null) => void;
     fuelExpenses?: Fuel_Expenses[];
     expenses?: any[];
     insuranceExpenses?: Insurance_Expenses[];
@@ -63,8 +67,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     const userId = profile?.id || "";
 
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
-    const [vehicles, setVehicles] = useState<VehicleData[]>([]);
-    const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(
         null
     );
     const [fuelExpenses, setFuelExpenses] = useState<Fuel_Expenses[]>([]);
@@ -91,194 +95,154 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         refetch: refetchProfile,
     } = useProfile(userId);
 
+    // const {
+    //     data: vehicleList,
+    //     isLoading: isVehiclesLoading,
+    //     error: errorVehicles,
+    //     refetch: refetchVehicleList,
+    // } = useVehicleList(userId);
+
     const {
-        data: vehicleList,
-        isLoading: isVehiclesLoading,
         error: errorVehicles,
-        refetch: refetchVehicleList,
+        loading: isVehiclesLoading,
+        vehicles: vehiclesList,
     } = useVehicleList(userId);
 
-    const {
-        data: vehicleData,
-        isLoading: isSelectedVehicleLoading,
-        error: errorSelectedVehicle,
-        refetch: refetchVehicle,
-    } = useVehicle(userId, userProfile?.selected_vehicle_id || "");
+    // useEffect(() => {
+    //     if (vehiclesList && vehiclesList.length > 0) {
+    //         setVehicles(vehiclesList);
+    //     } else {
+    //         setVehicles([]);
+    //     }
+    // }, [errorVehicles, isVehiclesLoading, vehiclesList]);
 
-    const {
-        data: fuelExpensesData,
-        isLoading: isFuelExpensesLoading,
-        error: errorFuelExpenses,
-        refetch: refetchFuelExpenses,
-    } = useFuelExpensesList(userId, userProfile?.selected_vehicle_id || "");
+    // const {
+    //     data: vehicleData,
+    //     isLoading: isSelectedVehicleLoading,
+    //     error: errorSelectedVehicle,
+    //     refetch: refetchVehicle,
+    // } = useVehicle(userId, userProfile?.selected_vehicle_id || "");
 
-    const {
-        data: insuranceExpensesData,
-        isLoading: isInsuranceExpensesLoading,
-        error: errorInsuranceExpenses,
-        refetch: refetchInsuranceExpenses,
-    } = useInsuranceExpensesList(
-        userId,
-        userProfile?.selected_vehicle_id || ""
-    );
+    // const {
+    //     data: fuelExpensesData,
+    //     isLoading: isFuelExpensesLoading,
+    //     error: errorFuelExpenses,
+    //     refetch: refetchFuelExpenses,
+    // } = useFuelExpensesList(userId, userProfile?.selected_vehicle_id || "");
 
-    const {
-        data: servicexpensesData,
-        isLoading: isServiceExpensesLoading,
-        error: errorServiceExpenses,
-        refetch: refetchServiceExpenses,
-    } = useServiceExpensesList(userId, userProfile?.selected_vehicle_id || "");
+    // const {
+    //     data: insuranceExpensesData,
+    //     isLoading: isInsuranceExpensesLoading,
+    //     error: errorInsuranceExpenses,
+    //     refetch: refetchInsuranceExpenses,
+    // } = useInsuranceExpensesList(
+    //     userId,
+    //     userProfile?.selected_vehicle_id || ""
+    // );
 
-    const {
-        data: expensesData,
-        isLoading: isExpensesLoading,
-        error: errorExpenses,
-        refetch: refetchExpenses,
-    } = useExpensesList(userProfile?.selected_vehicle_id || "");
+    // const {
+    //     data: servicexpensesData,
+    //     isLoading: isServiceExpensesLoading,
+    //     error: errorServiceExpenses,
+    //     refetch: refetchServiceExpenses,
+    // } = useServiceExpensesList(userId, userProfile?.selected_vehicle_id || "");
+
+    // const {
+    //     data: expensesData,
+    //     isLoading: isExpensesLoading,
+    //     error: errorExpenses,
+    //     refetch: refetchExpenses,
+    // } = useExpensesList(userProfile?.selected_vehicle_id || "");
 
     // Update local state when data changes
     useEffect(() => {
         if (userProfileData) {
             setUserProfile(userProfileData);
-            AsyncStorage.setItem(
-                "cachedUserProfile",
-                JSON.stringify(userProfileData)
-            );
         }
     }, [userProfileData]);
 
-    useEffect(() => {
-        if (vehicleList) {
-            setVehicles(vehicleList);
-            AsyncStorage.setItem("cachedVehicles", JSON.stringify(vehicleList));
-        }
-    }, [vehicleList]);
+    // useEffect(() => {
+    //     (async () => {
+    //         console.log(`ebaniee`);
+    //         const a = await useVehicleList(userId);
 
-    useEffect(() => {
-        if (vehicleData) {
-            setSelectedVehicle(vehicleData);
-            AsyncStorage.setItem(
-                "cachedSelectedVehicle",
-                JSON.stringify(vehicleData)
-            );
-        }
-    }, [vehicleData]);
+    //         console.log(a, `here`);
+    //     })();
+    // }, []);
 
-    useEffect(() => {
-        if (fuelExpensesData) {
-            setFuelExpenses(fuelExpensesData);
-            AsyncStorage.setItem(
-                "cachedFuelExpenses",
-                JSON.stringify(fuelExpensesData)
-            );
-        }
-    }, [fuelExpensesData]);
+    // useEffect(() => {
+    //     if (vehicleList && vehicleList?.length > 0) {
+    //         setVehicles(vehicleList);
+    //         setRefreshing(false);
+    //         console.log(vehicleList, `vehicleList`);
 
-    useEffect(() => {
-        if (expensesData) {
-            setExpenses(expensesData);
-            AsyncStorage.setItem(
-                "cachedExpenses",
-                JSON.stringify(expensesData)
-            );
-        }
-    }, [expensesData]);
+    //     }
+    // }, [vehicleList, refreshing]);
 
-    useEffect(() => {
-        if (insuranceExpensesData) {
-            setInsuranceExpenses(insuranceExpensesData);
-            AsyncStorage.setItem(
-                "cachedInsuranceExpenses",
-                JSON.stringify(insuranceExpensesData)
-            );
-        }
-    }, [insuranceExpensesData]);
+    // useEffect(() => {
+    //     if (vehicleData) {
+    //         setSelectedVehicle(vehicleData);
+    //     }
+    // }, [vehicleData]);
 
-    useEffect(() => {
-        if (servicexpensesData) {
-            setServiceExpenses(servicexpensesData);
-            AsyncStorage.setItem(
-                "cachedServiceExpenses",
-                JSON.stringify(servicexpensesData)
-            );
-        }
-    }, [servicexpensesData]);
+    // useEffect(() => {
+    //     if (fuelExpensesData) {
+    //         setFuelExpenses(fuelExpensesData);
+    //     }
+    // }, [fuelExpensesData]);
 
-    useEffect(() => {
-        const gasStationsArray: string[] = [];
-        const allLocations: string[] = [];
-        const userVehiclesFuelTypeArray: string[] = [];
+    // useEffect(() => {
+    //     if (expensesData) {
+    //         setExpenses(expensesData);
+    //     }
+    // }, [expensesData]);
 
-        setLocations(gasStationsArray);
-        setGasStations(allLocations);
-        setUserVehiclesFuelType(userVehiclesFuelTypeArray);
+    // useEffect(() => {
+    //     if (insuranceExpensesData) {
+    //         setInsuranceExpenses(insuranceExpensesData);
+    //     }
+    // }, [insuranceExpensesData]);
 
-        if (fuelExpensesData && fuelExpensesData.length > 0) {
-            fuelExpensesData.forEach((fuelExpense) => {
-                if (fuelExpense.location_name) {
-                    allLocations.push(fuelExpense.location_name);
-                    gasStationsArray.push(fuelExpense.location_name);
-                }
+    // useEffect(() => {
+    //     if (servicexpensesData) {
+    //         setServiceExpenses(servicexpensesData);
+    //     }
+    // }, [servicexpensesData]);
 
-                if (fuelExpense.fuel_type) {
-                    userVehiclesFuelTypeArray.push(fuelExpense.fuel_type);
-                }
-            });
+    // useEffect(() => {
+    //     const gasStationsArray: string[] = [];
+    //     const allLocations: string[] = [];
+    //     const userVehiclesFuelTypeArray: string[] = [];
 
-            setGasStations(gasStationsArray);
-            setUserVehiclesFuelType(userVehiclesFuelTypeArray);
-        }
+    //     setLocations(gasStationsArray);
+    //     setGasStations(allLocations);
+    //     setUserVehiclesFuelType(userVehiclesFuelTypeArray);
 
-        if (servicexpensesData && servicexpensesData.length > 0) {
-            servicexpensesData.forEach((serviceExpense) => {
-                if (serviceExpense.location_name) {
-                    allLocations.push(serviceExpense.location_name);
-                }
-            });
-        }
-        setLocations(allLocations);
-    }, [fuelExpensesData, servicexpensesData]);
+    //     if (fuelExpensesData && fuelExpensesData.length > 0) {
+    //         fuelExpensesData.forEach((fuelExpense) => {
+    //             if (fuelExpense.location_name) {
+    //                 allLocations.push(fuelExpense.location_name);
+    //                 gasStationsArray.push(fuelExpense.location_name);
+    //             }
 
-    // async sync storage
-    useEffect(() => {
-        const loadCachedData = async () => {
-            try {
-                const [
-                    cachedProfile,
-                    cachedVehicles,
-                    cachedSelectedVehicle,
-                    cachedFuelExpenses,
-                    cachedExpenses,
-                    cachedInsuranceExpenses,
-                    cachedServiceExpenses,
-                ] = await Promise.all([
-                    AsyncStorage.getItem("cachedUserProfile"),
-                    AsyncStorage.getItem("cachedVehicles"),
-                    AsyncStorage.getItem("cachedSelectedVehicle"),
-                    AsyncStorage.getItem("cachedFuelExpenses"),
-                    AsyncStorage.getItem("cachedExpenses"),
-                    AsyncStorage.getItem("cachedInsuranceExpenses"),
-                    AsyncStorage.getItem("cachedServiceExpenses"),
-                ]);
+    //             if (fuelExpense.fuel_type) {
+    //                 userVehiclesFuelTypeArray.push(fuelExpense.fuel_type);
+    //             }
+    //         });
 
-                if (cachedProfile) setUserProfile(JSON.parse(cachedProfile));
-                if (cachedVehicles) setVehicles(JSON.parse(cachedVehicles));
-                if (cachedSelectedVehicle)
-                    setSelectedVehicle(JSON.parse(cachedSelectedVehicle));
-                if (cachedFuelExpenses)
-                    setFuelExpenses(JSON.parse(cachedFuelExpenses));
-                if (cachedExpenses) setExpenses(JSON.parse(cachedExpenses));
-                if (cachedInsuranceExpenses)
-                    setInsuranceExpenses(JSON.parse(cachedInsuranceExpenses));
-                if (cachedServiceExpenses)
-                    setServiceExpenses(JSON.parse(cachedServiceExpenses));
-            } catch (err) {
-                console.warn("Error loading cached data:", err);
-            }
-        };
+    //         setGasStations(gasStationsArray);
+    //         setUserVehiclesFuelType(userVehiclesFuelTypeArray);
+    //     }
 
-        loadCachedData();
-    }, []);
+    //     if (servicexpensesData && servicexpensesData.length > 0) {
+    //         servicexpensesData.forEach((serviceExpense) => {
+    //             if (serviceExpense.location_name) {
+    //                 allLocations.push(serviceExpense.location_name);
+    //             }
+    //         });
+    //     }
+    //     setLocations(allLocations);
+    // }, [fuelExpensesData, servicexpensesData]);
 
     const syncPendingUpdates = async () => {
         const pending = await AsyncStorage.getItem("pendingProfileUpdate");
@@ -288,7 +252,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
                 .from("profiles")
                 .update(parsed)
                 .eq("id", parsed.id);
-    
+
             if (!error) {
                 await AsyncStorage.removeItem("pendingProfileUpdate");
                 console.log("Synced pending profile update");
@@ -297,14 +261,14 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             }
         }
     };
-    
+
     useEffect(() => {
         const unsubscribe = NetInfo.addEventListener((state) => {
             if (state.isConnected && profile?.id) {
                 syncPendingUpdates();
             }
         });
-    
+
         return () => unsubscribe();
     }, [profile?.id]);
 
@@ -354,13 +318,13 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         const doRefresh = async () => {
             try {
                 await Promise.all([
-                    refetchProfile(),
-                    refetchVehicleList(),
-                    refetchVehicle(),
-                    refetchFuelExpenses(),
-                    refetchInsuranceExpenses(),
-                    refetchServiceExpenses(),
-                    refetchExpenses(),
+                    // refetchProfile(),
+                    // // refetchVehicleList(),
+                    // // refetchVehicle(),
+                    // refetchFuelExpenses(),
+                    // refetchInsuranceExpenses(),
+                    // refetchServiceExpenses(),
+                    // refetchExpenses(),
                 ]);
             } catch (err) {
                 console.warn("🔁 Refresh error:", err);
@@ -380,8 +344,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             vehicles,
             isProfileLoading,
             isVehiclesLoading,
-            errorProfile,
             errorVehicles,
+            errorProfile,
             setSelectedVehicle,
             fuelExpenses,
             expenses,
@@ -399,8 +363,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             vehicles,
             isProfileLoading,
             isVehiclesLoading,
-            errorProfile,
             errorVehicles,
+            errorProfile,
             fuelExpenses,
             expenses,
             insuranceExpenses,

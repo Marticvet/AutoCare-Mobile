@@ -1,135 +1,148 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase";
-import { VehicleData } from "../../../types/vehicle";
+import { useSystem } from "../../powersync/PowerSync";
+import { Vehicle } from "../../powersync/AppSchema";
+import { useCallback, useEffect, useState } from "react";
 
-let queryKey: string = "vehicles";
+export const useVehicleList = (userId: string) => {
+    const { db } = useSystem();
+    const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | boolean>(false);
 
-export const useVehicleList = (id: string) => {
+    const fetchVehicles = useCallback(async () => {
+        setLoading(true);
+        try {
+            const result = await db
+                .selectFrom("vehicles")
+                .selectAll()
+                .where("user_id", "=", userId)
+                .execute();
+
+            setVehicles(result);
+            setError(false);
+        } catch (err: any) {
+            setError(err);
+            setVehicles(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [db, userId]);
+
+    useEffect(() => {
+        if (userId) {
+            fetchVehicles();
+        }
+    }, [fetchVehicles]);
+
+    return { vehicles, loading, error, refetch: fetchVehicles };
+};
+
+export const useVehicle = (userId: string, vehicleId: string) => {
+    const { db } = useSystem();
+
     return useQuery({
-        queryKey: [queryKey],
+        queryKey: ["vehicles", userId, vehicleId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id); // Filter by user_id
-            if (error) {
-                throw new Error(error.message);
+            const result = await db
+                .selectFrom("vehicles")
+                .selectAll()
+                .where("user_id", "=", userId)
+                .where("id", "=", vehicleId)
+                .execute();
+
+            if (result.length === 0) {
+                throw new Error("Vehicle not found");
             }
-            return data;
+
+            return result[0];
         },
     });
 };
 
-export const useVehicle = (id: string, vehicleId: string) => {
-    return useQuery({
-        queryKey: [queryKey, id, vehicleId],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("id", vehicleId)
-                .single();
-
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
-        },
-    });
-};
 
 export const useInsertVehicle = () => {
-    const queryClient = useQueryClient();
+    const { db } = useSystem();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-    return useMutation({
-        mutationFn: async (vehicle: VehicleData) => {
-            const { error, data: newVehicle } = await supabase
-                .from(queryKey) // ✅ Corrected table name
-                .insert([vehicle])
-                .eq("user_id", vehicle.user_id)
-                .single();
+    const insertVehicle = async (vehicle: Vehicle) => {
+        setLoading(true);
+        setError(null);
+        try {
+            await db.insertInto("vehicles").values(vehicle).execute();
+            console.log("Vehicle inserted");
+            return vehicle;
+        } catch (err) {
+            console.error("Insert failed:", err);
+            setError(err as Error);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            if (error) {
-                console.error("❌ Error inserting vehicle:", error.message);
-                throw new Error(error.message);
-            }
-
-            console.log("✅ New Vehicle Inserted:", newVehicle);
-            return newVehicle;
-        },
-        onSuccess: async () => {
-            // @ts-ignore
-            await queryClient.invalidateQueries([queryKey]); // ✅ Ensure data updates
-        },
-    });
+    return { insertVehicle, loading, error };
 };
 
 export const useUpdateVehicle = () => {
-    const queryClient = useQueryClient();
+    const { db } = useSystem();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-    return useMutation({
-        mutationFn: async ({
-            vehicle,
-            vehicleId,
-            userId,
-        }: {
-            vehicle: VehicleData;
-            vehicleId: string;
-            userId: string;
-        }) => {
-            const { error, data: updatedVehicle } = await supabase
-                .from(queryKey) // ✅ Use correct table name
-                .update(vehicle) // ✅ Only update the fields inside `vehicle`
-                .eq("id", vehicleId) // ✅ Update only the selected vehicle
-                .eq("user_id", userId) // ✅ Ensure user is the owner
-                .select()
-                .single();
+    const updateVehicle = async (
+        vehicleId: string,
+        userId: string,
+        vehicle: Vehicle
+    ) => {
+        setLoading(true);
+        setError(null);
+        try {
+            await db
+                .updateTable("vehicles")
+                .set(vehicle)
+                .where("id", "=", vehicleId)
+                .where("user_id", "=", userId)
+                .execute();
 
-            if (error) {
-                throw new Error(error.message);
-            }
+            console.log("Vehicle updated");
+        } catch (err) {
+            console.error("Update failed:", err);
+            setError(err as Error);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            return updatedVehicle;
-        },
-        onSuccess: async (_, { vehicleId }) => {
-            console.log("✅ Vehicle updated successfully!");
-
-            // ✅ Refresh the list and the updated vehicle
-            // @ts-ignore
-            await queryClient.invalidateQueries(["vehicles"]); // Refresh all vehicles
-  
-        },
-    });
+    return { updateVehicle, loading, error };
 };
 
-export const useDeleteVehicle = () => {
-    const queryClient = useQueryClient();
 
-    return useMutation({
-        async mutationFn({
-            vehicleId,
-            userId,
-        }: {
-            vehicleId: string;
-            userId: string;
-        }) {
-            const { error } = await supabase
-                .from("vehicles")
-                .delete()
-                .eq("id", vehicleId)
-                .eq("user_id", userId); // Ensures user owns the vehicle
-            // .eq("user_id", (await supabase.auth.getUser()).data.user?.id); // Ensures user owns the vehicle
+export const useDeleteVehicle = (vehicleId: string, userId: string) => {
+    const { db } = useSystem();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-            if (error) {
-                console.error("🚨 Error deleting vehicle:", error);
-                throw new Error(error.message);
-            }
-        },
-        onSuccess: () => {
-            console.log("✅ Vehicle deleted! Refreshing data...");
-            // @ts-ignore
-            queryClient.invalidateQueries(["vehicles"]); // Refresh vehicle list
-        },
-    });
+    const deleteVehicle = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await db
+                .deleteFrom("vehicles")
+                .where("id", "=", vehicleId)
+                .where("user_id", "=", userId)
+                .execute();
+
+            console.log("Vehicle deleted");
+        } catch (err) {
+            console.error("Delete failed:", err);
+            setError(err as Error);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { deleteVehicle, loading, error };
 };
+

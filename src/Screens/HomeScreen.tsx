@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 import {
     View,
     Text,
@@ -9,7 +15,7 @@ import {
     TouchableOpacity,
     Pressable,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import HomeScreenDropdown from "./HomeScreenDropdown";
 import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
@@ -18,9 +24,9 @@ import { Loader } from "./Loader";
 import { fetchStations } from "../utils/location";
 import TotalExpensesScreen from "./TotalExpensesScreen";
 import { ScrollView } from "react-native-gesture-handler";
-import { useSystem } from "../powersync/PowerSync";
-import { Todo } from "../powersync/AppSchema";
-import { uuid } from "../powersync/uuid";
+import { useVehicleList } from "../api/vehicles";
+import { Vehicle } from "../powersync/AppSchema";
+import { useAuth } from "../providers/AuthProvider";
 
 const { width } = Dimensions.get("window");
 
@@ -29,14 +35,35 @@ const ITEM_HEIGHT = 200;
 const ITEM_SPACER = (width - ITEM_WIDTH) / 2;
 
 const HomeScreen = () => {
+    const { profile } = useAuth();
+    const userId = profile?.id || "";
     const navigation = useNavigation();
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+    const { selectedVehicle, userProfile } = useContext(ProfileContext);
+
     const {
-        selectedVehicle,
-        vehicles,
-        userProfile,
-        isVehiclesLoading,
-        errorVehicles,
-    } = useContext(ProfileContext);
+        error: errorVehicles,
+        loading: isVehiclesLoading,
+        vehicles: vehiclesList,
+        refetch,
+    } = useVehicleList(userId);
+
+    useEffect(() => {
+        if (vehiclesList && vehiclesList.length > 0) {
+            setVehicles(vehiclesList);
+        } else {
+            setVehicles([]);
+        }
+    }, [errorVehicles, isVehiclesLoading, vehiclesList]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (refetch) {
+                refetch(); // re-fetch vehicle data when screen is focused
+            }
+        }, [userProfile?.id])
+    );
 
     const scrollX = useRef(new Animated.Value(0)).current;
     const flatListRef = useRef<FlatList>(null);
@@ -86,51 +113,6 @@ const HomeScreen = () => {
         }
     };
 
-    // useEffect(() => {
-
-    //     Notifications.scheduleNotificationAsync({
-    //       content: {
-    //         title: "Local sync done!",
-    //         body: "Your data has been saved locally.",
-    //       },
-    //       trigger: null, // Trigger immediately
-    //     });
-
-    //     console.log("de");
-
-    // }, []);
-
-    const { supabaseConnector, db } = useSystem();
-    const [todos, setTodos] = useState<Todo[]>([]);
-
-    useEffect(() => {
-        loadTodos();
-    }, []);
-
-    const loadTodos = async () => {
-        const result = await db
-            .selectFrom("todos")
-            .selectAll()
-            // @ts-ignore
-            .where("user_id", "=", userProfile?.id)
-            .execute();
-        setTodos(result);
-
-        console.log(result, `result`);
-    };
-
-    const addTodo = async () => {
-        const { userID } = await supabaseConnector.fetchCredentials();
-        const todoId = uuid();
-
-        await db
-            .insertInto("todos")
-            .values({ id: todoId, user_id: userID, is_complete: 0 })
-            .execute();
-
-        loadTodos();
-    };
-
     return (
         <ScrollView style={styles.container}>
             {/* Header */}
@@ -143,12 +125,12 @@ const HomeScreen = () => {
                 </Text>
             </View>
 
-            <Pressable onPress={loadTodos}>
+            {/* <Pressable onPress={loadTodos}>
                 <Text>fetchStations</Text>
             </Pressable>
             <Pressable onPress={addTodo}>
                 <Text>add</Text>
-            </Pressable>
+            </Pressable> */}
 
             {/* Dropdown */}
             <View style={styles.dropdownContainer}>

@@ -15,7 +15,6 @@ import {
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { useUpdateVehicle } from "../api/vehicles";
-import { VehicleData } from "../../types/vehicle";
 import CustomPicker from "./CustomPicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProfileContext } from "../providers/ProfileDataProvider";
@@ -25,16 +24,19 @@ import { carBodyTypes } from "../utils/carBodyTypes";
 import { Brands } from "../../types/Brands";
 import { Models } from "../../types/Models";
 import { getCarMake, getCarMakeModels } from "../api/fetchCarsApi/fetchCarsApi";
+import { Vehicle } from "../powersync/AppSchema";
+import { uuid } from "../powersync/uuid";
 
 function EditVehicleScreen({ route }: any) {
-    const { userProfile } = useContext(ProfileContext);
+    const { userProfile} =
+        useContext(ProfileContext);
     const userId = userProfile?.id;
     const { vehicle } = route.params;
-    
+
     if (!vehicle) {
-        return <Loader text={"Vehicle's data is loading..."}/>;
+        return <Loader text={"Vehicle's data is loading..."} />;
     }
-    
+
     const navigation = useNavigation();
     const [selectedVehicleBrand, setSelectedVehicleBrand] = useState<string>(
         vehicle.vehicle_brand
@@ -63,19 +65,7 @@ function EditVehicleScreen({ route }: any) {
 
     const [refreshModel, setRefreshModel] = useState<boolean>(false);
 
-    const { mutate: updateVehicle, isPending } = useUpdateVehicle();
-
-    const updateVehicleData: VehicleData = {
-        vehicle_brand: selectedVehicleBrand,
-        vehicle_model: selectedModel,
-        vehicle_car_type: selectedCarType,
-        vehicle_model_year: Number(selectedYear),
-        vehicle_license_plate: vehicleLicensePlate,
-        vehicle_year_of_manufacture: Number(yearOfManufacture),
-        vehicle_identification_number: vehicleIdentificationNumber,
-        current_mileage: Number(vehicleCurrentMileage),
-        user_id: userId,
-    };
+    const { updateVehicle, loading, error } = useUpdateVehicle();
 
     const [brands, setBrands] = useState<Brands[]>([]);
     const [models, setModels] = useState<Models[]>([]);
@@ -180,40 +170,43 @@ function EditVehicleScreen({ route }: any) {
         }
     };
 
-    const updateVehicleHandler = () => {
+    const updateVehicleHandler = async () => {
         if (
             !selectedVehicleBrand.trim() ||
             !selectedModel.trim() ||
             !selectedCarType.trim() ||
             !vehicleLicensePlate.trim() ||
-            !yearOfManufacture // Check if it's 0 or undefined
+            !yearOfManufacture
         ) {
             Alert.alert(
                 "Error",
                 "Please fill in all required fields before proceeding."
             );
-            return false;
+            return;
         }
 
-        // @ts-ignore
-        updateVehicle(
-            {
-                vehicle: updateVehicleData,
-                vehicleId: vehicle.id,
-                userId: userId ?? "",
-            },
-            {
-                onSuccess: () => navigation.goBack(),
-                // @ts-ignore
-                onError: (error) =>
-                    console.warn("Error updating vehicle:", error),
-            }
-        );
-    };
+        const updateVehicleData: Vehicle = {
+            // id: uuid(),
+            vehicle_brand: selectedVehicleBrand,
+            vehicle_model: selectedModel,
+            vehicle_car_type: selectedCarType,
+            vehicle_model_year: Number(selectedYear),
+            vehicle_license_plate: vehicleLicensePlate,
+            vehicle_year_of_manufacture: Number(yearOfManufacture),
+            vehicle_identification_number: vehicleIdentificationNumber,
+            current_mileage: Number(vehicleCurrentMileage),
+            // @ts-ignore
+            user_id: userId,
+        };
 
-    if(isPending){
-        return <Loader text={"Vehicle's data is updating..."}/>
-     }
+        try {
+            await updateVehicle(vehicle.id, userId ?? "", updateVehicleData);
+            navigation.goBack();
+        } catch (error) {
+            console.warn("Error updating vehicle:", error);
+            Alert.alert("Error", "Failed to update vehicle.");
+        }
+    };
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
