@@ -24,27 +24,27 @@ export const useInsertServiceExpense = () => {
     return useMutation({
         mutationFn: async (service_expenses: Service_Expenses) => {
             if (!service_expenses.selected_vehicle_id) {
-                console.error("❌ Error: No vehicle ID provided.");
+                console.error("Error: No vehicle ID provided.");
                 throw new Error(
                     "Vehicle ID is required to insert service expense."
                 );
             }
 
             const { error, data: newServiceExpenses } = await supabase
-                .from(queryKey) // ✅ Ensure correct table name
+                .from(queryKey) // Ensure correct table name
                 .insert([service_expenses])
                 .select()
                 .single();
 
             if (error) {
                 console.error(
-                    "❌ Error inserting service expense:",
+                    "Error inserting service expense:",
                     error.message
                 );
                 throw new Error(error.message);
             }
 
-            console.log("✅ New Service Expense Inserted:", newServiceExpenses);
+            console.log("New Service Expense Inserted:", newServiceExpenses);
             return newServiceExpenses;
         },
     });

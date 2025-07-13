@@ -15,7 +15,7 @@ export const useVehicleList = (userId: string) => {
             const result = await db
                 .selectFrom("vehicles")
                 .selectAll()
-                .where("user_id", "=", userId)
+                // .where("user_id", "=", userId)
                 .execute();
 
             setVehicles(result);

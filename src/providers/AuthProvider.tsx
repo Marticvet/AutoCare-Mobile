@@ -6,9 +6,9 @@ import {
     useEffect,
     useState,
 } from "react";
-import { supabase } from "../lib/supabase";
 import { jwtDecode } from "jwt-decode";
 import * as SecureStore from "expo-secure-store";
+import {Profile} from '../powersync/AppSchema';
 
 type AuthData = {
     session: Session | null;
@@ -31,34 +31,34 @@ import { useSystem } from "../powersync/PowerSync";
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [session, setSession] = useState<Session | null>(null);
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
-    const { supabaseConnector, powersync } = useSystem();
+    const { supabaseConnector, powersync, db } = useSystem();
 
     // make sure you register this only once!
     AppState.addEventListener("change", (state) => {
         console.log(state === "active", `state === 'active'`);
 
         if (state === "active") {
-            supabase.auth.startAutoRefresh();
+            supabaseConnector.client.auth.startAutoRefresh();
         } else {
-            supabase.auth.stopAutoRefresh();
+            supabaseConnector.client.auth.stopAutoRefresh();
         }
     });
 
     // Fetch user profile from Supabase 'profiles' table
     const fetchProfile = async (userId: string) => {
-        const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", userId)
-            .single();
+        const response = await db
+            .selectFrom("profiles")
+            .selectAll()
+            // .where("id", "=", userId)
+            .execute();
 
-        if (error) {
-            console.warn("Error fetching profile:", error);
+        if (response.length === 0) {
             setProfile(null);
+            throw new Error("Profile not found");
         } else {
-            setProfile(data);
+            setProfile(response[0]);
         }
     };
 
@@ -118,6 +118,23 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
         return () => {
             authListener.subscription.unsubscribe();
+        };
+    }, []);
+
+    useEffect(() => {
+        // Listen for changes to authentication state
+        const { data } = supabaseConnector.client.auth.onAuthStateChange(
+            async (event, session) => {
+                if (event === "SIGNED_IN" && session) {
+                    setSession(session);
+                    await fetchProfile(session?.user.id)
+                } else if (event === "SIGNED_OUT" && session) {
+                    setSession(null);
+                }
+            }
+        );
+        return () => {
+            data.subscription.unsubscribe();
         };
     }, []);
 

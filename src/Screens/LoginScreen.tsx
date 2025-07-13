@@ -40,10 +40,10 @@ function LoginScreen() {
         } catch (error: any) {
             Alert.alert(error.message);
         } finally {
-            setLoginForm({
-                email: "",
-                password: "",
-            });
+            // setLoginForm({
+            //     email: "",
+            //     password: "",
+            // });
         }
     }
 

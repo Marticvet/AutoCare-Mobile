@@ -49,6 +49,8 @@ const HomeScreen = () => {
         refetch,
     } = useVehicleList(userId);
 
+    // console.log(errorVehicles, isVehiclesLoading, vehiclesList);
+
     useEffect(() => {
         if (vehiclesList && vehiclesList.length > 0) {
             setVehicles(vehiclesList);

@@ -8,9 +8,7 @@ import React, {
 } from "react";
 import { useAuth } from "./AuthProvider";
 import { useProfile } from "../api/profiles";
-import { Profile } from "../../types/profile";
-import { VehicleData } from "../../types/vehicle";
-import { useVehicle, useVehicleList } from "../api/vehicles";
+import { useVehicleList } from "../api/vehicles";
 import { Fuel_Expenses } from "../../types/fuel_expenses";
 import { useFuelExpensesList } from "../api/fuel_expenses";
 import { useExpensesList } from "../api/expenses/expenses";
@@ -20,9 +18,7 @@ import { useServiceExpensesList } from "../api/service_expenses";
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
-import { Vehicle } from "../powersync/AppSchema";
-import { useSystem } from "../powersync/PowerSync";
-import { useFocusEffect } from "@react-navigation/native";
+import { Profile, Vehicle } from "../powersync/AppSchema";
 
 interface ProfileContextData {
     userProfile: Profile | null;
@@ -66,7 +62,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     const { profile } = useAuth();
     const userId = profile?.id || "";
 
-    const [userProfile, setUserProfile] = useState<Profile | null>(null);
+    const [userProfile, setUserProfile] = useState<Profile | null>();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(
         null
@@ -318,8 +314,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         const doRefresh = async () => {
             try {
                 await Promise.all([
-                    // refetchProfile(),
-                    // // refetchVehicleList(),
+                    refetchProfile(),
+                    // refetchVehicleList(),
                     // // refetchVehicle(),
                     // refetchFuelExpenses(),
                     // refetchInsuranceExpenses(),
@@ -335,6 +331,13 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
 
         doRefresh();
     }, [refreshing]);
+
+    // // Inside your component or provider:
+    // useFocusEffect(
+    //     useCallback(() => {
+    //         setRefreshing(true); // triggers the refresh effect
+    //     }, [])
+    // );
 
     // Provide all data via context
     const contextValue = useMemo(
