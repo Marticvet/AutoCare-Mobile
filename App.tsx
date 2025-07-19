@@ -36,8 +36,8 @@ import { FuelTypeScreen } from "./src/Screens/FuelTypeScreen";
 import { GasStationsScreen } from "./src/Screens/GasStationsScreen";
 
 import { Alert, Button, Platform, View } from "react-native";
-import { useSystem } from "./src/powersync/PowerSync";
 import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
+import { useSystem } from "./src/powersync/PowerSync";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -64,9 +64,9 @@ function App() {
     const { supabaseConnector } = useSystem();
     const system = useSystem();
 
-    useEffect(() => {
-        system.init();
-    }, []);
+    // useEffect(() => {
+    //     system.init();
+    // }, []);
 
     return (
         <PowerSyncProvider>

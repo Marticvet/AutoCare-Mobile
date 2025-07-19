@@ -8,11 +8,13 @@ import {
 } from "react";
 import { jwtDecode } from "jwt-decode";
 import * as SecureStore from "expo-secure-store";
-import {Profile} from '../powersync/AppSchema';
+import { AppState } from "react-native";
+import { system, useSystem } from "../powersync/PowerSync";
+import { Profile } from "../powersync/AppSchema";
 
 type AuthData = {
     session: Session | null;
-    profile: any;
+    profile: Profile | null;
     loading: boolean;
     logout: () => Promise<void>;
     isAuthenticated: boolean;
@@ -26,19 +28,13 @@ const AuthContext = createContext<AuthData>({
     isAuthenticated: false,
 });
 
-import { AppState } from "react-native";
-import { useSystem } from "../powersync/PowerSync";
-
 export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const { supabaseConnector, powersync, db } = useSystem();
 
-    // make sure you register this only once!
     AppState.addEventListener("change", (state) => {
-        console.log(state === "active", `state === 'active'`);
-
         if (state === "active") {
             supabaseConnector.client.auth.startAutoRefresh();
         } else {
@@ -46,64 +42,61 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         }
     });
 
-    // Fetch user profile from Supabase 'profiles' table
     const fetchProfile = async (userId: string) => {
         const response = await db
             .selectFrom("profiles")
             .selectAll()
-            // .where("id", "=", userId)
+            .where("id", "=", userId)
             .execute();
 
         if (response.length === 0) {
             setProfile(null);
-            throw new Error("Profile not found");
         } else {
             setProfile(response[0]);
         }
     };
 
-    // Restore session on app load
-    useEffect(() => {
-        const restoreSession = async () => {
-            const {
-                data: { session },
-            } = await supabaseConnector.client.auth.getSession();
+    const restoreSession = async () => {
+        const {
+            data: { session },
+        } = await supabaseConnector.client.auth.getSession();
 
-            // Optionally load from secure storage if session is null
-            if (!session) {
-                const saved = await SecureStore.getItemAsync("session");
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    const { data: restoredSession, error } =
-                        await supabaseConnector.client.auth.setSession(parsed);
-                    if (error) {
-                        console.warn("Error restoring session:", error);
-                    } else {
-                        setSession(restoredSession.session);
-                        if (restoredSession.session?.user?.id) {
-                            await fetchProfile(restoredSession.session.user.id);
-                        }
-                    }
-                }
-            } else {
-                setSession(session);
-                if (session.user.id) {
-                    await fetchProfile(session.user.id);
+        if (!session) {
+            const saved = await SecureStore.getItemAsync("session");
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const { data: restoredSession, error } =
+                    await supabaseConnector.client.auth.setSession(parsed);
+                if (!error && restoredSession.session) {
+                    await initializeSync(restoredSession.session);
+                } else {
+                    console.warn("Error restoring session:", error);
                 }
             }
+        } else {
+            await initializeSync(session);
+        }
 
-            setLoading(false);
-        };
+        setLoading(false);
+    };
 
+    const initializeSync = async (session: Session) => {
+        setSession(session);
+        await system.init();
+        await powersync.waitForReady();
+
+        await powersync.waitForFirstSync();
+        await fetchProfile(session.user.id);
+    };
+
+    useEffect(() => {
         restoreSession();
 
-        // Listen for auth state changes (login, logout, refresh)
         const { data: authListener } =
             supabaseConnector.client.auth.onAuthStateChange(
                 async (_event, session) => {
-                    setSession(session);
-                    if (session && session.user.id) {
-                        await fetchProfile(session.user.id);
+                    if (session) {
+                        await initializeSync(session);
                         await SecureStore.setItemAsync(
                             "session",
                             JSON.stringify(session)
@@ -121,33 +114,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         };
     }, []);
 
-    useEffect(() => {
-        // Listen for changes to authentication state
-        const { data } = supabaseConnector.client.auth.onAuthStateChange(
-            async (event, session) => {
-                if (event === "SIGNED_IN" && session) {
-                    setSession(session);
-                    await fetchProfile(session?.user.id)
-                } else if (event === "SIGNED_OUT" && session) {
-                    setSession(null);
-                }
-            }
-        );
-        return () => {
-            data.subscription.unsubscribe();
-        };
-    }, []);
-
-    // Token refresh hook
     useTokenRefresher(session, async () => {
         await logout();
     });
 
-    // Logout and cleanup
     const logout = async () => {
         await powersync.disconnectAndClear();
         await supabaseConnector.client.auth.signOut();
-
         setSession(null);
         setProfile(null);
         await SecureStore.deleteItemAsync("session");
@@ -168,7 +141,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     );
 };
 
-// Hook to auto-refresh access token based on expiration time
 const useTokenRefresher = (
     session: Session | null,
     logout: () => Promise<void>
@@ -181,7 +153,6 @@ const useTokenRefresher = (
                 try {
                     const decoded: any = jwtDecode(session.access_token);
                     const currentTime = Math.floor(Date.now() / 1000);
-                    // Refresh if token expires in less than 1 minute
                     if (decoded.exp - currentTime < 60) {
                         await supabaseConnector.client.auth.getSession();
                     }
@@ -193,7 +164,6 @@ const useTokenRefresher = (
         };
 
         const interval = setInterval(checkTokenExpiration, 60 * 1000);
-
         return () => clearInterval(interval);
     }, [session, logout]);
 };

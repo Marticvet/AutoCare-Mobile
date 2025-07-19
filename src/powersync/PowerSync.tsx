@@ -25,15 +25,16 @@ export class System {
         this.supabaseConnector = new SupabaseConnector();
 
         // 3. Wrap PowerSync with Kysely ORM
-        // @ts-ignore
-        this.db = wrapPowerSyncWithKysely(this.powersync);
+        // this.db = wrapPowerSyncWithKysely(this.powersync);
+
+        this.db = wrapPowerSyncWithKysely<Database>(this.powersync); // ✅ Type-safe now
     }
 
     async init() {
         console.log("initializing PowerSync");
 
         // Wait for database to initialize
-        await this.powersync.init();
+        // await this.powersync.init();
 
         // Optionally wait for it to be ready
         await this.powersync.waitForReady();
