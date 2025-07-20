@@ -1,11 +1,4 @@
-// App.tsx
-
-// App.js
-import "@azure/core-asynciterator-polyfill";
-import 'react-native-polyfill-globals/auto';
-
 import * as React from "react";
-import { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
@@ -61,13 +54,6 @@ const MyTheme = {
 };
 
 function App() {
-    const { supabaseConnector } = useSystem();
-    const system = useSystem();
-
-    // useEffect(() => {
-    //     system.init();
-    // }, []);
-
     return (
         <PowerSyncProvider>
             <ActionSheetProvider>

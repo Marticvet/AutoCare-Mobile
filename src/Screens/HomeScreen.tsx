@@ -49,8 +49,6 @@ const HomeScreen = () => {
         refetch,
     } = useVehicleList(userId);
 
-    // console.log(errorVehicles, isVehiclesLoading, vehiclesList);
-
     useEffect(() => {
         if (vehiclesList && vehiclesList.length > 0) {
             setVehicles(vehiclesList);
@@ -61,7 +59,7 @@ const HomeScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
-            if (refetch) {
+            if (vehiclesList && vehiclesList.length > 0) {
                 refetch(); // re-fetch vehicle data when screen is focused
             }
         }, [userProfile?.id])
