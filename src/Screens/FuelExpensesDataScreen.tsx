@@ -1,10 +1,10 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { Fuel_Expenses } from "../../types/fuel_expenses";
 import { LinearGradientExpenses } from "./LinearGradientExpenses";
+import { FuelExpense } from "../powersync/AppSchema";
 
 interface FuelExpensesDataProps {
-    fuelEntries: Fuel_Expenses[] | undefined;
+    fuelEntries: FuelExpense[] | undefined;
 }
 
 export function FuelExpensesDataScreen({ fuelEntries }: FuelExpensesDataProps) {

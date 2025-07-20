@@ -1,59 +1,69 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase";
-import { Profile } from "../../../types/profile";
+import { useCallback, useEffect, useState } from "react";
+import { useSystem } from "../../powersync/PowerSync";
+import { Profile } from "../../powersync/AppSchema";
 
-let queryKey: string = "profiles";
+export const useProfile = (userId: string) => {
+    const { db } = useSystem();
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | boolean>(false);
 
-export const useProfile = (id: string) => {
-    return useQuery({
-        queryKey: [queryKey, id],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from(queryKey)
-                .select("*")
-                .eq("id", id)
-                .single();
+    const fetchProfile = useCallback(async () => {
+        setLoading(true);
+        try {
+            const result = await db
+                .selectFrom("profiles")
+                .selectAll()
+                .where("id", "=", userId)
+                .executeTakeFirst(); // single row
 
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
-        },
-    });
+            setProfile(result ?? null);
+            setError(false);
+        } catch (err: any) {
+            setError(err);
+            setProfile(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [db, userId]);
+
+    useEffect(() => {
+        if (userId) {
+            fetchProfile();
+        }
+    }, [fetchProfile]);
+
+    return { profile, loading, error, refetch: fetchProfile };
 };
 
 export const useUpdateProfile = () => {
-    const queryClient = useQueryClient();
+    const { db } = useSystem();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-    return useMutation({
-        mutationFn: async ({
-            profile,
-            userId,
-        }: {
-            profile: Profile;
-            userId: string;
-        }) => {
-            const { error, data: updateProfile } = await supabase
-                .from(queryKey) // ✅ Use correct table name
-                .update(profile) // ✅ Only update the fields inside `profile`
-                .eq("id", userId) // ✅ Update only the selected profile
-                .select()
-                .single();
+    const updateProfile = useCallback(
+        async (userId: string, profile: Partial<Profile>) => {
+            setLoading(true);
+            setError(null);
 
-            if (error) {
-                throw new Error(error.message);
+            try {
+                const result = await db
+                    .updateTable("profiles")
+                    .set(profile)
+                    .where("id", "=", userId)
+                    .execute();
+
+                console.log("Profile updated locally!");
+            } catch (err) {
+                console.error("Local profile update failed:", err);
+                setError(err as Error);
+                throw err;
+            } finally {
+                setLoading(false);
             }
-
-            return updateProfile;
         },
-        onSuccess: async (_, { userId }) => {
-            console.log("✅ Profile updated successfully!");
+        [db]
+    );
 
-            // ✅ Refresh the updated profile
-            // @ts-ignore
-            await queryClient.invalidateQueries(["profiles"]); // efresh the updated profile
-            // @ts-ignore
-            await queryClient.invalidateQueries(["profiles", userId]); // Refresh specific profile
-        },
-    });
+    return { updateProfile, loading, error };
 };

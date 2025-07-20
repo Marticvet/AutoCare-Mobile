@@ -6,10 +6,9 @@ import {
     Pressable,
     ScrollView,
 } from "react-native";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { DateType } from "react-native-ui-datepicker";
-import { Fuel_Expenses } from "../../types/fuel_expenses";
 import { parseMMDDYYYY } from "../utils/parseMMDDYYYY";
 import { Ionicons } from "@expo/vector-icons";
 import { DateTimePickerModal } from "./DateTimePickerModal";
@@ -20,6 +19,8 @@ import { formattedDate } from "../../types/formatteddateTime";
 import FuelExpensesDataScreen from "./FuelExpensesDataScreen";
 
 import { LinearGradientExpenses } from "./LinearGradientExpenses";
+import { useFuelExpensesList } from "../api/fuel_expenses";
+import { FuelExpense } from "../powersync/AppSchema";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -37,7 +38,22 @@ const chartConfig = {
 };
 
 export const FuelExpensesScreen = () => {
-    const { fuelExpenses } = useContext(ProfileContext);
+    const { userProfile } = useContext(ProfileContext);
+    const userId = userProfile?.id || "";
+    const [fuelExpenses, setFuelExpenses] = useState<FuelExpense[]>([]);
+
+    const {
+        fuelExpenses: fuelExpensesData,
+        loading: isFuelExpensesLoading,
+        error: errorFuelExpenses,
+        refetch: refetchFuelExpenses,
+    } = useFuelExpensesList(userId, userProfile?.selected_vehicle_id || "");
+
+    useEffect(() => {
+        if (fuelExpensesData) {
+            setFuelExpenses(fuelExpensesData);
+        }
+    }, [fuelExpensesData]);
 
     // Get a date object for the current time
     const now = new Date();
@@ -94,7 +110,7 @@ export const FuelExpensesScreen = () => {
             const end = parseMMDDYYYY(selectedDueDate);
 
             const filteredFuelExpenses = fuelExpenses.filter(
-                (entry: Fuel_Expenses) => {
+                (entry: FuelExpense) => {
                     // @ts-ignore
                     const entryDate = new Date(entry.date);
                     return entryDate >= start && entryDate <= end;
@@ -103,7 +119,7 @@ export const FuelExpensesScreen = () => {
 
             // Sort by date (important for proper X-axis in chart)
             const fuelTotalCost = filteredFuelExpenses
-                .map((entry: Fuel_Expenses) => ({
+                .map((entry: FuelExpense) => ({
                     date: entry.date,
                     total_cost: entry.total_cost,
                     odometer: entry.odometer,
@@ -170,6 +186,12 @@ export const FuelExpensesScreen = () => {
                 setEndDistance(0);
                 setTotalDistance(0);
             }
+        }
+    }, [selectedDate, selectedDueDate]);
+
+    useEffect(() => {
+        if (refetchFuelExpenses) {
+            refetchFuelExpenses();
         }
     }, [selectedDate, selectedDueDate]);
 

@@ -6,8 +6,7 @@ import {
     Pressable,
     ScrollView,
 } from "react-native";
-import { useContext, useEffect, useMemo, useState } from "react";
-import { ProfileContext } from "../providers/ProfileDataProvider";
+import { useContext, useEffect, useState } from "react";
 import { DateType } from "react-native-ui-datepicker";
 import { parseMMDDYYYY } from "../utils/parseMMDDYYYY";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +16,9 @@ import React from "react";
 import { ChartData } from "../../types/chart_data";
 import { formattedDate } from "../../types/formatteddateTime";
 import { LinearGradientExpenses } from "./LinearGradientExpenses";
+import { ServiceExpense } from "../powersync/AppSchema";
+import { useServiceExpensesList } from "../api/service_expenses";
+import { ProfileContext } from "../providers/ProfileDataProvider";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -34,7 +36,23 @@ const chartConfig = {
 };
 
 export const ServiceExpensesScreen = () => {
-    const { serviceExpenses } = useContext(ProfileContext);
+    const {userProfile } = useContext(ProfileContext);
+    const userId = userProfile?.id || "";
+    const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>(
+        []
+    );
+    const {
+        serviceExpenses: servicexpensesData,
+        loading: isServiceExpensesLoading,
+        error: errorServiceExpenses,
+        refetch: refetchServiceExpenses,
+    } = useServiceExpensesList(userId, userProfile?.selected_vehicle_id || "");
+
+    useEffect(() => {
+        if (servicexpensesData) {
+            setServiceExpenses(servicexpensesData);
+        }
+    }, [servicexpensesData, isServiceExpensesLoading, errorServiceExpenses]);
 
     // Get a date object for the current time
     const now = new Date();
@@ -43,7 +61,7 @@ export const ServiceExpensesScreen = () => {
     oneMonthAgo.setMonth(now.getMonth() - 1);
 
     // Optional: set back the day to what it was, if valid
-    const lastDayOfPrevMonth = new Date(
+    const lastDayOfPrevMonth = new Date( 
         oneMonthAgo.getFullYear(),
         oneMonthAgo.getMonth() + 1,
         0
@@ -89,7 +107,7 @@ export const ServiceExpensesScreen = () => {
             const end = parseMMDDYYYY(selectedDueDate as string);
 
             const filteredServiceExpenses = serviceExpenses.filter(
-                (entry: Service_Expenses) => {
+                (entry: ServiceExpense) => {
                     // @ts-ignore
                     const entryDate = new Date(entry.date);
                     return entryDate >= start && entryDate <= end;
@@ -98,7 +116,7 @@ export const ServiceExpensesScreen = () => {
 
             // Sort by date for chart display
             const serviceTotalCost = filteredServiceExpenses
-                .map((entry: Service_Expenses) => ({
+                .map((entry: ServiceExpense) => ({
                     date: entry.date,
                     cost: entry.cost,
                     odometer: entry.odometer,
@@ -160,6 +178,12 @@ export const ServiceExpensesScreen = () => {
                 setEndDistance(0);
                 setTotalDistance(0);
             }
+        }
+    }, [selectedDate, selectedDueDate]);
+
+    useEffect(() => {
+        if (refetchServiceExpenses) {
+            refetchServiceExpenses();
         }
     }, [selectedDate, selectedDueDate]);
 

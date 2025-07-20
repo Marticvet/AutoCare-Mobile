@@ -13,10 +13,11 @@ import { parseMMDDYYYY } from "../utils/parseMMDDYYYY";
 import { Ionicons } from "@expo/vector-icons";
 import { DateTimePickerModal } from "./DateTimePickerModal";
 import { BarChart } from "react-native-chart-kit";
-import { Insurance_Expenses } from "../../types/insurance_expenses";
 import { ChartData } from "../../types/chart_data";
 import React from "react";
 import { LinearGradientExpenses } from "./LinearGradientExpenses";
+import { InsuranceExpense } from "../powersync/AppSchema";
+import { useInsuranceExpensesList } from "../api/insurance_expenses";
 
 // Get screen width
 const screenWidth = Dimensions.get("window").width;
@@ -34,7 +35,31 @@ const chartConfig = {
 };
 
 export const InsuranceExpensesScreen = () => {
-    const { insuranceExpenses } = useContext(ProfileContext);
+    const { userProfile } = useContext(ProfileContext);
+    const userId = userProfile?.id || "";
+    const [insuranceExpenses, setInsuranceExpenses] = useState<
+        InsuranceExpense[]
+    >([]);
+
+    const {
+        insuranceExpenses: insuranceExpensesData,
+        loading: isInsuranceExpensesLoading,
+        error: errorInsuranceExpenses,
+        refetch: refetchInsuranceExpenses,
+    } = useInsuranceExpensesList(
+        userId,
+        userProfile?.selected_vehicle_id || ""
+    );
+
+    useEffect(() => {
+        if (insuranceExpensesData) {
+            setInsuranceExpenses(insuranceExpensesData);
+        }
+    }, [
+        insuranceExpensesData,
+        isInsuranceExpensesLoading,
+        errorInsuranceExpenses,
+    ]);
 
     // Get a date object for the current time
     const now = new Date();
@@ -107,7 +132,7 @@ export const InsuranceExpensesScreen = () => {
             const end = parseMMDDYYYY(selectedDueDate as string);
 
             const filteredInsuranceExpenses = insuranceExpenses.filter(
-                (entry: Insurance_Expenses) => {
+                (entry: InsuranceExpense) => {
                     // @ts-ignore
                     const entryStart = new Date(entry.valid_from);
                     // @ts-ignore
@@ -118,7 +143,7 @@ export const InsuranceExpensesScreen = () => {
 
             // Sort by date for chart display
             const insuranceTotalCost = filteredInsuranceExpenses
-                .map((entry: Insurance_Expenses) => ({
+                .map((entry: InsuranceExpense) => ({
                     date: entry.valid_from,
                     cost: entry.cost,
                     odometer: entry.odometer,
@@ -180,6 +205,12 @@ export const InsuranceExpensesScreen = () => {
                 setEndDistance(0);
                 setTotalDistance(0);
             }
+        }
+    }, [selectedDate, selectedDueDate]);
+
+    useEffect(() => {
+        if (refetchInsuranceExpenses) {
+            refetchInsuranceExpenses();
         }
     }, [selectedDate, selectedDueDate]);
 

@@ -12,6 +12,6 @@ export const vehicleTypeIcons: Record<string, string> = {
   'Electric Vehicle': 'car-electric',
   Liftback: 'car-back',
   'Minivan / Campervan': 'van-passenger',
-  Coupe: 'car-coupe',
+  Coupe: 'car-sports',
   Microcar: 'car-3-plus',
 };

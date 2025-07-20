@@ -24,7 +24,7 @@ import { Loader } from "./Loader";
 import { fetchStations } from "../utils/location";
 import TotalExpensesScreen from "./TotalExpensesScreen";
 import { ScrollView } from "react-native-gesture-handler";
-import { useVehicleList } from "../api/vehicles";
+import { useVehicle, useVehicleList } from "../api/vehicles";
 import { Vehicle } from "../powersync/AppSchema";
 import { useAuth } from "../providers/AuthProvider";
 
@@ -39,8 +39,10 @@ const HomeScreen = () => {
     const userId = profile?.id || "";
     const navigation = useNavigation();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-
-    const { selectedVehicle, userProfile } = useContext(ProfileContext);
+    const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(
+        null
+    );
+    const { userProfile } = useContext(ProfileContext);
 
     const {
         error: errorVehicles,
@@ -57,10 +59,29 @@ const HomeScreen = () => {
         }
     }, [errorVehicles, isVehiclesLoading, vehiclesList]);
 
+    const {
+        data: vehicleData,
+        isLoading: isSelectedVehicleLoading,
+        error: errorSelectedVehicle,
+        refetch: refetchVehicle,
+    } = useVehicle(userId, userProfile?.selected_vehicle_id || "");
+
+    useEffect(() => {
+        if (vehicleData) {
+            setSelectedVehicle(vehicleData);
+        } else {
+            setSelectedVehicle(null);
+        }
+    }, [errorSelectedVehicle, isSelectedVehicleLoading, vehicleData]);
+
     useFocusEffect(
         useCallback(() => {
             if (vehiclesList && vehiclesList.length > 0) {
                 refetch(); // re-fetch vehicle data when screen is focused
+            }
+
+            if (vehicleData) {
+                refetchVehicle();
             }
         }, [userProfile?.id])
     );
@@ -155,7 +176,9 @@ const HomeScreen = () => {
                 isVehiclesLoading == true &&
                 vehicles &&
                 vehicles.length === 0 && (
-                    <Loader text={"Your vehicles are loading..."} />
+                    <View style={styles.vehicleLoaderContainer}>
+                        <Loader text={"Your vehicles are loading..."} />
+                    </View>
                 )}
             {errorVehicles &&
                 isVehiclesLoading == false &&
@@ -270,7 +293,7 @@ const HomeScreen = () => {
                 />
             )}
 
-            <TotalExpensesScreen hideUIElements={true} />
+            {/* <TotalExpensesScreen hideUIElements={true} /> */}
         </ScrollView>
     );
 };
@@ -359,6 +382,11 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: "#e64848",
         fontWeight: 600,
+    },
+
+    /// vehicle loader container
+    vehicleLoaderContainer: {
+        height: 240,
     },
 });
 

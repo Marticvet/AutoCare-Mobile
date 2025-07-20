@@ -11,6 +11,7 @@ import { Insurance_Expenses } from "../../types/insurance_expenses";
 import { formattedDate } from "../../types/formatteddateTime";
 import { ScrollView } from "react-native-gesture-handler";
 import { LinearGradientExpenses } from "./LinearGradientExpenses";
+import { useExpensesList } from "../api/expenses/expenses";
 
 interface TotalExpensesProps {
     hideUIElements: boolean;
@@ -43,7 +44,24 @@ const normalizeToLocalDate = (date: Date) => {
 };
 
 const TotalExpensesScreen = ({ hideUIElements }: TotalExpensesProps) => {
-    const { expenses } = useContext(ProfileContext);
+
+    return;
+    
+    const { userProfile } = useContext(ProfileContext);
+    const [expenses, setExpenses] = useState<any>();
+
+    const {
+        vehicleData: expensesData,
+        loading: isExpensesLoading,
+        error: errorExpenses,
+        refetch: refetchExpenses,
+    } = useExpensesList(userProfile?.selected_vehicle_id || "");
+
+    useEffect(() => {
+        if (expensesData) {
+            setExpenses(expensesData);
+        }
+    }, [expensesData]);
 
     // Get a date object for the current time
     const now = new Date();
@@ -97,7 +115,7 @@ const TotalExpensesScreen = ({ hideUIElements }: TotalExpensesProps) => {
 
             let allCosts: number[] = [];
 
-            expenses.forEach((element) => {
+            expenses.forEach((element: any) => {
                 // --- Fuel ---
                 if (element.fuel_expenses) {
                     const filtered = element.fuel_expenses.filter(
@@ -237,6 +255,12 @@ const TotalExpensesScreen = ({ hideUIElements }: TotalExpensesProps) => {
             setEndDistance(0);
         }
     }, [selectedDate, selectedDueDate, expenses]);
+
+    useEffect(() => {
+        if (refetchExpenses) {
+            refetchExpenses();
+        }
+    }, [selectedDate, selectedDueDate]);
 
     return (
         <ScrollView style={styles.container}>

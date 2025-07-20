@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
 import LoginScreen from "./src/Screens/LoginScreen";
 import RegisterScreen from "./src/Screens/RegisterScreen";
 import QueryProvider from "./src/providers/QueryProvider";
-import { ProfileDataProvider } from "./src/providers/ProfileDataProvider";
+import { ProfileContext, ProfileDataProvider } from "./src/providers/ProfileDataProvider";
 
 // Navigators & Global Screens
 import SidebarNavigator from "./src/Screens/Navigators/SidebarNavigator";
@@ -31,6 +31,7 @@ import { GasStationsScreen } from "./src/Screens/GasStationsScreen";
 import { Alert, Button, Platform, View } from "react-native";
 import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
 import { useSystem } from "./src/powersync/PowerSync";
+import { Loader } from "./src/Screens/Loader";
 
 const AuthStack = createStackNavigator();
 const RootStack = createStackNavigator();
@@ -75,11 +76,15 @@ function App() {
 }
 
 function RootNavigator() {
-    const { session } = useAuth();
+    const { session, profile } = useAuth();
 
     // If not authenticated, show the non-auth stack.
     if (!session?.access_token) {
         return <NonAuthNavigator />;
+    }
+    
+    if(!profile){
+        return <Loader text="Signing in.." />
     }
 
     // When authenticated, use a global RootStack:

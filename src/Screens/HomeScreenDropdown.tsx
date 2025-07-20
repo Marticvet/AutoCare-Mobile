@@ -7,9 +7,11 @@ import {
     StyleSheet,
     Modal,
     FlatList,
+    Alert,
 } from "react-native";
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { useUpdateProfile } from "../api/profiles";
+import { Vehicle } from "../powersync/AppSchema";
 
 interface HomeScreenDropdownProps {
     data: string[];
@@ -26,13 +28,11 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
 }) => {
     const [visible, setVisible] = useState(false);
     // Retrieve the values provided by ProfileDataProvider
-    const {
-        userProfile,
-    } = useContext(ProfileContext);
+    const { userProfile, setRefreshing } = useContext(ProfileContext);
     const userId = userProfile?.id;
-    const {mutate: updateProfile} = useUpdateProfile();
-    
-    const handleSelect = (vehicleId: string) => {
+    const { updateProfile } = useUpdateProfile();
+
+    const handleSelect = async (vehicleId: string) => {
         setVisible(false);
 
         if (!vehicleId || !userId) {
@@ -40,29 +40,21 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
             return;
         }
 
-        updateProfile(
-            {
-                // @ts-ignore
-                profile: { ...userProfile, selected_vehicle_id: vehicleId },
-                userId,
-            },
-            {
-                onSuccess: () => {
-                    console.log("Profile updated successfully!");
-                },
-                onError: (error) => {
-                    console.warn("Error updating Profile:", error);
-                },
-            }
-        );
+        try {
+            await updateProfile(userId, {
+                ...userProfile,
+                selected_vehicle_id: vehicleId,
+            });
+
+            setRefreshing(true);
+        } catch (err) {
+            Alert.alert("Error", "Failed to update profile.");
+        }
     };
 
     return (
         <View style={styles.container}>
-            <Pressable
-                onPress={() => setVisible(true)}
-                style={styles.input}
-            >
+            <Pressable onPress={() => setVisible(true)} style={styles.input}>
                 <Text style={styles.inputText}>
                     {selectedValue ? selectedValue : placeholder}
                 </Text>
@@ -84,7 +76,9 @@ const HomeScreenDropdown: React.FC<HomeScreenDropdownProps> = ({
                                     onPress={() => handleSelect(item.id)}
                                 >
                                     <Text style={styles.itemText}>
-                                        {item.vehicle_brand} | {item.vehicle_model} | {item.vehicle_license_plate}
+                                        {item.vehicle_brand} |{" "}
+                                        {item.vehicle_model} |{" "}
+                                        {item.vehicle_license_plate}
                                     </Text>
                                 </Pressable>
                             )}

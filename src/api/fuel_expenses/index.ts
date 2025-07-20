@@ -1,52 +1,81 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase";
-import { Fuel_Expenses } from "../../../types/fuel_expenses";
+import { useCallback, useEffect, useState } from "react";
+import { useSystem } from "../../powersync/PowerSync";
+import { FuelExpense } from "../../powersync/AppSchema";
 
-const queryKey: string = "fuel_expenses";
+export const useFuelExpensesList = (
+    userId: string,
+    selectedVehicleId: string
+) => {
+    const { db } = useSystem();
+    const [fuelExpenses, setFuelExpenses] = useState<FuelExpense[] | null>(
+        null
+    );
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-export const useFuelExpensesList = (id: string, selected_vehicle_id: string) => {
-    return useQuery({
-        queryKey: [queryKey, id, selected_vehicle_id],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("selected_vehicle_id", selected_vehicle_id); // Filter by selected_vehicle_id
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
-        },
-    });
+    const fetchExpenses = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const result = await db
+                .selectFrom("fuel_expenses")
+                .selectAll()
+                .where("user_id", "=", userId)
+                .where("selected_vehicle_id", "=", selectedVehicleId)
+                .execute();
+
+            setFuelExpenses(result);
+        } catch (err) {
+            setError(err as Error);
+            setFuelExpenses(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [db, userId, selectedVehicleId]);
+
+    useEffect(() => {
+        if (userId && selectedVehicleId) {
+            fetchExpenses();
+        }
+    }, [fetchExpenses]);
+
+    return { fuelExpenses, loading, error, refetch: fetchExpenses };
 };
 
 export const useInsertFuelExpense = () => {
-    return useMutation({
-        mutationFn: async (fuel_expense: Fuel_Expenses) => {
-            if (!fuel_expense.selected_vehicle_id) {
-                console.error("❌ Error: No vehicle ID provided.");
-                throw new Error(
-                    "Vehicle ID is required to insert fuel expense."
-                );
+    const { db } = useSystem();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+
+    const insertExpense = useCallback(
+        async (expense: FuelExpense) => {
+            setLoading(true);
+            setError(null);
+
+            try {
+                if (!expense.selected_vehicle_id) {
+                    throw new Error(
+                        "Vehicle ID is required to insert fuel expense."
+                    );
+                }
+
+                const result = await db
+                    .insertInto("fuel_expenses")
+                    .values(expense)
+                    .execute();
+
+                console.log("Fuel expense inserted locally!", result);
+            } catch (err) {
+                console.error("Local fuel insert failed:", err);
+                setError(err as Error);
+                throw err;
+            } finally {
+                setLoading(false);
             }
-
-            const { error, data: newFuelExpense } = await supabase
-                .from(queryKey) // ✅ Ensure correct table name
-                .insert([fuel_expense])
-                .select()
-                .single();
-
-            if (error) {
-                console.error(
-                    "❌ Error inserting fuel expense:",
-                    error.message
-                );
-                throw new Error(error.message);
-            }
-
-            console.log("✅ New Fuel Expense Inserted:", newFuelExpense);
-            return newFuelExpense;
         },
-    });
+        [db]
+    );
+
+    return { insertExpense, loading, error };
 };

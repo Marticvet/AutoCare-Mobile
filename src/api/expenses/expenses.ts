@@ -1,22 +1,81 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase";
-import { Fuel_Expenses } from "../../../types/fuel_expenses";
+import { useCallback, useEffect, useState } from "react";
+import { useSystem } from "../../powersync/PowerSync";
+import {
+    Vehicle,
+    FuelExpense,
+    InsuranceExpense,
+    ServiceExpense,
+} from "../../powersync/AppSchema";
 
-const queryKey: string = "vehicles";
+type VehicleWithExpenses = Vehicle & {
+    FuelExpense: FuelExpense[];
+    insurance_expenses: InsuranceExpense[];
+    service_expenses: ServiceExpense[];
+};
 
-export const useExpensesList = (selected_vehicle_id: string) => {
-    return useQuery({
-        queryKey: [queryKey, selected_vehicle_id], // Ensure key is meaningful
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from(queryKey)
-                .select("*, fuel_expenses(*), insurance_expenses(*), service_expenses(*)") // Fetch vehicle + related fuel expenses
-                .eq("id", selected_vehicle_id); // Ensure selected_vehicle_id is used
+export const useExpensesList = (selectedVehicleId: string) => {
+    const { db } = useSystem();
+    const [vehicleData, setVehicleData] = useState<VehicleWithExpenses | null>(
+        null
+    );
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-            if (error) {
-                throw new Error(error.message);
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Fetch the vehicle
+            const vehicle = await db
+                .selectFrom("vehicles")
+                .selectAll()
+                .where("id", "=", selectedVehicleId)
+                .executeTakeFirst();
+
+            if (!vehicle) {
+                throw new Error("Vehicle not found");
             }
-            return data;
-        },
-    });
+
+            // Fetch related expenses
+            const [fuel, insurance, service] = await Promise.all([
+                db
+                    .selectFrom("fuel_expenses")
+                    .selectAll()
+                    .where("selected_vehicle_id", "=", selectedVehicleId)
+                    .execute(),
+                db
+                    .selectFrom("insurance_expenses")
+                    .selectAll()
+                    .where("selected_vehicle_id", "=", selectedVehicleId)
+                    .execute(),
+                db
+                    .selectFrom("service_expenses")
+                    .selectAll()
+                    .where("selected_vehicle_id", "=", selectedVehicleId)
+                    .execute(),
+            ]);
+
+            setVehicleData({
+                ...vehicle,
+                FuelExpense: fuel,
+                insurance_expenses: insurance,
+                service_expenses: service,
+            });
+        } catch (err) {
+            console.error("Failed to fetch vehicle with expenses:", err);
+            setError(err as Error);
+            setVehicleData(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [db, selectedVehicleId]);
+
+    useEffect(() => {
+        if (selectedVehicleId) {
+            fetchData();
+        }
+    }, [fetchData]);
+
+    return { vehicleData, loading, error, refetch: fetchData };
 };

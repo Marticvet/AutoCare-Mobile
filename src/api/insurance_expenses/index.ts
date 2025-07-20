@@ -1,52 +1,81 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase";
-import { Insurance_Expenses } from "../../../types/insurance_expenses";
+import { useCallback, useEffect, useState } from "react";
+import { useSystem } from "../../powersync/PowerSync";
+import { InsuranceExpense } from "../../powersync/AppSchema";
 
-const queryKey: string = "insurance_expenses";
+export const useInsuranceExpensesList = (
+    userId: string,
+    selectedVehicleId: string
+) => {
+    const { db } = useSystem();
+    const [insuranceExpenses, setInsuranceExpenses] = useState<
+        InsuranceExpense[] | null
+    >(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-export const useInsuranceExpensesList = (id: string, selected_vehicle_id: string) => {
-    return useQuery({
-        queryKey: [queryKey, id, selected_vehicle_id],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from(queryKey)
-                .select("*")
-                .eq("user_id", id) // Filter by user_id
-                .eq("selected_vehicle_id", selected_vehicle_id); // Filter by selected_vehicle_id
-            if (error) {
-                throw new Error(error.message);
-            }
-            return data;
-        },
-    });
+    const fetchExpenses = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const result = await db
+                .selectFrom("insurance_expenses")
+                .selectAll()
+                .where("user_id", "=", userId)
+                .where("selected_vehicle_id", "=", selectedVehicleId)
+                .execute();
+
+            setInsuranceExpenses(result);
+        } catch (err) {
+            setError(err as Error);
+            setInsuranceExpenses(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [db, userId, selectedVehicleId]);
+
+    useEffect(() => {
+        if (userId && selectedVehicleId) {
+            fetchExpenses();
+        }
+    }, [fetchExpenses]);
+
+    return { insuranceExpenses, loading, error, refetch: fetchExpenses };
 };
 
 export const useInsertInsuranceExpense = () => {
-    return useMutation({
-        mutationFn: async (insurance_expenses: Insurance_Expenses) => {
-            if (!insurance_expenses.selected_vehicle_id) {
-                console.error("❌ Error: No vehicle ID provided.");
-                throw new Error(
-                    "Vehicle ID is required to insert fuel expense."
-                );
+    const { db } = useSystem();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+
+    const insertExpense = useCallback(
+        async (expense: InsuranceExpense) => {
+            setLoading(true);
+            setError(null);
+
+            try {
+                if (!expense.selected_vehicle_id) {
+                    throw new Error(
+                        "Vehicle ID is required to insert insurance expense."
+                    );
+                }
+
+                const result = await db
+                    .insertInto("insurance_expenses")
+                    .values(expense)
+                    .execute();
+
+                console.log("Insurance expense inserted locally!", result);
+            } catch (err) {
+                console.error("Local insurance insert failed:", err);
+                setError(err as Error);
+                throw err;
+            } finally {
+                setLoading(false);
             }
-
-            const { error, data: newInsuranceExpense } = await supabase
-                .from(queryKey) // ✅ Ensure correct table name
-                .insert([insurance_expenses])
-                .select()
-                .single();
-
-            if (error) {
-                console.error(
-                    "❌ Error inserting fuel expense:",
-                    error.message
-                );
-                throw new Error(error.message);
-            }
-
-            console.log("✅ New Fuel Expense Inserted:", newInsuranceExpense);
-            return newInsuranceExpense;
         },
-    });
+        [db]
+    );
+
+    return { insertExpense, loading, error };
 };
