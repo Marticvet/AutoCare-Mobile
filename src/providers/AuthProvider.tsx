@@ -34,13 +34,17 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [loading, setLoading] = useState(true);
     const { supabaseConnector, powersync, db } = useSystem();
 
-    AppState.addEventListener("change", (state) => {
-        if (state === "active") {
-            supabaseConnector.client.auth.startAutoRefresh();
-        } else {
-            supabaseConnector.client.auth.stopAutoRefresh();
-        }
-    });
+    useEffect(() => {
+        const sub = AppState.addEventListener("change", (state) => {
+            if (state === "active") {
+                supabaseConnector.client.auth.startAutoRefresh();
+            } else {
+                supabaseConnector.client.auth.stopAutoRefresh();
+            }
+        });
+
+        return () => sub.remove();
+    }, []);
 
     const fetchProfile = async (userId: string) => {
         const response = await db

@@ -33,7 +33,7 @@ export class System {
     async init() {
         console.log("initializing PowerSync");
         // Wait for database to initialize
-        // await this.powersync.init();
+        await this.powersync.init();
         // Optionally wait for it to be ready
         await this.powersync.waitForReady();
         // Connect to sync backend (Supabase connector)

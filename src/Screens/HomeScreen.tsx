@@ -76,14 +76,9 @@ const HomeScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
-            if (vehiclesList && vehiclesList.length > 0) {
-                refetch(); // re-fetch vehicle data when screen is focused
-            }
-
-            if (vehicleData) {
-                refetchVehicle();
-            }
-        }, [userProfile?.id])
+            refetch(); // re-fetch vehicle data when screen is focused
+            refetchVehicle();
+        }, [userId])
     );
 
     const scrollX = useRef(new Animated.Value(0)).current;
