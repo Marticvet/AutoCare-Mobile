@@ -5,7 +5,10 @@ import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
 import LoginScreen from "./src/Screens/LoginScreen";
 import RegisterScreen from "./src/Screens/RegisterScreen";
 import QueryProvider from "./src/providers/QueryProvider";
-import { ProfileContext, ProfileDataProvider } from "./src/providers/ProfileDataProvider";
+import {
+    ProfileContext,
+    ProfileDataProvider,
+} from "./src/providers/ProfileDataProvider";
 
 // Navigators & Global Screens
 import SidebarNavigator from "./src/Screens/Navigators/SidebarNavigator";
@@ -82,9 +85,9 @@ function RootNavigator() {
     if (!session?.access_token) {
         return <NonAuthNavigator />;
     }
-    
-    if(!profile){
-        return <Loader text="Signing in.." />
+
+    if (!profile) {
+        return <Loader text="Signing in.." />;
     }
 
     // When authenticated, use a global RootStack:
@@ -101,7 +104,7 @@ function RootNavigator() {
         >
             <RootStack.Screen
                 name="MainApp"
-                component={MainAppNavigator}
+                component={BottomNavigator}
                 options={{
                     title: "Home",
                     headerShown: false,
@@ -112,11 +115,19 @@ function RootNavigator() {
                 component={ReminderScreen}
                 options={{ title: "Reminder" }}
             />
-            <RootStack.Screen
+            {/* <RootStack.Screen
                 name="ReportsScreen"
                 component={() => <ReportsScreen hideUIElements />}
                 options={{ title: "Reports" }}
-            />
+            /> */}
+
+            <RootStack.Screen
+                name="ReportsScreen"
+                options={{ title: "Reports" }}
+            >
+                {(props) => <ReportsScreen {...props} hideUIElements />}
+            </RootStack.Screen>
+
             <RootStack.Screen
                 name="ServiceExpenseScreen"
                 component={ServiceExpenseScreen}
@@ -182,15 +193,6 @@ function RootNavigator() {
             {/* Add more global screens here if needed */}
         </RootStack.Navigator>
     );
-}
-
-function MainAppNavigator() {
-    // Wrap your bottom tabs with your drawer so that the drawer is available globally.
-
-    // <SidebarNavigator>
-    // </SidebarNavigator>
-
-    return <BottomNavigator />;
 }
 
 function NonAuthNavigator() {

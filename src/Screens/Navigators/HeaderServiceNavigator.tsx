@@ -26,11 +26,14 @@ export const HeaderServiceNavigator = () => {
                     tabBarLabelStyle: { fontSize: 14, fontWeight: "bold" },
                 }}
             >
-                <Tab.Screen
+                {/* <Tab.Screen
                     name="ReportsScreen"
-                    component={ReportsScreen}
+                    component=
                     options={{ title: "Total" }}
-                />
+                /> */}
+                <Tab.Screen name="ReportsScreen" options={{ title: "Total" }}>
+                    {(props) => <ReportsScreen {...props}  hideUIElements/>}
+                </Tab.Screen>
 
                 <Tab.Screen
                     name="FuelExpensesScreen"

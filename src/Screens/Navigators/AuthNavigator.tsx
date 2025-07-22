@@ -15,7 +15,7 @@ export default function AuthNavigator() {
     return (
         <QueryProvider>
             <AppStack.Navigator
-                initialRouteName="Home" // Changed from "HomeDrawer" since the drawer is global now
+                initialRouteName="HomeScreen" // Changed from "HomeDrawer" since the drawer is global now
                 screenOptions={{
                     headerStyle: {
                         backgroundColor: "#212640",
@@ -27,7 +27,7 @@ export default function AuthNavigator() {
                 }}
             >
                 <AppStack.Screen
-                    name="Home"
+                    name="HomeScreen"
                     component={HomeScreen}
                     options={{
                         title: "Home",
