@@ -1,50 +1,53 @@
-# Welcome to your Expo app 👋
+# AutoCare Hub Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Offline-first vehicle management for individuals and small fleets. The Expo React Native app tracks vehicles, fuel, service, insurance, everyday expenses, replaced parts, date/mileage reminders, vehicle documents, nearby services, and reports in English, German, Bulgarian, Spanish, and French.
 
-## Get started
+## Architecture
 
-1. Install dependencies
+- React Native + Expo for iOS and Android
+- Supabase Auth and PostgreSQL for cloud identity and persistence
+- PowerSync + SQLite for instant local reads/writes and queued synchronization
+- Typed React Navigation and a shared native design system
+- Private Supabase Storage for vehicle documents
 
-   ```bash
-   npm install
-   ```
+The app never waits for a first network sync before showing cached authenticated data. Stored-data screens read SQLite, so normal tracking remains available offline.
 
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Start development
 
 ```bash
-npm run reset-project
+npm install
+npx expo run:ios
+# or
+npx expo run:android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+This project uses native PowerSync/SQLite modules and should be tested with a development build, not Expo Go.
 
-## Learn more
+Create a private `.env` containing:
 
-To learn more about developing your project with Expo, look at the following resources:
+```text
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_POWERSYNC_URL=
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Nearby search is the only core screen that needs the Google key and live connectivity.
 
-## Join the community
+## Cloud migration
 
-Join our community of developers creating universal apps.
+Before using reminders, documents, general expenses, or service parts across devices:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. Apply all SQL files in `supabase/migrations` in filename order.
+2. Validate and deploy `powersync/sync-config.yaml` in PowerSync Cloud.
+3. Follow `docs/OFFLINE_ONLINE_SETUP.md` for storage, security, and the online/offline acceptance check.
+
+## Quality checks
+
+```bash
+npm run typecheck
+npm test -- --runInBand
+npm run lint
+```
+
+The calculation tests cover due-state logic, fuel economy, totals, date validation, and CSV escaping.

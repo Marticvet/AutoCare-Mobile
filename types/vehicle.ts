@@ -3,6 +3,8 @@ export interface VehicleData {
     selected_vehicle_id?: string;
     vehicle_brand: string;
     vehicle_model: string;
+    vehicle_trim?: string | null;
+    vehicle_fuel_type?: string | null;
     vehicle_model_year: number;
     vehicle_car_type: string;
     vehicle_license_plate: string;

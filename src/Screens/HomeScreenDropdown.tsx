@@ -14,9 +14,9 @@ import { useUpdateProfile } from "../api/profiles";
 import { Vehicle } from "../powersync/AppSchema";
 
 interface HomeScreenDropdownProps {
-    data: string[];
-    selectedValue: string;
-    onValueChange: (value: string) => void;
+    data: Vehicle[];
+    selectedValue?: string;
+    onValueChange?: (value: string) => void;
     placeholder?: string;
 }
 

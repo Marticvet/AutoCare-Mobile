@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
     Text,
     View,
@@ -15,9 +15,12 @@ import {
 import { ProfileContext } from "../providers/ProfileDataProvider";
 import { AntDesign, MaterialCommunityIcons } from "@expo/vector-icons";
 import { vehicleTypeIcons } from "../utils/vehicleTypeIcons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { TextInput } from "react-native-gesture-handler";
 import { RadioButton } from "react-native-paper";
+import { useAuth } from "../providers/AuthProvider";
+import { Vehicle } from "../powersync/AppSchema";
+import { useVehicleList } from "../api/vehicles";
 
 // *
 // TODO
@@ -31,9 +34,11 @@ interface SortingCriteria {
 }
 
 export function OwnerVehiclesScreen() {
+    const { profile } = useAuth();
+    const userId = profile?.id || "";
     const navigation = useNavigation();
-    const { vehicles } = useContext(ProfileContext);
     const [showSortPopup, setShowSortPopup] = useState<boolean>(false);
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [filteredVehicles, setFilteredVehicles] = useState(vehicles);
     const [searchCriteria, setSearchCriteria] = useState<string>("");
     const [sortingCriteriaObject, setSortingCriteriaObject] =
@@ -66,21 +71,38 @@ export function OwnerVehiclesScreen() {
 
     const sortVehiclesByCriteriaHandler = (criteria: string) => {
         const newFilteredVehicles = [...(vehicles ?? [])].sort((a, b) => {
-            if (criteria === "Mileage: Low to High") {
-                return a.current_mileage - b.current_mileage;
-            } else if (criteria === "Mileage: High to Low") {
-                return b.current_mileage - a.current_mileage;
-            } else if (criteria === "Model Name: A to Z") {
-                return a.vehicle_model.localeCompare(b.vehicle_model);
-            } else if (criteria === "Model Name: Z to A") {
-                return b.vehicle_model.localeCompare(a.vehicle_model);
-            } else if (criteria === "Model Year: Oldest to Newest") {
-                return a.vehicle_model_year - b.vehicle_model_year;
-            } else if (criteria === "Model Year: Newest to Oldest") {
-                return b.vehicle_model_year - a.vehicle_model_year;
-            }
+            switch (criteria) {
+                case "Mileage: Low to High":
+                    return (a.current_mileage ?? 0) - (b.current_mileage ?? 0);
 
-            return 0;
+                case "Mileage: High to Low":
+                    return (b.current_mileage ?? 0) - (a.current_mileage ?? 0);
+
+                case "Model Name: A to Z":
+                    return (a.vehicle_model ?? "").localeCompare(
+                        b.vehicle_model ?? ""
+                    );
+
+                case "Model Name: Z to A":
+                    return (b.vehicle_model ?? "").localeCompare(
+                        a.vehicle_model ?? ""
+                    );
+
+                case "Model Year: Oldest to Newest":
+                    return (
+                        (a.vehicle_model_year ?? 0) -
+                        (b.vehicle_model_year ?? 0)
+                    );
+
+                case "Model Year: Newest to Oldest":
+                    return (
+                        (b.vehicle_model_year ?? 0) -
+                        (a.vehicle_model_year ?? 0)
+                    );
+
+                default:
+                    return 0;
+            }
         });
 
         setFilteredVehicles(newFilteredVehicles);
@@ -109,8 +131,9 @@ export function OwnerVehiclesScreen() {
     function searchCriteriaHandler(text: string) {
         setSearchCriteria(text);
 
-        const newFilteredVehicles = [...(vehicles ?? [])].filter((vehicle) =>
-            vehicle.vehicle_license_plate
+        const newFilteredVehicles = vehicles.filter((v) =>
+            [v.vehicle_license_plate, v.vehicle_brand, v.vehicle_model]
+                .join(" ")
                 .toLowerCase()
                 .includes(text.toLowerCase())
         );
@@ -138,6 +161,31 @@ export function OwnerVehiclesScreen() {
         setFilteredVehicles(vehicles);
     }
 
+    const {
+        error: errorVehicles,
+        loading: isVehiclesLoading,
+        vehicles: vehiclesList,
+        refetch,
+    } = useVehicleList(userId);
+
+    useEffect(() => {
+        if (vehiclesList && vehiclesList.length > 0) {
+            setVehicles(vehiclesList);
+        } else {
+            setVehicles([]);
+        }
+    }, [errorVehicles, isVehiclesLoading, vehiclesList]);
+
+    useFocusEffect(
+        useCallback(() => {
+            refetch(); // re-fetch vehicle data when screen is focused
+        }, [userId])
+    );
+
+    useEffect(() => {
+        setFilteredVehicles(vehicles);
+    }, [vehicles]);
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -145,7 +193,7 @@ export function OwnerVehiclesScreen() {
         >
             <TouchableWithoutFeedback
                 onPress={() => {
-                    Keyboard.dismiss;
+                    Keyboard.dismiss();
                     setShowSortPopup(false);
                 }}
             >
@@ -188,9 +236,9 @@ export function OwnerVehiclesScreen() {
                                                         {item.vehicle_model}
                                                     </Text>
                                                     <MaterialCommunityIcons
-                                                        //@ts-ignore
                                                         name={
                                                             vehicleTypeIcons[
+                                                                // @ts-ignore
                                                                 item
                                                                     .vehicle_car_type
                                                             ] || "car"
@@ -214,7 +262,9 @@ export function OwnerVehiclesScreen() {
                             />
                         ) : (
                             <View style={styles.cardWrapper}>
-                                <Text style={styles.noVehiclesText}>No vehicle(s) found...</Text>
+                                <Text style={styles.noVehiclesText}>
+                                    No vehicle(s) found...
+                                </Text>
                             </View>
                         )}
                     </View>
@@ -521,6 +571,6 @@ const styles = StyleSheet.create({
     ////
     noVehiclesText: {
         fontSize: 20,
-        fontWeight: 600
-    }
+        fontWeight: 600,
+    },
 });

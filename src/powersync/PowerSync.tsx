@@ -1,7 +1,6 @@
 import { createContext, useContext } from "react";
 import {
     PowerSyncDatabase,
-    type PowerSyncDatabaseOptions,
 } from "@powersync/react-native";
 import { AppSchema, type Database } from "./AppSchema";
 import { Kysely, wrapPowerSyncWithKysely } from "@powersync/kysely-driver";
@@ -11,12 +10,14 @@ export class System {
     supabaseConnector: SupabaseConnector;
     powersync: PowerSyncDatabase;
     db: Kysely<Database>;
+    private initialization: Promise<void> | null = null;
+    private connection: Promise<void> | null = null;
 
     constructor() {
         // 1. Setup the PowerSync database with schema and SQLite config
         this.powersync = new PowerSyncDatabase({
             database: {
-                dbFilename: "test.sqlite", // or ':memory:' for dev/test
+                dbFilename: "autocare.sqlite",
             },
             schema: AppSchema,
         });
@@ -24,21 +25,41 @@ export class System {
         // 2. Setup Supabase connector
         this.supabaseConnector = new SupabaseConnector();
 
-        // 3. Wrap PowerSync with Kysely ORM
-        // this.db = wrapPowerSyncWithKysely(this.powersync);
+        this.db = wrapPowerSyncWithKysely<Database>(this.powersync);
+    }
 
-        this.db = wrapPowerSyncWithKysely<Database>(this.powersync); // ✅ Type-safe now
+    async initDatabase() {
+        if (!this.initialization) {
+            this.initialization = (async () => {
+                await this.powersync.init();
+                await this.powersync.waitForReady();
+            })();
+        }
+
+        return this.initialization;
+    }
+
+    async connect() {
+        await this.initDatabase();
+
+        if (this.powersync.connected || this.powersync.connecting) {
+            return;
+        }
+
+        if (!this.connection) {
+            this.connection = this.powersync
+                .connect(this.supabaseConnector)
+                .finally(() => {
+                    this.connection = null;
+                });
+        }
+
+        return this.connection;
     }
 
     async init() {
-        console.log("initializing PowerSync");
-        // Wait for database to initialize
-        await this.powersync.init();
-        // Optionally wait for it to be ready
-        await this.powersync.waitForReady();
-        // Connect to sync backend (Supabase connector)
-        await this.powersync.connect(this.supabaseConnector);
-        console.log("PowerSync initialized and connected");
+        await this.initDatabase();
+        await this.connect();
     }
 }
 

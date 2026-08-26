@@ -25,13 +25,31 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
 const powersyncUrl = process.env.EXPO_PUBLIC_POWERSYNC_URL as string;
 
+const assertConfiguration = () => {
+  const missing = [
+    ["EXPO_PUBLIC_SUPABASE_URL", supabaseUrl],
+    ["EXPO_PUBLIC_SUPABASE_ANON_KEY", supabaseAnonKey],
+    ["EXPO_PUBLIC_POWERSYNC_URL", powersyncUrl],
+  ].filter(([, value]) => !value);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing app configuration: ${missing.map(([name]) => name).join(", ")}`
+    );
+  }
+};
+
 export class SupabaseConnector implements PowerSyncBackendConnector {
   client: SupabaseClient;
 
   constructor() {
+    assertConfiguration();
     this.client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         storage: AsyncStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
       },
     });
   }
@@ -56,8 +74,6 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     if (!session || error) {
       throw new Error(`Could not fetch Supabase credentials: ${error}`);
     }
-
-    console.debug('session expires at', session.expires_at);
 
     return {
       client: this.client,
@@ -98,29 +114,23 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         }
 
         if (result.error) {
-          throw new Error(`Could not ${op.op} data to Supabase error: ${JSON.stringify(result)}`);
+          throw result.error;
         }
       }
 
       await transaction.complete();
     } catch (ex: any) {
-      console.debug(ex);
       if (typeof ex.code == 'string' && FATAL_RESPONSE_CODES.some((regex) => regex.test(ex.code))) {
-        /**
-         * Instead of blocking the queue with these errors,
-         * discard the (rest of the) transaction.
-         *
-         * Note that these errors typically indicate a bug in the application.
-         * If protecting against data loss is important, save the failing records
-         * elsewhere instead of discarding, and/or notify the user.
-         */
-        console.error(`Data upload error - discarding ${lastOp}`, ex);
-        await transaction.complete();
-      } else {
-        // Error may be retryable - e.g. network error or temporary server error.
-        // Throwing an error here causes this call to be retried after a delay.
-        throw ex;
+        console.error("A queued local change was rejected by the backend", {
+          operation: lastOp?.op,
+          table: lastOp?.table,
+          code: ex.code,
+        });
       }
+
+      // Keep the transaction queued. This avoids silent data loss and allows a
+      // schema/RLS fix or a temporary network recovery to retry the same write.
+      throw ex;
     }
   }
 }

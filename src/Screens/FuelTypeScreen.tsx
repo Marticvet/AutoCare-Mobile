@@ -17,7 +17,7 @@ const getSortedFuelTypesByFrequency = (arr: string[]) => {
 };
 
 export function FuelTypeScreen() {
-    const { userVehiclesFuelType, vehicles } = useContext(ProfileContext);
+    const { userVehiclesFuelType } = useContext(ProfileContext);
 
     const sortedFuelTypes = getSortedFuelTypesByFrequency(
         userVehiclesFuelType ?? []

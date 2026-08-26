@@ -1,0 +1,17 @@
+config:
+  edition: 3
+
+streams:
+  user_data:
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM profiles WHERE id = auth.user_id()
+      - SELECT * FROM vehicles WHERE user_id = auth.user_id()
+      - SELECT * FROM fuel_expenses WHERE user_id = auth.user_id()
+      - SELECT * FROM insurance_expenses WHERE user_id = auth.user_id()
+      - SELECT * FROM service_expenses WHERE user_id = auth.user_id()
+      - SELECT * FROM general_expenses WHERE user_id = auth.user_id()
+      - SELECT * FROM reminders WHERE user_id = auth.user_id()
+      - SELECT * FROM vehicle_documents WHERE user_id = auth.user_id()
+      - SELECT * FROM service_parts WHERE user_id = auth.user_id()
+

@@ -8,7 +8,7 @@ export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
 
   const db = useMemo(() => {
     return powersync;
-  }, []);
+  }, [powersync]);
 
   return <PowerSyncContext.Provider value={db}>{children}</PowerSyncContext.Provider>;
 };

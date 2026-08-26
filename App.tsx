@@ -1,213 +1,227 @@
-import * as React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
-import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
+import { Ionicons } from "@expo/vector-icons";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import React, { PropsWithChildren, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import DashboardScreen from "./src/Screens/v2/DashboardScreen";
+import DocumentFormScreen from "./src/Screens/v2/DocumentFormScreen";
+import DocumentsScreen from "./src/Screens/v2/DocumentsScreen";
+import ExpenseFormScreen from "./src/Screens/v2/ExpenseFormScreen";
+import ExpensesScreen from "./src/Screens/v2/ExpensesScreen";
+import MoreScreen from "./src/Screens/v2/MoreScreen";
+import NearbyScreen from "./src/Screens/v2/NearbyScreen";
+import ProfileEditScreen from "./src/Screens/v2/ProfileEditScreen";
+import ReminderFormScreen from "./src/Screens/v2/ReminderFormScreen";
+import RemindersScreen from "./src/Screens/v2/RemindersScreen";
+import SettingsScreen from "./src/Screens/v2/SettingsScreen";
+import VehicleDetailScreen from "./src/Screens/v2/VehicleDetailScreen";
+import VehicleFormScreen from "./src/Screens/v2/VehicleFormScreen";
+import VehiclesScreen from "./src/Screens/v2/VehiclesScreen";
 import LoginScreen from "./src/Screens/LoginScreen";
 import RegisterScreen from "./src/Screens/RegisterScreen";
-import QueryProvider from "./src/providers/QueryProvider";
-import {
-    ProfileContext,
-    ProfileDataProvider,
-} from "./src/providers/ProfileDataProvider";
-
-// Navigators & Global Screens
-import SidebarNavigator from "./src/Screens/Navigators/SidebarNavigator";
-import BottomNavigator from "./src/Screens/Navigators/BottomNavigator";
-import ServiceExpensesScreen from "./src/Screens/ServiceExpenseScreen";
-import ReminderScreen from "./src/Screens/ReminderScreen";
-import ReportsScreen from "./src/Screens/TotalExpensesScreen";
-import { InsuranceExpenseScreen } from "./src/Screens/InsuranceExpenseScreen";
-import ServiceExpenseScreen from "./src/Screens/ServiceExpenseScreen";
-import { FuelExpenseScreen } from "./src/Screens/FuelExpenseScreen";
-import HeaderServiceNavigator from "./src/Screens/Navigators/HeaderServiceNavigator";
-import MapScreen from "./src/Screens/MapScreen";
-import VehicleDetailScreen from "./src/Screens/VehicleDetailScreen";
-import EditVehicleScreen from "./src/Screens/EditVehicleScreen";
-import { MyProfileScreen } from "./src/Screens/MyProfileScreen";
-import { EditProfileScreen } from "./src/Screens/EditProfileScreen";
-
-import { ActionSheetProvider } from "@expo/react-native-action-sheet";
-import { OwnerVehiclesScreen } from "./src/Screens/OwnerVehiclesScreen";
-import { FuelTypeScreen } from "./src/Screens/FuelTypeScreen";
-import { GasStationsScreen } from "./src/Screens/GasStationsScreen";
-
-import { Alert, Button, Platform, View } from "react-native";
+import { PreferencesProvider, usePreferences } from "./src/i18n/PreferencesProvider";
+import { MainTabParamList, RootStackParamList } from "./src/navigation/types";
 import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
-import { useSystem } from "./src/powersync/PowerSync";
-import { Loader } from "./src/Screens/Loader";
+import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
+import { ConnectivityProvider, useConnectivity } from "./src/providers/ConnectivityProvider";
+import { DocumentSyncProvider } from "./src/providers/DocumentSyncProvider";
+import { GarageProvider, useGarage } from "./src/providers/GarageProvider";
+import { ReminderNotificationProvider } from "./src/providers/ReminderNotificationProvider";
+import { colors, spacing, typography } from "./src/theme/tokens";
 
-const AuthStack = createStackNavigator();
-const RootStack = createStackNavigator();
+type AuthStackParamList = { Login: undefined; Register: undefined };
 
-const MyTheme = {
-    dark: false,
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const Tabs = createBottomTabNavigator<MainTabParamList>();
+
+const navigationTheme = {
+    ...DefaultTheme,
     colors: {
-        primary: "white",
-        background: "white",
-        card: "rgb(20, 20, 20)",
-        text: "rgb(255, 255, 255)",
-        border: "rgb(50, 50, 50)",
-        notification: "rgb(255, 69, 58)",
-    },
-    fonts: {
-        regular: { fontFamily: "System", fontWeight: "400" }, // Corrected
-        medium: { fontFamily: "System", fontWeight: "500" }, // Corrected
-        bold: { fontFamily: "System", fontWeight: "700" }, // Corrected
-        heavy: { fontFamily: "System", fontWeight: "800" }, // Corrected
+        ...DefaultTheme.colors,
+        primary: colors.primary,
+        background: colors.canvas,
+        card: colors.surface,
+        text: colors.ink,
+        border: colors.border,
+        notification: colors.danger,
     },
 };
 
-function App() {
+export default function App() {
     return (
-        <PowerSyncProvider>
-            <ActionSheetProvider>
-                <QueryProvider>
+        <SafeAreaProvider>
+            <PowerSyncProvider>
+                <PreferencesProvider>
                     <AuthProvider>
-                        <ProfileDataProvider>
-                            <NavigationContainer
-                                // @ts-ignore
-                                theme={MyTheme}
-                            >
-                                <RootNavigator />
-                            </NavigationContainer>
-                        </ProfileDataProvider>
+                        <ConnectivityProvider>
+                            <GarageProvider>
+                                <ReminderNotificationProvider>
+                                    <DocumentSyncProvider>
+                                        <StatusBar style="dark" />
+                                        <NavigationContainer theme={navigationTheme}>
+                                            <AppNavigator />
+                                        </NavigationContainer>
+                                    </DocumentSyncProvider>
+                                </ReminderNotificationProvider>
+                            </GarageProvider>
+                        </ConnectivityProvider>
                     </AuthProvider>
-                </QueryProvider>
-            </ActionSheetProvider>
-        </PowerSyncProvider>
+                </PreferencesProvider>
+            </PowerSyncProvider>
+        </SafeAreaProvider>
+    );
+}
+
+function AppNavigator() {
+    const { session, loading } = useAuth();
+    const { ready, t } = usePreferences();
+
+    if (loading || !ready) {
+        return (
+            <View style={styles.loading}>
+                <View style={styles.loadingMark}><Ionicons name="car-sport" size={32} color={colors.white} /></View>
+                <Text style={styles.loadingTitle}>{t("appName")}</Text>
+                <ActivityIndicator color={colors.primary} size="large" />
+            </View>
+        );
+    }
+
+    if (!session) {
+        return (
+            <AuthStack.Navigator screenOptions={{ headerShown: false, gestureEnabled: false }}>
+                <AuthStack.Screen name="Login" component={LoginScreen} />
+                <AuthStack.Screen name="Register" component={RegisterScreen} />
+            </AuthStack.Navigator>
+        );
+    }
+
+    return <InitialSyncGate key={session.user.id}><RootNavigator /></InitialSyncGate>;
+}
+
+function InitialSyncGate({ children }: PropsWithChildren) {
+    const { profile } = useAuth();
+    const { vehicles, loading } = useGarage();
+    const { isOnline, syncState, lastSyncedAt } = useConnectivity();
+    const { t } = usePreferences();
+    const startedAt = useRef(Date.now());
+    const [elapsed, setElapsed] = useState(0);
+    const [continueOffline, setContinueOffline] = useState(false);
+    const syncedSinceOpening = Boolean(lastSyncedAt && lastSyncedAt.getTime() >= startedAt.current - 1_000);
+    const ready = !loading && (
+        Boolean(profile)
+        || vehicles.length > 0
+        || syncedSinceOpening
+        || !isOnline
+        || syncState === "error"
+    );
+
+    useEffect(() => {
+        if (ready || continueOffline) return;
+        const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt.current) / 1_000)), 1_000);
+        return () => clearInterval(timer);
+    }, [continueOffline, ready]);
+
+    if (ready || continueOffline) return <>{children}</>;
+    return (
+        <View style={styles.initialSync}>
+            <View style={styles.loadingMark}><Ionicons name="cloud-download-outline" size={32} color={colors.white} /></View>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.loadingTitle}>{t("initialSyncTitle")}</Text>
+            <Text style={styles.loadingBody}>{t("initialSyncEstimate")}</Text>
+            <Text style={styles.elapsed}>{t("elapsedSeconds")}: {elapsed}</Text>
+            {elapsed >= 12 ? (
+                <Pressable onPress={() => setContinueOffline(true)} style={styles.continueButton} accessibilityRole="button">
+                    <Text style={styles.continueButtonText}>{t("continueOffline")}</Text>
+                </Pressable>
+            ) : null}
+        </View>
     );
 }
 
 function RootNavigator() {
-    const { session, profile } = useAuth();
-
-    // If not authenticated, show the non-auth stack.
-    if (!session?.access_token) {
-        return <NonAuthNavigator />;
-    }
-
-    if (!profile) {
-        return <Loader text="Signing in.." />;
-    }
-
-    // When authenticated, use a global RootStack:
-    // - "MainApp" contains your SidebarNavigator wrapping the BottomNavigator.
-    // - "ServiceExpensesScreen" (and any other global screens) is declared here.
+    const { t } = usePreferences();
+    const screenOptions = {
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.ink,
+        headerTitleStyle: { fontWeight: "700" as const },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.canvas },
+    };
     return (
-        <RootStack.Navigator
-            screenOptions={{
-                // headerShown: false,
-                headerStyle: {
-                    backgroundColor: "#212640",
-                },
-            }}
-        >
-            <RootStack.Screen
-                name="MainApp"
-                component={BottomNavigator}
-                options={{
-                    title: "Home",
-                    headerShown: false,
-                }}
-            />
-            <RootStack.Screen
-                name="ReminderScreen"
-                component={ReminderScreen}
-                options={{ title: "Reminder" }}
-            />
-            {/* <RootStack.Screen
-                name="ReportsScreen"
-                component={() => <ReportsScreen hideUIElements />}
-                options={{ title: "Reports" }}
-            /> */}
-
-            <RootStack.Screen
-                name="ReportsScreen"
-                options={{ title: "Reports" }}
-            >
-                {(props) => <ReportsScreen {...props} hideUIElements />}
-            </RootStack.Screen>
-
-            <RootStack.Screen
-                name="ServiceExpenseScreen"
-                component={ServiceExpenseScreen}
-                options={{ title: "Service Expense" }}
-            />
-            <RootStack.Screen
-                name="FuelExpenseScreen"
-                component={FuelExpenseScreen}
-                options={{ title: "Fuel Expense" }}
-            />
-            <RootStack.Screen
-                name="InsuranceExpenseScreen"
-                component={InsuranceExpenseScreen}
-                options={{ title: "Insurance Expense" }}
-            />
-            <RootStack.Screen
-                name="HeaderServiceNavigator"
-                component={HeaderServiceNavigator}
-                options={{ title: "Analitics" }}
-            />
-            <RootStack.Screen
-                name="MapScreen"
-                component={MapScreen}
-                options={{ title: "Map" }}
-            />
-            <RootStack.Screen
-                name="VehicleDetailScreen"
-                component={VehicleDetailScreen}
-                options={{ title: "Vehicle Details" }}
-            />
-            <RootStack.Screen
-                name="EditVehicleScreen"
-                component={EditVehicleScreen}
-                options={{ title: "Edit Vehicle Details", headerBackTitle: "" }}
-            />
-            <RootStack.Screen
-                name="MyProfileScreen"
-                component={MyProfileScreen}
-                options={{ title: "My Profile" }}
-            />
-            <RootStack.Screen
-                name="EditProfileScreen"
-                component={EditProfileScreen}
-                options={{ title: "Edit Profile" }}
-            />
-            <RootStack.Screen
-                name="OwnerVehiclesScreen"
-                component={OwnerVehiclesScreen}
-                options={{ title: "Your Vehicles", headerBackTitle: "Back" }}
-            />
-            <RootStack.Screen
-                name="FuelTypeScreen"
-                component={FuelTypeScreen}
-                options={{ title: "Fuel Types" }}
-            />
-
-            <RootStack.Screen
-                name="GasStationsScreen"
-                component={GasStationsScreen}
-                options={{ title: "Gas Stations" }}
-            />
-
-            {/* Add more global screens here if needed */}
+        <RootStack.Navigator screenOptions={screenOptions}>
+            <RootStack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+            <RootStack.Screen name="VehicleForm" component={VehicleFormScreen} options={({ navigation, route }) => ({ title: route.params?.vehicleId ? t("editVehicle") : t("addVehicle"), presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
+            <RootStack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ title: t("vehicleDetails") }} />
+            <RootStack.Screen name="ExpenseForm" component={ExpenseFormScreen} options={({ navigation, route }) => ({ title: route.params?.expenseId ? t("editExpense") : t("addExpense"), presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
+            <RootStack.Screen name="ReminderForm" component={ReminderFormScreen} options={({ navigation, route }) => ({ title: route.params?.reminderId ? t("editReminder") : t("addReminder"), presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
+            <RootStack.Screen name="DocumentForm" component={DocumentFormScreen} options={({ navigation, route }) => ({ title: route.params?.documentId ? t("editDocument") : t("addDocument"), presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
+            <RootStack.Screen name="Documents" component={DocumentsScreen} options={{ title: t("documents") }} />
+            <RootStack.Screen name="ProfileEdit" component={ProfileEditScreen} options={{ title: t("editProfile") }} />
+            <RootStack.Screen name="Settings" component={SettingsScreen} options={{ title: t("settings") }} />
+            <RootStack.Screen name="Nearby" component={NearbyScreen} options={{ title: t("nearby") }} />
         </RootStack.Navigator>
     );
 }
 
-function NonAuthNavigator() {
+function ModalCloseButton({ label, onPress }: { label: string; onPress: () => void }) {
     return (
-        <AuthStack.Navigator
-            initialRouteName="Login"
-            screenOptions={{
-                headerShown: false,
-                gestureEnabled: false,
-            }}
-        >
-            <AuthStack.Screen name="Login" component={LoginScreen} />
-            <AuthStack.Screen name="Register" component={RegisterScreen} />
-        </AuthStack.Navigator>
+        <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={10} onPress={onPress} style={styles.modalClose}>
+            <Ionicons name="close" size={25} color={colors.ink} />
+        </Pressable>
     );
 }
 
-export default App;
+function MainTabs() {
+    const { t } = usePreferences();
+    const icons: Record<keyof MainTabParamList, [string, string]> = {
+        Dashboard: ["grid-outline", "grid"],
+        Vehicles: ["car-outline", "car"],
+        Expenses: ["receipt-outline", "receipt"],
+        Reminders: ["notifications-outline", "notifications"],
+        More: ["ellipsis-horizontal-circle-outline", "ellipsis-horizontal-circle"],
+    };
+    const titles: Record<keyof MainTabParamList, string> = {
+        Dashboard: t("dashboard"), Vehicles: t("vehicles"), Expenses: t("expenses"), Reminders: t("reminders"), More: t("more"),
+    };
+    return (
+        <Tabs.Navigator
+            screenOptions={({ route }) => ({
+                headerStyle: { backgroundColor: colors.surface },
+                headerShadowVisible: false,
+                headerTitleStyle: { color: colors.ink, fontWeight: "800" },
+                tabBarStyle: styles.tabBar,
+                tabBarActiveTintColor: colors.primary,
+                tabBarInactiveTintColor: colors.inkMuted,
+                tabBarLabelStyle: styles.tabLabel,
+                title: titles[route.name],
+                tabBarIcon: ({ color, focused, size }) => (
+                    <Ionicons name={icons[route.name][focused ? 1 : 0] as never} color={color} size={size} />
+                ),
+            })}
+        >
+            <Tabs.Screen name="Dashboard" component={DashboardScreen} />
+            <Tabs.Screen name="Vehicles" component={VehiclesScreen} />
+            <Tabs.Screen name="Expenses" component={ExpensesScreen} />
+            <Tabs.Screen name="Reminders" component={RemindersScreen} />
+            <Tabs.Screen name="More" component={MoreScreen} />
+        </Tabs.Navigator>
+    );
+}
+
+const styles = StyleSheet.create({
+    loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.lg, backgroundColor: colors.canvas },
+    initialSync: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xxl, gap: spacing.md, backgroundColor: colors.canvas },
+    loadingMark: { width: 66, height: 66, borderRadius: 22, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    loadingTitle: { ...typography.title, color: colors.ink },
+    loadingBody: { ...typography.body, color: colors.inkMuted, textAlign: "center" },
+    elapsed: { ...typography.caption, color: colors.inkMuted },
+    continueButton: { marginTop: spacing.sm, minHeight: 48, borderRadius: 14, paddingHorizontal: spacing.xl, alignItems: "center", justifyContent: "center", backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primary },
+    continueButtonText: { ...typography.bodyStrong, color: colors.primary },
+    tabBar: { minHeight: 68, paddingTop: 7, paddingBottom: 8, backgroundColor: colors.surface, borderTopColor: colors.border },
+    tabLabel: { fontSize: 11, fontWeight: "700" },
+    modalClose: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: colors.primarySoft },
+});

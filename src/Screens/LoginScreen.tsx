@@ -1,330 +1,111 @@
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
-import {
-    View,
-    Text,
-    TextInput,
-    StyleSheet,
-    Pressable,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Keyboard,
-    TouchableWithoutFeedback,
-} from "react-native";
-import Entypo from "@expo/vector-icons/Entypo";
-import AntDesign from "@expo/vector-icons/AntDesign";
-import { useNavigation, CommonActions } from "@react-navigation/native";
-import { supabase } from "../lib/supabase";
-import { useSystem } from "../powersync/PowerSync";
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, FormField } from "../components/ui";
+import { usePreferences } from "../i18n/PreferencesProvider";
+import { useAuth } from "../providers/AuthProvider";
+import { colors, radius, spacing, typography } from "../theme/tokens";
 
-interface LoginFormInterface {
-    email: string;
-    password: string;
-}
+export default function LoginScreen({ navigation }: any) {
+    const { signIn, resetPassword, authError } = useAuth();
+    const { t } = usePreferences();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [busy, setBusy] = useState(false);
 
-function LoginScreen() {
-    const { supabaseConnector } = useSystem();
-    const navigation = useNavigation();
-    const [loginForm, setLoginForm] = useState<LoginFormInterface>({
-        email: "martigiant@gmail.com",
-        password: "Marticvet",
-        // email: "",
-        // password: "",
-    });
-
-    async function submitLoginFormHandler() {
-        const { email, password } = loginForm;
-        try {
-            // Use the PowerSync specific login method
-            await supabaseConnector.login(email, password);
-        } catch (error: any) {
-            Alert.alert(error.message);
-        } finally {
-            // setLoginForm({
-            //     email: "",
-            //     password: "",
-            // });
+    const submit = async () => {
+        if (!email.includes("@") || !password) {
+            Alert.alert(t("invalidCredentials"));
+            return;
         }
-    }
+        setBusy(true);
+        try {
+            await signIn(email, password);
+        } catch (error) {
+            Alert.alert(t("signIn"), (error as Error).message);
+        } finally {
+            setBusy(false);
+        }
+    };
 
-    function loginFormHandler(field: string, value: string) {
-        setLoginForm((oldState) => {
-            return {
-                ...oldState,
-                [field]: value,
-            };
-        });
-    }
-
-    function navigateCreateAcountHandler() {
-        // Reset the navigation stack and navigate to the Register screen
-        navigation.dispatch(
-            CommonActions.reset({
-                index: 0, // this will set the first screen in the stack (only Register screen)
-                routes: [
-                    { name: "Register" }, // replace 'Register' with your registration screen name
-                ],
-            })
-        );
-    }
+    const forgot = async () => {
+        if (!email.includes("@")) {
+            Alert.alert(t("forgotPassword"), t("invalidCredentials"));
+            return;
+        }
+        try {
+            await resetPassword(email);
+            Alert.alert(t("forgotPassword"), t("resetSent"));
+        } catch (error) {
+            Alert.alert(t("forgotPassword"), (error as Error).message);
+        }
+    };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={styles.container}
-            keyboardVerticalOffset={20}
-        >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={styles.innerKeyboardContainer}>
-                    <View style={styles.loginContainer}>
-                        <View style={styles.loginLabelContainer}>
-                            <Text style={styles.loginLabelContainerTop}>
-                                Login
-                            </Text>
-                            <Text style={styles.loginLabelContainerBottm}>
-                                Sign in to continue.
-                            </Text>
+        <LinearGradient colors={["#16274B", "#2F6BFF"]} style={styles.flex}>
+            <SafeAreaView style={styles.flex}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
+                    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+                        <View style={styles.brand}>
+                            <View style={styles.logoWrap}>
+                                <Image source={require("../../assets/AutoCareIcon.png")} style={styles.logo} />
+                            </View>
+                            <Text style={styles.appName}>{t("appName")}</Text>
+                            <Text style={styles.tagline}>{t("authWelcome")}</Text>
                         </View>
 
-                        <View style={styles.loginInformationContainer}>
-                            <Text style={styles.loginTextLabel}>
-                                Email Address
-                            </Text>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="example@domain.com"
-                                placeholderTextColor="#aaa"
-                                onChangeText={(value) =>
-                                    loginFormHandler("email", value)
-                                }
-                                value={loginForm.email}
-                                autoCorrect={false}
+                        <View style={styles.panel}>
+                            <Text style={styles.title}>{t("signIn")}</Text>
+                            <FormField
+                                label={t("email")}
+                                value={email}
+                                onChangeText={setEmail}
                                 autoCapitalize="none"
-                                clearButtonMode={"always"}
+                                autoComplete="email"
+                                keyboardType="email-address"
+                                returnKeyType="next"
                             />
-
-                            <Text style={styles.loginTextLabel}>Password</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Enter your password"
-                                placeholderTextColor="#aaa"
-                                onChangeText={(value) =>
-                                    loginFormHandler("password", value)
-                                }
-                                value={loginForm.password}
-                                secureTextEntry={true}
-                                clearButtonMode={"always"}
-                                textContentType={"oneTimeCode"}
+                            <FormField
+                                label={t("password")}
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                                autoComplete="current-password"
+                                returnKeyType="done"
+                                onSubmitEditing={submit}
                             />
-                        </View>
-
-                        <View style={styles.buttonContainer}>
-                            <Pressable
-                                onPress={submitLoginFormHandler}
-                                style={({ pressed }) =>
-                                    pressed
-                                        ? styles.pressedLoginButton
-                                        : styles.loginButton
-                                }
-                            >
-                                <Text style={styles.loginButtonText}>
-                                    Login
-                                </Text>
+                            {authError ? <Text style={styles.error}>{authError}</Text> : null}
+                            <Pressable onPress={forgot} hitSlop={8}>
+                                <Text style={styles.link}>{t("forgotPassword")}</Text>
                             </Pressable>
-
-                            <View style={styles.registerOptionContainer}>
-                                <Text style={styles.registerOuterText}>
-                                    Don't have an account?
-                                </Text>
-                                <Text
-                                    style={styles.registerInnerText}
-                                    onPress={navigateCreateAcountHandler}
-                                >
-                                    Sign Up
-                                </Text>
+                            <Button label={t("signIn")} onPress={submit} loading={busy} />
+                            <View style={styles.inline}>
+                                <Text style={styles.muted}>{t("noAccount")}</Text>
+                                <Pressable onPress={() => navigation.navigate("Register")}>
+                                    <Text style={styles.link}>{t("signUp")}</Text>
+                                </Pressable>
                             </View>
                         </View>
-
-                        <View style={styles.loginInsideContainer}>
-                            <View style={styles.loginWithContainer}>
-                                <View style={styles.dividerContainer}>
-                                    <View style={styles.line} />
-                                    <Text style={styles.text}>
-                                        OR SIGN IN WITH
-                                    </Text>
-                                    <View style={styles.line} />
-                                </View>
-
-                                <View style={styles.loginIcons}>
-                                    <View style={styles.loginIcon}>
-                                        <Entypo
-                                            name="facebook"
-                                            size={28}
-                                            color="white"
-                                        />
-                                    </View>
-
-                                    <View style={styles.loginIcon}>
-                                        <AntDesign
-                                            name="google"
-                                            size={28}
-                                            color="white"
-                                        />
-                                    </View>
-
-                                    <View style={styles.loginIcon}>
-                                        <AntDesign
-                                            name="apple1"
-                                            size={28}
-                                            color="white"
-                                        />
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 
-const whiteColor = "white";
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: "center",
-        // backgroundColor: whiteColor,
-        backgroundColor: "#212640",
-    },
-    innerKeyboardContainer: {
-        flex: 1,
-    },
-    topContainer: {},
-    loginContainer: {
-        justifyContent: "center",
-        flex: 1,
-        borderTopRightRadius: 28,
-        borderTopLeftRadius: 28,
-        paddingHorizontal: 24,
-    },
-    loginInformationContainer: {
-        height: 142,
-        width: "100%",
-        alignItems: "center",
-        justifyContent: "space-around",
-    },
-    loginTextLabel: {
-        width: "100%",
-        color: whiteColor,
-        paddingLeft: 2,
-    },
-    textInput: {
-        width: "100%",
-        color: whiteColor,
-        backgroundColor: "#4B4D5C",
-        borderRadius: 12,
-        height: 42,
-        paddingLeft: 8,
-    },
-    loginLabelContainer: {
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 24,
-    },
-    loginLabelContainerTop: {
-        fontSize: 48,
-        fontWeight: "600",
-        color: whiteColor,
-    },
-    loginLabelContainerBottm: {
-        fontSize: 16,
-        color: whiteColor,
-        fontWeight: "400",
-    },
-    buttonContainer: {
-        marginTop: 24,
-        width: "100%",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    loginButton: {
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        height: 42,
-        backgroundColor: "#4942CD",
-        borderRadius: 12,
-    },
-    pressedLoginButton: {
-        backgroundColor: "#625be7",
-        width: "100%",
-        height: 42,
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 12,
-    },
-    loginButtonText: {
-        fontSize: 28,
-        color: whiteColor,
-        fontWeight: 500,
-    },
-    loginInsideContainer: {
-        borderRadius: 12,
-    },
-    registerOptionContainer: {
-        alignItems: "center",
-        justifyContent: "space-between",
-        // width: "65%",
-        width: 232,
-        flexDirection: "row",
-        marginTop: 32,
-    },
-    registerOuterText: {
-        fontSize: 16,
-        color: "white",
-    },
-    registerInnerText: {
-        fontSize: 16,
-        // color: "#6b6e82",
-        color: "#CCCCCC",
-    },
-    loginWithContainer: {
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: 32,
-    },
-    dividerContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginVertical: 16, // Adjust for spacing
-    },
-    line: {
-        flex: 1,
-        height: 1,
-        backgroundColor: "#ccc", // Adjust for line color
-        marginHorizontal: 8, // Adjust spacing around "or"
-    },
-    loginIcons: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 8,
-        paddingTop: 16,
-    },
-    loginIcon: {
-        width: 68,
-        height: 48,
-        borderColor: "transparent",
-        borderWidth: 1,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    text: {
-        fontSize: 16,
-        color: whiteColor, // Adjust for text color
-    },
+    flex: { flex: 1 },
+    content: { flexGrow: 1, justifyContent: "center", padding: spacing.xl, gap: spacing.xxl },
+    brand: { alignItems: "center", gap: spacing.sm },
+    logoWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
+    logo: { width: 72, height: 72, resizeMode: "contain" },
+    appName: { ...typography.hero, color: colors.white },
+    tagline: { ...typography.body, color: "rgba(255,255,255,0.82)", textAlign: "center", maxWidth: 340 },
+    panel: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
+    title: { ...typography.title, color: colors.ink },
+    link: { ...typography.label, color: colors.primary },
+    muted: { ...typography.caption, color: colors.inkMuted },
+    inline: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: spacing.sm },
+    error: { ...typography.caption, color: colors.danger },
 });
-
-export default LoginScreen;

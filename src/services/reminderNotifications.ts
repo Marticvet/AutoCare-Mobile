@@ -1,0 +1,152 @@
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+import { ReminderRecord, VehicleRecord } from "../data/models";
+
+const CHANNEL_ID = "vehicle-reminders";
+const identifierFor = (reminderId: string) => `autocare-reminder-${reminderId}`;
+export const DEFAULT_REMINDER_TIME = "09:00";
+
+export const normalizeReminderTime = (value?: string | null) => {
+    const match = value?.match(/^([01]\d|2[0-3]):([0-5]\d)/);
+    return match ? `${match[1]}:${match[2]}` : DEFAULT_REMINDER_TIME;
+};
+
+export const getReminderNotificationContent = ({
+    title,
+    dueDate,
+    dueTime,
+    vehicleLabel,
+    dueLabel,
+}: {
+    title: string;
+    dueDate: string;
+    dueTime?: string | null;
+    vehicleLabel: string;
+    dueLabel: string;
+}) => ({
+    title: title.trim(),
+    body: `${vehicleLabel} · ${dueLabel}: ${dueDate} · ${normalizeReminderTime(dueTime)}`,
+});
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+    }),
+});
+
+async function ensureAndroidChannel() {
+    if (Platform.OS !== "android") return;
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+        name: "Vehicle reminders",
+        description: "Maintenance, insurance, inspection, and document reminders",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 200, 250],
+        sound: "default",
+    });
+}
+
+export async function getReminderNotificationPermission() {
+    const permission = await Notifications.getPermissionsAsync();
+    return permission.granted ? "granted" : permission.canAskAgain ? "undetermined" : "denied";
+}
+
+export async function requestReminderNotificationPermission() {
+    await ensureAndroidChannel();
+    const existing = await Notifications.getPermissionsAsync();
+    if (existing.granted) return true;
+    if (!existing.canAskAgain) return false;
+    const requested = await Notifications.requestPermissionsAsync({
+        ios: { allowAlert: true, allowBadge: false, allowSound: true },
+    });
+    return requested.granted;
+}
+
+export async function cancelReminderNotification(reminderId: string) {
+    await Notifications.cancelScheduledNotificationAsync(identifierFor(reminderId));
+}
+
+export async function scheduleReminderNotification({
+    reminderId,
+    title,
+    dueDate,
+    dueTime,
+    vehicleLabel,
+    dueLabel,
+}: {
+    reminderId: string;
+    title: string;
+    dueDate: string;
+    dueTime?: string | null;
+    vehicleLabel: string;
+    dueLabel: string;
+}) {
+    await ensureAndroidChannel();
+    await cancelReminderNotification(reminderId);
+    const normalizedTime = normalizeReminderTime(dueTime);
+    const triggerDate = new Date(`${dueDate}T${normalizedTime}:00`);
+    if (Number.isNaN(triggerDate.getTime()) || triggerDate.getTime() <= Date.now()) return null;
+
+    const content = getReminderNotificationContent({ title, dueDate, dueTime: normalizedTime, vehicleLabel, dueLabel });
+
+    return Notifications.scheduleNotificationAsync({
+        identifier: identifierFor(reminderId),
+        content: {
+            ...content,
+            sound: "default",
+            data: { kind: "vehicle-reminder", reminderId },
+        },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
+            channelId: CHANNEL_ID,
+        },
+    });
+}
+
+export async function reconcileReminderNotifications(
+    reminders: ReminderRecord[],
+    vehicles: VehicleRecord[],
+    dueLabel: string,
+    vehicleFallback: string
+) {
+    if ((await getReminderNotificationPermission()) !== "granted") return;
+    await ensureAndroidChannel();
+
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+        scheduled
+            .filter((notification) => notification.content.data?.kind === "vehicle-reminder")
+            .map((notification) => Notifications.cancelScheduledNotificationAsync(notification.identifier))
+    );
+
+    for (const reminder of reminders) {
+        if (!reminder.id || !reminder.due_date || reminder.status === "completed") continue;
+        const vehicle = vehicles.find((entry) => entry.id === reminder.vehicle_id);
+        const vehicleLabel = [vehicle?.vehicle_brand, vehicle?.vehicle_model, vehicle?.vehicle_license_plate]
+            .filter(Boolean)
+            .join(" · ") || vehicleFallback;
+        await scheduleReminderNotification({
+            reminderId: reminder.id,
+            title: reminder.title || vehicleFallback,
+            dueDate: reminder.due_date,
+            dueTime: reminder.due_time,
+            vehicleLabel,
+            dueLabel,
+        });
+    }
+}
+
+export async function sendReminderTestNotification(title: string, body: string) {
+    await ensureAndroidChannel();
+    return Notifications.scheduleNotificationAsync({
+        content: { title, body, sound: "default", data: { kind: "notification-test" } },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: 3,
+            channelId: CHANNEL_ID,
+        },
+    });
+}

@@ -1,0 +1,111 @@
+export type CountryCallingCodeOption = { value: string; label: string };
+
+// Dialling-code options are intentionally stored locally so profile editing also
+// works without a network connection.
+export const COUNTRY_CALLING_CODES: CountryCallingCodeOption[] = [
+    { value: "+1", label: "🇺🇸 🇨🇦  +1 · United States / Canada" },
+    { value: "+7", label: "🇰🇿  +7 · Kazakhstan" },
+    { value: "+20", label: "🇪🇬  +20 · Egypt" },
+    { value: "+27", label: "🇿🇦  +27 · South Africa" },
+    { value: "+30", label: "🇬🇷  +30 · Greece" },
+    { value: "+31", label: "🇳🇱  +31 · Netherlands" },
+    { value: "+32", label: "🇧🇪  +32 · Belgium" },
+    { value: "+33", label: "🇫🇷  +33 · France" },
+    { value: "+34", label: "🇪🇸  +34 · Spain" },
+    { value: "+36", label: "🇭🇺  +36 · Hungary" },
+    { value: "+39", label: "🇮🇹  +39 · Italy" },
+    { value: "+40", label: "🇷🇴  +40 · Romania" },
+    { value: "+41", label: "🇨🇭  +41 · Switzerland" },
+    { value: "+43", label: "🇦🇹  +43 · Austria" },
+    { value: "+44", label: "🇬🇧  +44 · United Kingdom" },
+    { value: "+45", label: "🇩🇰  +45 · Denmark" },
+    { value: "+46", label: "🇸🇪  +46 · Sweden" },
+    { value: "+47", label: "🇳🇴  +47 · Norway" },
+    { value: "+48", label: "🇵🇱  +48 · Poland" },
+    { value: "+49", label: "🇩🇪  +49 · Germany" },
+    { value: "+51", label: "🇵🇪  +51 · Peru" },
+    { value: "+52", label: "🇲🇽  +52 · Mexico" },
+    { value: "+53", label: "🇨🇺  +53 · Cuba" },
+    { value: "+54", label: "🇦🇷  +54 · Argentina" },
+    { value: "+55", label: "🇧🇷  +55 · Brazil" },
+    { value: "+56", label: "🇨🇱  +56 · Chile" },
+    { value: "+57", label: "🇨🇴  +57 · Colombia" },
+    { value: "+58", label: "🇻🇪  +58 · Venezuela" },
+    { value: "+60", label: "🇲🇾  +60 · Malaysia" },
+    { value: "+61", label: "🇦🇺  +61 · Australia" },
+    { value: "+62", label: "🇮🇩  +62 · Indonesia" },
+    { value: "+63", label: "🇵🇭  +63 · Philippines" },
+    { value: "+64", label: "🇳🇿  +64 · New Zealand" },
+    { value: "+65", label: "🇸🇬  +65 · Singapore" },
+    { value: "+66", label: "🇹🇭  +66 · Thailand" },
+    { value: "+81", label: "🇯🇵  +81 · Japan" },
+    { value: "+82", label: "🇰🇷  +82 · South Korea" },
+    { value: "+84", label: "🇻🇳  +84 · Vietnam" },
+    { value: "+86", label: "🇨🇳  +86 · China" },
+    { value: "+90", label: "🇹🇷  +90 · Türkiye" },
+    { value: "+91", label: "🇮🇳  +91 · India" },
+    { value: "+92", label: "🇵🇰  +92 · Pakistan" },
+    { value: "+93", label: "🇦🇫  +93 · Afghanistan" },
+    { value: "+94", label: "🇱🇰  +94 · Sri Lanka" },
+    { value: "+95", label: "🇲🇲  +95 · Myanmar" },
+    { value: "+98", label: "🇮🇷  +98 · Iran" },
+    { value: "+211", label: "🇸🇸  +211 · South Sudan" },
+    { value: "+212", label: "🇲🇦  +212 · Morocco" },
+    { value: "+213", label: "🇩🇿  +213 · Algeria" },
+    { value: "+216", label: "🇹🇳  +216 · Tunisia" },
+    { value: "+218", label: "🇱🇾  +218 · Libya" },
+    { value: "+234", label: "🇳🇬  +234 · Nigeria" },
+    { value: "+254", label: "🇰🇪  +254 · Kenya" },
+    { value: "+298", label: "🇫🇴  +298 · Faroe Islands" },
+    { value: "+351", label: "🇵🇹  +351 · Portugal" },
+    { value: "+352", label: "🇱🇺  +352 · Luxembourg" },
+    { value: "+353", label: "🇮🇪  +353 · Ireland" },
+    { value: "+354", label: "🇮🇸  +354 · Iceland" },
+    { value: "+355", label: "🇦🇱  +355 · Albania" },
+    { value: "+356", label: "🇲🇹  +356 · Malta" },
+    { value: "+357", label: "🇨🇾  +357 · Cyprus" },
+    { value: "+358", label: "🇫🇮  +358 · Finland" },
+    { value: "+359", label: "🇧🇬  +359 · Bulgaria" },
+    { value: "+370", label: "🇱🇹  +370 · Lithuania" },
+    { value: "+371", label: "🇱🇻  +371 · Latvia" },
+    { value: "+372", label: "🇪🇪  +372 · Estonia" },
+    { value: "+373", label: "🇲🇩  +373 · Moldova" },
+    { value: "+374", label: "🇦🇲  +374 · Armenia" },
+    { value: "+375", label: "🇧🇾  +375 · Belarus" },
+    { value: "+376", label: "🇦🇩  +376 · Andorra" },
+    { value: "+377", label: "🇲🇨  +377 · Monaco" },
+    { value: "+378", label: "🇸🇲  +378 · San Marino" },
+    { value: "+380", label: "🇺🇦  +380 · Ukraine" },
+    { value: "+381", label: "🇷🇸  +381 · Serbia" },
+    { value: "+382", label: "🇲🇪  +382 · Montenegro" },
+    { value: "+383", label: "🇽🇰  +383 · Kosovo" },
+    { value: "+385", label: "🇭🇷  +385 · Croatia" },
+    { value: "+386", label: "🇸🇮  +386 · Slovenia" },
+    { value: "+387", label: "🇧🇦  +387 · Bosnia and Herzegovina" },
+    { value: "+389", label: "🇲🇰  +389 · North Macedonia" },
+    { value: "+420", label: "🇨🇿  +420 · Czechia" },
+    { value: "+421", label: "🇸🇰  +421 · Slovakia" },
+    { value: "+423", label: "🇱🇮  +423 · Liechtenstein" },
+    { value: "+852", label: "🇭🇰  +852 · Hong Kong" },
+    { value: "+853", label: "🇲🇴  +853 · Macao" },
+    { value: "+886", label: "🇹🇼  +886 · Taiwan" },
+    { value: "+962", label: "🇯🇴  +962 · Jordan" },
+    { value: "+971", label: "🇦🇪  +971 · United Arab Emirates" },
+    { value: "+972", label: "🇮🇱  +972 · Israel" },
+    { value: "+974", label: "🇶🇦  +974 · Qatar" },
+];
+
+export function splitStoredPhone(phone: string, storedCountryCode?: string | null) {
+    const normalized = phone.trim().replace(/^-/u, "+");
+    const explicitCode = storedCountryCode && COUNTRY_CALLING_CODES.some((entry) => entry.value === storedCountryCode)
+        ? storedCountryCode
+        : COUNTRY_CALLING_CODES
+            .map((entry) => entry.value)
+            .sort((a, b) => b.length - a.length)
+            .find((code) => normalized.startsWith(code));
+    const countryCode = explicitCode || "+49";
+    const national = explicitCode && normalized.startsWith(explicitCode)
+        ? normalized.slice(explicitCode.length)
+        : normalized;
+    return { countryCode, nationalNumber: national.replace(/[^0-9]/gu, "") };
+}

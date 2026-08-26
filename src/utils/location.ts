@@ -1,6 +1,9 @@
+import Constants from "expo-constants";
 
-export const GOOGLE_API_KEY = 'AIzaSyB_skL-jRa4RGlIUbbYzIA0TEufwW9k0HA';
-// const GOOGLE_API_KEY = process.env.EXPO_GOOGLE_API_KEY || "";
+export const GOOGLE_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+  (Constants.expoConfig?.extra?.googleMapsApiKey as string | undefined) ||
+  "";
 
 export function getMapPreview(lat: number, lng: number) {
   const imagePreviewUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=14&size=400x200&maptype=roadmap&markers=color:red%7Clabel:S%7C${lat},${lng}&key=${GOOGLE_API_KEY}`;
@@ -20,7 +23,7 @@ export async function getAddress(lat: number, lng: number) {
   return address;
 }
 
-export const fetchStations = async (lat: 50.110924, lng: 8.682127) => {
+export const fetchStations = async (lat: number, lng: number) => {
   const radius = 5000;
   const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=gas_station&key=${GOOGLE_API_KEY}`;
 

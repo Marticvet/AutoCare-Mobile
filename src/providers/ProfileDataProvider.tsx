@@ -7,13 +7,14 @@ import React, {
 } from "react";
 import { useAuth } from "./AuthProvider";
 import { useProfile } from "../api/profiles";
-import { useVehicleList } from "../api/vehicles";
+import { useVehicle, useVehicleList } from "../api/vehicles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
-import { Profile } from "../powersync/AppSchema";
+import { Profile, Vehicle } from "../powersync/AppSchema";
 
 interface ProfileContextData {
     userProfile: Profile | null;
+    selectedVehicle: Vehicle | null;
     isProfileLoading: boolean;
     isVehiclesLoading: boolean;
     errorProfile?: any;
@@ -28,6 +29,7 @@ interface ProfileContextData {
 
 const ProfileContext = createContext<ProfileContextData>({
     userProfile: null,
+    selectedVehicle: null,
     isProfileLoading: false,
     isVehiclesLoading: false,
     refreshing: false,
@@ -41,11 +43,15 @@ const ProfileContext = createContext<ProfileContextData>({
 const ProfileDataProvider = ({ children }: PropsWithChildren) => {
     const { profile } = useAuth();
     const userId = profile?.id || "";
-
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
     const [locations, setLocations] = useState<string[]>([]);
     const [gasStations, setGasStations] = useState<string[]>([]);
-    const [userVehiclesFuelType, setUserVehiclesFuelType] = useState<string[]>([]);
+    const [userVehiclesFuelType, setUserVehiclesFuelType] = useState<string[]>(
+        []
+    );
+    const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(
+        null
+    );
     const [refreshing, setRefreshing] = useState<boolean>(false);
 
     // --- API Hooks
@@ -69,6 +75,20 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
         }
     }, [userProfileData]);
 
+    const {
+        data: vehicleData,
+        isLoading: isSelectedVehicleLoading,
+        error: errorSelectedVehicle,
+        refetch: refetchVehicle,
+    } = useVehicle(userId, userProfile?.selected_vehicle_id || "");
+
+    useEffect(() => {
+        if (vehicleData) {
+            setSelectedVehicle(vehicleData);
+        } else {
+            setSelectedVehicle(null);
+        }
+    }, [errorSelectedVehicle, isSelectedVehicleLoading, vehicleData]);
     // --- Manual refresh logic
     useEffect(() => {
         if (!refreshing) return;
@@ -77,8 +97,8 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             try {
                 await Promise.all([
                     refetchProfile(),
+                    refetchVehicle(),
                     // refetchVehicleList(),
-                    // refetchVehicle(),
                     // refetchFuelExpenses(),
                     // refetchInsuranceExpenses(),
                     // refetchServiceExpenses(),
@@ -107,6 +127,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             locations,
             gasStations,
             userVehiclesFuelType,
+            selectedVehicle,
         }),
         [
             userProfile,
@@ -118,6 +139,7 @@ const ProfileDataProvider = ({ children }: PropsWithChildren) => {
             locations,
             gasStations,
             userVehiclesFuelType,
+            selectedVehicle,
         ]
     );
 
