@@ -15,7 +15,10 @@ Deno.serve(async (request) => {
         const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
         const visionKey = Deno.env.get("GOOGLE_CLOUD_VISION_API_KEY");
         if (!url || !anonKey) throw new Error("Supabase function configuration is missing.");
-        if (!visionKey) return json({ error: "Receipt OCR is not configured yet." }, 503);
+        if (!visionKey) return json({
+            error: "Receipt scanning is not configured yet. Add the Google Cloud Vision server key and try again.",
+            code: "ocr_not_configured",
+        }, 503);
 
         const userClient = createClient(url, anonKey, {
             global: { headers: { Authorization: authorization } },
@@ -25,7 +28,10 @@ Deno.serve(async (request) => {
         if (authError || !user) return json({ error: "Invalid session" }, 401);
 
         const { imageBase64 } = await request.json() as { imageBase64?: string };
-        if (!imageBase64 || imageBase64.length > 10_000_000) return json({ error: "Use a receipt image smaller than 7 MB." }, 400);
+        if (!imageBase64 || imageBase64.length > 10_000_000) return json({
+            error: "Use a receipt image smaller than 7 MB.",
+            code: "invalid_receipt_image",
+        }, 400);
         const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(visionKey)}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -37,11 +43,20 @@ Deno.serve(async (request) => {
             }),
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload?.error?.message || "OCR provider request failed.");
+        if (!response.ok) return json({
+            error: payload?.error?.message || "The OCR provider could not process this receipt.",
+            code: "ocr_provider_error",
+        }, response.status === 429 ? 429 : 502);
         const annotation = payload?.responses?.[0];
-        if (annotation?.error?.message) throw new Error(annotation.error.message);
+        if (annotation?.error?.message) return json({
+            error: annotation.error.message,
+            code: "ocr_provider_error",
+        }, 502);
         const text = annotation?.fullTextAnnotation?.text || annotation?.textAnnotations?.[0]?.description || "";
-        if (!text.trim()) return json({ error: "No readable text was found on this receipt." }, 422);
+        if (!text.trim()) return json({
+            error: "No readable text was found. Retake the photo in good light with the full receipt visible.",
+            code: "receipt_text_not_found",
+        }, 422);
         return json(parseReceipt(text));
     } catch (error) {
         console.error("receipt-ocr failed", error);

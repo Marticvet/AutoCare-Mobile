@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import { ExpenseCategory } from "../data/models";
 import { system } from "../powersync/PowerSync";
+import { edgeFunctionErrorMessage } from "./edgeFunctionError";
 
 export type ReceiptSuggestion = {
     amount: number | null;
@@ -22,10 +23,16 @@ export async function recognizeReceipt(localUri: string): Promise<ReceiptSuggest
     const imageBase64 = await FileSystem.readAsStringAsync(optimized.uri, {
         encoding: FileSystem.EncodingType.Base64,
     });
-    const { data, error } = await system.supabaseConnector.client.functions.invoke("receipt-ocr", {
+    const { data, error, response } = await system.supabaseConnector.client.functions.invoke("receipt-ocr", {
         body: { imageBase64 },
     });
-    if (error) throw error;
+    if (error) {
+        throw new Error(await edgeFunctionErrorMessage(
+            error,
+            response,
+            "Receipt scanning is temporarily unavailable."
+        ));
+    }
     if (data?.error) throw new Error(data.error);
     return data as ReceiptSuggestion;
 }
