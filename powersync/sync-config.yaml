@@ -4,14 +4,53 @@ config:
 streams:
   user_data:
     auto_subscribe: true
+    with:
+      my_garages: |
+        SELECT garage_id
+        FROM garage_memberships
+        WHERE user_id = auth.user_id()
+          AND (status = 'pending' OR status = 'active')
+      active_garages: |
+        SELECT garage_id
+        FROM garage_memberships
+        WHERE user_id = auth.user_id()
+          AND status = 'active'
+      administered_garages: |
+        SELECT garage_id
+        FROM garage_memberships
+        WHERE user_id = auth.user_id()
+          AND status = 'active'
+          AND (role = 'owner' OR role = 'admin')
+      shared_owner_ids: |
+        SELECT garages.owner_user_id
+        FROM garages
+        INNER JOIN garage_memberships
+          ON garage_memberships.garage_id = garages.id
+        WHERE garage_memberships.user_id = auth.user_id()
+          AND garage_memberships.status = 'active'
+          AND garages.status = 'active'
+          AND (
+            garages.kind = 'family'
+            OR garages.kind = 'fleet'
+          )
     queries:
       - SELECT * FROM profiles WHERE id = auth.user_id()
-      - SELECT * FROM vehicles WHERE user_id = auth.user_id()
-      - SELECT * FROM fuel_expenses WHERE user_id = auth.user_id()
-      - SELECT * FROM insurance_expenses WHERE user_id = auth.user_id()
-      - SELECT * FROM service_expenses WHERE user_id = auth.user_id()
-      - SELECT * FROM general_expenses WHERE user_id = auth.user_id()
-      - SELECT * FROM reminders WHERE user_id = auth.user_id()
-      - SELECT * FROM vehicle_documents WHERE user_id = auth.user_id()
-      - SELECT * FROM service_parts WHERE user_id = auth.user_id()
-
+      - SELECT * FROM garages WHERE owner_user_id = auth.user_id() OR id IN my_garages
+      - SELECT * FROM garage_memberships WHERE user_id = auth.user_id() OR garage_id IN active_garages
+      - SELECT * FROM fleet_billing_accounts WHERE garage_id IN administered_garages
+      - SELECT * FROM vehicles WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM fuel_expenses WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM insurance_expenses WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM service_expenses WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM general_expenses WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM reminders WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM vehicle_documents WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM service_parts WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM charging_expenses WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM vehicle_budgets WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM trips WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM report_schedules WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM checklist_templates WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM checklist_template_items WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM checklist_runs WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids
+      - SELECT * FROM checklist_run_items WHERE user_id = auth.user_id() OR user_id IN shared_owner_ids

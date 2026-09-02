@@ -1,13 +1,21 @@
 import {
+    ChecklistRun,
+    ChecklistRunItem,
+    ChecklistTemplate,
+    ChecklistTemplateItem,
+    ReportSchedule,
     Reminder,
     ServicePart,
+    Trip,
     Vehicle,
+    VehicleBudget,
     VehicleDocument,
 } from "../powersync/AppSchema";
 
-export type ExpenseSource = "fuel" | "service" | "insurance" | "general";
+export type ExpenseSource = "fuel" | "charging" | "service" | "insurance" | "general";
 export type ExpenseCategory =
     | "fuel"
+    | "charging"
     | "service"
     | "insurance"
     | "parking"
@@ -36,6 +44,17 @@ export type ExpenseRecord = {
     fuel_type: string | null;
     full_tank: boolean;
     valid_to: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    energy_kwh: number | null;
+    price_per_kwh: number | null;
+    battery_start_percent: number | null;
+    battery_end_percent: number | null;
+    charger_type: string | null;
+    charging_speed_kw: number | null;
+    efficiency_kwh_per_100km: number | null;
+    import_batch_id: string | null;
+    external_id: string | null;
 };
 
 export type PartDraft = {
@@ -84,6 +103,17 @@ export type ExpenseDraft = {
     validFrom: string;
     validTo: string;
     provider: string;
+    latitude: string;
+    longitude: string;
+    energyKwh: string;
+    pricePerKwh: string;
+    batteryStartPercent: string;
+    batteryEndPercent: string;
+    chargerType: string;
+    chargingSpeedKw: string;
+    efficiencyKwhPer100Km: string;
+    importBatchId?: string;
+    externalId?: string;
     parts: PartDraft[];
 };
 
@@ -101,7 +131,71 @@ export type ReminderDraft = {
     repeatMonths: string;
     repeatKm: string;
     priority: string;
+    notifyBeforeMinutes: string;
+    notificationTitle: string;
+    notificationBody: string;
     notes: string;
+};
+
+export type VehicleBudgetDraft = {
+    id?: string;
+    userId: string;
+    vehicleId: string;
+    monthlyBudget: string;
+    purchasePrice: string;
+    currentValue: string;
+    purchaseDate: string;
+    annualDepreciationPercent: string;
+};
+
+export type TripDraft = {
+    id?: string;
+    userId: string;
+    vehicleId: string;
+    purpose: "business" | "personal" | "commute" | "other";
+    title: string;
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+    startOdometer: string;
+    endOdometer: string;
+    distanceKm: string;
+    origin: string;
+    destination: string;
+    reimbursableRate: string;
+    notes: string;
+};
+
+export type ReportScheduleDraft = {
+    id?: string;
+    userId: string;
+    vehicleId: string;
+    name: string;
+    frequency: "weekly" | "monthly";
+    format: "csv" | "pdf";
+    deliveryEmail: string;
+    dayOfWeek: string;
+    dayOfMonth: string;
+    deliveryTime: string;
+    timezone: string;
+    enabled: boolean;
+};
+
+export type ChecklistItemDraft = {
+    id?: string;
+    label: string;
+    required: boolean;
+    sortOrder: number;
+};
+
+export type ChecklistTemplateDraft = {
+    id?: string;
+    userId: string;
+    name: string;
+    description: string;
+    vehicleType: string;
+    items: ChecklistItemDraft[];
 };
 
 export type DocumentDraft = {
@@ -125,3 +219,10 @@ export type VehicleRecord = Vehicle;
 export type ReminderRecord = Reminder;
 export type DocumentRecord = VehicleDocument;
 export type ServicePartRecord = ServicePart;
+export type VehicleBudgetRecord = VehicleBudget;
+export type TripRecord = Trip;
+export type ReportScheduleRecord = ReportSchedule;
+export type ChecklistTemplateRecord = ChecklistTemplate;
+export type ChecklistTemplateItemRecord = ChecklistTemplateItem;
+export type ChecklistRunRecord = ChecklistRun;
+export type ChecklistRunItemRecord = ChecklistRunItem;

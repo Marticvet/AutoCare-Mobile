@@ -56,7 +56,7 @@
     <key>NSFaceIDUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>AutoCare Hub uses your location to find nearby fuel stations and workshops.</string>
+    <string>AutoCare Hub uses your location only when you choose to attach it to an expense or search for nearby services.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>AutoCare Hub accesses your photos so you can store vehicle documents and receipts.</string>
     <key>UILaunchStoryboardName</key>

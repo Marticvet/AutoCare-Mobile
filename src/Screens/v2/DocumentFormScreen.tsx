@@ -9,27 +9,27 @@ import { deleteDocument, saveDocument } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { uuid } from "../../powersync/uuid";
-import { useAuth } from "../../providers/AuthProvider";
 import { useConnectivity } from "../../providers/ConnectivityProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { captureDocument, deleteRemotePath, deleteStoredDocument, pickDocument, syncPendingDocuments } from "../../services/documentStorage";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { isIsoDate } from "../../utils/tracking";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DocumentForm">;
 
 export default function DocumentFormScreen({ route, navigation }: Props) {
     const existingId = route.params?.documentId;
     const documentId = useRef(existingId ?? uuid()).current;
-    const { userId } = useAuth();
     const { isOnline } = useConnectivity();
-    const { vehicles, selectedVehicleId } = useGarage();
+    const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
     const { t } = usePreferences();
-    const { data: documents, loading } = useDocuments(userId);
+    const { canCreateDocument } = useSubscription();
+    const { data: documents, loading } = useDocuments(dataOwnerId);
     const source = documents.find((document) => document.id === existingId);
     const [draft, setDraft] = useState<DocumentDraft>({
         id: documentId,
-        userId,
+        userId: dataOwnerId,
         vehicleId: route.params?.vehicleId || selectedVehicleId,
         title: "",
         category: "registration",
@@ -50,7 +50,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
         if (!source) return;
         setDraft({
             id: source.id ?? undefined,
-            userId,
+            userId: dataOwnerId,
             vehicleId: source.vehicle_id ?? "",
             title: source.title ?? "",
             category: source.category ?? "other",
@@ -64,10 +64,21 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
             relatedExpenseId: source.related_expense_id ?? undefined,
             relatedExpenseType: source.related_expense_type ?? undefined,
         });
-    }, [source, userId]);
+    }, [dataOwnerId, source]);
 
     const update = <K extends keyof DocumentDraft>(key: K, value: DocumentDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
+    const requireNewDocumentAccess = () => {
+        if (existingId || canCreateDocument) return true;
+        navigation.navigate("Paywall", { source: "document" });
+        return false;
+    };
+    const requireFileUploadAccess = () => {
+        if (canCreateDocument) return true;
+        navigation.navigate("Paywall", { source: "document" });
+        return false;
+    };
     const choose = async () => {
+        if (!requireFileUploadAccess()) return;
         try {
             const file = await pickDocument(documentId);
             if (!file) return;
@@ -77,7 +88,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
                 fileName: file.fileName,
                 mimeType: file.mimeType,
                 fileSize: file.fileSize,
-                storagePath: `${userId}/${current.vehicleId}/${documentId}-${file.fileName}`,
+                storagePath: `${dataOwnerId}/${current.vehicleId}/${documentId}-${file.fileName}`,
                 remoteUrl: "",
                 title: current.title || file.fileName.replace(/\.[^.]+$/, ""),
             }));
@@ -86,6 +97,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
         }
     };
     const scan = async () => {
+        if (!requireFileUploadAccess()) return;
         try {
             const file = await captureDocument(documentId);
             if (!file) return;
@@ -95,7 +107,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
                 fileName: file.fileName,
                 mimeType: file.mimeType,
                 fileSize: file.fileSize,
-                storagePath: `${userId}/${current.vehicleId}/${documentId}-${file.fileName}`,
+                storagePath: `${dataOwnerId}/${current.vehicleId}/${documentId}-${file.fileName}`,
                 remoteUrl: "",
                 title: current.title || file.fileName.replace(/\.[^.]+$/, ""),
             }));
@@ -104,6 +116,11 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
         }
     };
     const submit = async () => {
+        if (!canWrite) {
+            Alert.alert(t("documents"), "Your garage role is view-only.");
+            return;
+        }
+        if (!requireNewDocumentAccess()) return;
         if (!draft.title.trim() || !draft.vehicleId || (!draft.fileName && !existingId) || (draft.expirationDate && !isIsoDate(draft.expirationDate))) {
             Alert.alert(t("documents"), draft.expirationDate && !isIsoDate(draft.expirationDate) ? t("invalidDate") : t("requiredFields"));
             return;
@@ -112,13 +129,13 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
         try {
             const finalDraft = {
                 ...draft,
-                storagePath: draft.storagePath || (draft.fileName ? `${userId}/${draft.vehicleId}/${documentId}-${draft.fileName}` : ""),
+                storagePath: draft.storagePath || (draft.fileName ? `${dataOwnerId}/${draft.vehicleId}/${documentId}-${draft.fileName}` : ""),
             };
             await saveDocument(finalDraft);
             if (source?.storage_path && source.storage_path !== finalDraft.storagePath) {
                 await deleteRemotePath(source.storage_path, isOnline);
             }
-            if (isOnline && (hasLocalFile || !existingId)) void syncPendingDocuments(userId);
+            if (isOnline && (hasLocalFile || !existingId)) void syncPendingDocuments(dataOwnerId);
             Alert.alert(t("documentSaved"));
             navigation.goBack();
         } catch (error) {
@@ -132,7 +149,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
         {
             text: t("delete"), style: "destructive", onPress: () => void (async () => {
                 await deleteStoredDocument(source, isOnline);
-                await deleteDocument(existingId, userId);
+                await deleteDocument(existingId, dataOwnerId);
                 navigation.goBack();
             })(),
         },

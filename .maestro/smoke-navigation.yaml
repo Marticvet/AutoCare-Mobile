@@ -1,0 +1,29 @@
+appId: com.marticvet.AutoCareMobile
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${TEST_EMAIL}
+- tapOn: "Password"
+- inputText: ${TEST_PASSWORD}
+- hideKeyboard
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+- tapOn: "Vehicles"
+- assertVisible: "Vehicles"
+- tapOn: "Expenses"
+- assertVisible: "Expenses"
+- tapOn: "Reminders"
+- assertVisible: "Reminders"
+- tapOn: "More"
+- assertVisible: "Import expense history"
+- assertVisible: "Budgets & ownership"
+- assertVisible: "Trip log"
+- scrollUntilVisible:
+    element:
+      text: "Fleet checklists"
+    direction: DOWN
+- assertVisible: "Reports"
+- assertVisible: "Fleet checklists"

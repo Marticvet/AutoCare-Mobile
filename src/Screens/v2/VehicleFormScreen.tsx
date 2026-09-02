@@ -22,20 +22,22 @@ import { useVehicle } from "../../data/liveQueries";
 import { saveVehicle } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
-import { useAuth } from "../../providers/AuthProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { toNumber } from "../../utils/tracking";
 import { Brands } from "../../../types/Brands";
 import { Models } from "../../../types/Models";
 import { Trims } from "../../../types/Trims";
+import { useGarage } from "../../providers/GarageProvider";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "VehicleForm">;
 
 export default function VehicleFormScreen({ route, navigation }: Props) {
     const vehicleId = route.params?.vehicleId;
-    const { userId } = useAuth();
+    const { vehicles, dataOwnerId, canWrite } = useGarage();
+    const { canAddVehicle, loading: subscriptionLoading } = useSubscription();
     const { t, distanceUnit } = usePreferences();
-    const { data: vehicle, loading } = useVehicle(userId, vehicleId);
+    const { data: vehicle, loading } = useVehicle(dataOwnerId, vehicleId);
     const [brand, setBrand] = useState("");
     const [makeId, setMakeId] = useState("");
     const [model, setModel] = useState("");
@@ -47,7 +49,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     const [plate, setPlate] = useState("");
     const [vin, setVin] = useState("");
     const [mileage, setMileage] = useState("");
-    const [catalogMode, setCatalogMode] = useState(!vehicleId);
+    // The external catalogue is intentionally dormant until a reliable,
+    // European-focused provider is selected. Manual entry remains the only
+    // visible path and no catalogue network requests run in the background.
+    const [catalogMode] = useState(false);
     const [makes, setMakes] = useState<Brands[]>([]);
     const [models, setModels] = useState<Models[]>([]);
     const [trims, setTrims] = useState<Trims[]>([]);
@@ -211,6 +216,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
     const submit = async () => {
         const formTitle = vehicleId ? t("editVehicle") : t("addVehicle");
+        if (!canWrite) {
+            Alert.alert(formTitle, "Your garage role is view-only.");
+            return;
+        }
+        if (!vehicleId && (subscriptionLoading || !canAddVehicle(vehicles.length))) {
+            if (subscriptionLoading) Alert.alert("AutoCare Plus", "Your subscription status is still loading. Please try again.");
+            else navigation.navigate("Paywall", { source: "vehicle" });
+            return;
+        }
         if (
             !brand.trim() ||
             !model.trim() ||
@@ -242,7 +256,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                     : toNumber(mileage);
             const savedId = await saveVehicle({
                 id: vehicleId,
-                userId,
+                userId: dataOwnerId,
                 brand,
                 model,
                 trim,

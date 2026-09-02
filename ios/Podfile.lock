@@ -327,6 +327,8 @@ PODS:
   - libwebp/webp (1.5.0):
     - libwebp/sharpyuv
   - powersync-sqlite-core (0.4.2)
+  - PurchasesHybridCommon (18.32.1):
+    - RevenueCat (= 5.85.0)
   - RCT-Folly (2024.10.14.00):
     - boost
     - DoubleConversion
@@ -2035,6 +2037,7 @@ PODS:
     - React-logger
     - React-perflogger
     - React-utils (= 0.76.9)
+  - RevenueCat (5.85.0)
   - RNCAsyncStorage (1.23.1):
     - DoubleConversion
     - glog
@@ -2120,6 +2123,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNPurchases (10.8.0):
+    - PurchasesHybridCommon (= 18.32.1)
+    - React-Core
   - RNReanimated (3.16.7):
     - DoubleConversion
     - glog
@@ -2433,6 +2439,7 @@ DEPENDENCIES:
   - "RNCPicker (from `../node_modules/@react-native-picker/picker`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -2447,6 +2454,8 @@ SPEC REPOS:
     - GTMSessionFetcher
     - libwebp
     - powersync-sqlite-core
+    - PurchasesHybridCommon
+    - RevenueCat
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
@@ -2667,6 +2676,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-gesture-handler"
   RNGoogleSignin:
     :path: "../node_modules/@react-native-google-signin/google-signin"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -2726,6 +2737,7 @@ SPEC CHECKSUMS:
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   powersync-sqlite-core: a58efd88833861f0a8bb636c171bdf0ed55c9801
+  PurchasesHybridCommon: 02cad5fb69b682309baa3ad4d6dcb7836c1543e0
   RCT-Folly: ea9d9256ba7f9322ef911169a9f696e5857b9e17
   RCTDeprecation: ebe712bb05077934b16c6bf25228bdec34b64f83
   RCTRequired: ca91e5dd26b64f577b528044c962baf171c6b716
@@ -2788,10 +2800,12 @@ SPEC CHECKSUMS:
   React-utils: ed818f19ab445000d6b5c4efa9d462449326cc9f
   ReactCodegen: f853a20cc9125c5521c8766b4b49375fec20648b
   ReactCommon: 300d8d9c5cb1a6cd79a67cf5d8f91e4d477195f9
+  RevenueCat: 2dec9f71800de36af31884c3cc73e9ffb4a41786
   RNCAsyncStorage: 66991bb6672ed988a8c56289a08bf4fc3a29d4b3
   RNCPicker: 4995c384c0a33966352c70cc800012a4ee658a37
   RNGestureHandler: fffddeb8af59709c6d8de11b6461a6af63cad532
   RNGoogleSignin: f72c98f79e0b4d5e8e43799dcb8a9eeba4bef787
+  RNPurchases: b51045804245dc33137b457572d7c690cb4aca19
   RNReanimated: 2e5069649cbab2c946652d3b97589b2ae0526220
   RNScreens: 362f4c861dd155f898908d5035d97b07a3f1a9d1
   RNSVG: b889dc9c1948eeea0576a16cc405c91c37a12c19

@@ -1,18 +1,20 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Switch, Text, View } from "react-native";
-import { Button, Card, ChoiceChips, DateField, FormField, LoadingState, PresetOrCustomField, Screen, SectionHeader, TimeField } from "../../components/ui";
+import { Button, Card, DateField, FormField, LoadingState, PresetOrCustomField, Screen, SectionHeader, SelectField, TimeField } from "../../components/ui";
+import { LocationPickerField } from "../../components/LocationPickerField";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 import { useFuelLogs } from "../../data/liveQueries";
 import { DocumentDraft, ExpenseCategory, ExpenseDraft, PartDraft } from "../../data/models";
 import { deleteExpense, loadExpense, saveDocument, saveExpense } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { uuid } from "../../powersync/uuid";
-import { useAuth } from "../../providers/AuthProvider";
 import { useConnectivity } from "../../providers/ConnectivityProvider";
 import { useGarage } from "../../providers/GarageProvider";
-import { deleteStoredDocument, pickDocument, syncPendingDocuments } from "../../services/documentStorage";
+import { captureDocument, deleteStoredDocument, pickDocument, syncPendingDocuments } from "../../services/documentStorage";
+import { recognizeReceipt } from "../../services/receiptOcr";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { isIsoDate, isoDate, isoTime, toNumber } from "../../utils/tracking";
 
@@ -21,9 +23,9 @@ const blankPart = (): PartDraft => ({ name: "", partNumber: "", quantity: "1", u
 const GENERAL_CATEGORIES: ExpenseCategory[] = ["parking", "toll", "tax", "wash", "repair", "other"];
 
 export default function ExpenseFormScreen({ route, navigation }: Props) {
-    const { userId } = useAuth();
     const { isOnline } = useConnectivity();
-    const { vehicles, selectedVehicleId } = useGarage();
+    const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
+    const { canCreateDocument } = useSubscription();
     const { t, distanceUnit } = usePreferences();
     const persistedId = route.params?.expenseId;
     const expenseId = useRef(persistedId ?? uuid()).current;
@@ -33,7 +35,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         id: expenseId,
         source: route.params?.source,
         category: initialCategory,
-        userId,
+        userId: dataOwnerId,
         vehicleId: route.params?.vehicleId || selectedVehicleId,
         title: GENERAL_CATEGORIES.includes(initialCategory) ? t(initialCategory) : "",
         amount: "",
@@ -50,12 +52,22 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         validFrom: isoDate(),
         validTo: "",
         provider: "",
+        latitude: "",
+        longitude: "",
+        energyKwh: "",
+        pricePerKwh: "",
+        batteryStartPercent: "",
+        batteryEndPercent: "",
+        chargerType: "",
+        chargingSpeedKw: "",
+        efficiencyKwhPer100Km: "",
         parts: [],
     });
     const [receipt, setReceipt] = useState<Awaited<ReturnType<typeof pickDocument>>>(null);
     const [loading, setLoading] = useState(Boolean(persistedId));
     const [busy, setBusy] = useState(false);
-    const { data: fuelLogs } = useFuelLogs(userId, draft.vehicleId);
+    const [ocrBusy, setOcrBusy] = useState(false);
+    const { data: fuelLogs } = useFuelLogs(dataOwnerId, draft.vehicleId);
     const formTitle = persistedId ? t("editExpense") : t("addExpense");
     const fuelTypes = [
         { value: "gasoline", label: t("gasoline") },
@@ -84,10 +96,18 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         { value: "air-conditioning", label: t("airConditioning") },
         { value: "repair", label: t("repair") },
     ];
+    const chargerTypes = [
+        { value: "domestic-socket", label: "Domestic socket" },
+        { value: "ac-type-2", label: "AC Type 2" },
+        { value: "wallbox", label: "Wallbox" },
+        { value: "dc-ccs", label: "DC CCS" },
+        { value: "chademo", label: "CHAdeMO" },
+        { value: "tesla-supercharger", label: "Tesla Supercharger" },
+    ];
 
     useEffect(() => {
         if (!persistedId || !route.params?.source) return;
-        void loadExpense(persistedId, route.params.source, userId)
+        void loadExpense(persistedId, route.params.source, dataOwnerId)
             .then((loaded) => {
                 if (!loaded) return;
                 const convert = (value: string) => distanceUnit === "mi" && value ? String(Math.round(toNumber(value) * 0.621371)) : value;
@@ -98,7 +118,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 });
             })
             .finally(() => setLoading(false));
-    }, [distanceUnit, persistedId, route.params?.source, userId]);
+    }, [dataOwnerId, distanceUnit, persistedId, route.params?.source]);
 
     useEffect(() => {
         if (!draft.vehicleId && selectedVehicleId) setDraft((current) => ({ ...current, vehicleId: selectedVehicleId }));
@@ -116,13 +136,33 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         setDraft((current) => ({ ...current, [key]: value }));
 
     const submit = async () => {
-        const computedAmount = toNumber(draft.amount) || (draft.category === "fuel" ? toNumber(draft.litres) * toNumber(draft.pricePerLitre) : 0);
+        if (!canWrite) {
+            Alert.alert(formTitle, "Your garage role is view-only.");
+            return;
+        }
+        const computedAmount = toNumber(draft.amount)
+            || (draft.category === "fuel" ? toNumber(draft.litres) * toNumber(draft.pricePerLitre) : 0)
+            || (draft.category === "charging" ? toNumber(draft.energyKwh) * toNumber(draft.pricePerKwh) : 0);
         if (!draft.vehicleId || computedAmount <= 0 || !isIsoDate(draft.date) || (draft.category === "fuel" && !draft.fuelType.trim()) || ((draft.category === "service" || GENERAL_CATEGORIES.includes(draft.category)) && !draft.title.trim())) {
             Alert.alert(formTitle, !isIsoDate(draft.date) ? t("invalidDate") : t("requiredFields"));
             return;
         }
         if (draft.category === "fuel" && toNumber(draft.litres) <= 0) {
             Alert.alert(formTitle, t("invalidNumber"));
+            return;
+        }
+        if (draft.category === "charging" && toNumber(draft.energyKwh) <= 0) {
+            Alert.alert(formTitle, "Enter the energy delivered in kWh.");
+            return;
+        }
+        const startBattery = toNumber(draft.batteryStartPercent);
+        const endBattery = toNumber(draft.batteryEndPercent);
+        if ((draft.batteryStartPercent && (startBattery < 0 || startBattery > 100)) || (draft.batteryEndPercent && (endBattery < 0 || endBattery > 100))) {
+            Alert.alert(formTitle, "Battery percentages must be between 0 and 100.");
+            return;
+        }
+        if (receipt && !canCreateDocument) {
+            navigation.navigate("Paywall", { source: "document" });
             return;
         }
         setBusy(true);
@@ -138,21 +178,21 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
             if (receipt) {
                 const document: DocumentDraft = {
                     id: receiptId,
-                    userId,
+                    userId: dataOwnerId,
                     vehicleId: draft.vehicleId,
                     title: `${t("receipt")} · ${draft.title || t(draft.category)}`,
                     category: "receipt",
                     fileName: receipt.fileName,
                     mimeType: receipt.mimeType,
                     fileSize: receipt.fileSize,
-                    storagePath: `${userId}/${draft.vehicleId}/${receiptId}-${receipt.fileName}`,
+                    storagePath: `${dataOwnerId}/${draft.vehicleId}/${receiptId}-${receipt.fileName}`,
                     expirationDate: "",
                     notes: "",
                     relatedExpenseId: saved.id,
                     relatedExpenseType: saved.source,
                 };
                 await saveDocument(document);
-                if (isOnline) void syncPendingDocuments(userId);
+                if (isOnline) void syncPendingDocuments(dataOwnerId);
             }
             Alert.alert(t("expenseSaved"));
             navigation.goBack();
@@ -168,7 +208,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         Alert.alert(t("deleteExpenseTitle"), undefined, [
             { text: t("cancel"), style: "cancel" },
             { text: t("delete"), style: "destructive", onPress: () => void (async () => {
-                const documents = await deleteExpense({ id: persistedId, source: draft.source!, user_id: userId });
+                const documents = await deleteExpense({ id: persistedId, source: draft.source!, user_id: dataOwnerId });
                 await Promise.allSettled(documents.map((document) => deleteStoredDocument(document, isOnline)));
                 navigation.goBack();
             })() },
@@ -176,6 +216,10 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
     };
 
     const attach = async () => {
+        if (!canCreateDocument) {
+            navigation.navigate("Paywall", { source: "document" });
+            return;
+        }
         try {
             const selected = await pickDocument(receiptId);
             if (selected) setReceipt(selected);
@@ -184,12 +228,57 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         }
     };
 
+    const scanReceipt = async () => {
+        if (!canCreateDocument) {
+            navigation.navigate("Paywall", { source: "document" });
+            return;
+        }
+        try {
+            const captured = await captureDocument(receiptId);
+            if (!captured) return;
+            setReceipt(captured);
+            if (!isOnline) {
+                Alert.alert("Receipt saved", "The image is attached. OCR needs an internet connection, so you can enter the fields manually for now.");
+                return;
+            }
+            setOcrBusy(true);
+            const suggestion = await recognizeReceipt(captured.localUri);
+            const summary = [
+                suggestion.vendor && `Vendor: ${suggestion.vendor}`,
+                suggestion.amount !== null && `Amount: ${suggestion.amount.toFixed(2)}`,
+                suggestion.date && `Date: ${suggestion.date}`,
+                `Category: ${suggestion.category}`,
+            ].filter(Boolean).join("\n");
+            Alert.alert("Receipt suggestions", summary, [
+                { text: t("cancel"), style: "cancel" },
+                {
+                    text: "Apply",
+                    onPress: () => setDraft((current) => ({
+                        ...current,
+                        category: suggestion.category,
+                        title: suggestion.title || current.title,
+                        amount: suggestion.amount !== null ? String(suggestion.amount) : current.amount,
+                        date: suggestion.date || current.date,
+                        place: suggestion.vendor || current.place,
+                        paymentMethod: suggestion.paymentMethod || current.paymentMethod,
+                        provider: suggestion.category === "insurance" ? suggestion.vendor || current.provider : current.provider,
+                    })),
+                },
+            ]);
+        } catch (error) {
+            Alert.alert("Receipt OCR", `${(error as Error).message}\n\nThe receipt is still attached and you can enter the fields manually.`);
+        } finally {
+            setOcrBusy(false);
+        }
+    };
+
     if (loading) return <Screen><LoadingState /></Screen>;
     return (
         <Screen>
             <SectionHeader title={formTitle} />
             {!persistedId ? (
-                <ChoiceChips
+                <SelectField
+                    label={t("expenseType")}
                     value={draft.category}
                     onChange={(category) => setDraft((current) => ({
                         ...current,
@@ -197,7 +286,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                         title: GENERAL_CATEGORIES.includes(category) ? t(category) : "",
                         provider: "",
                     }))}
-                    options={(["fuel", "service", "insurance", "parking", "toll", "tax", "wash", "repair", "other"] as ExpenseCategory[]).map((value) => ({ value, label: t(value) }))}
+                    options={(["fuel", "charging", "service", "insurance", "parking", "toll", "tax", "wash", "repair", "other"] as ExpenseCategory[]).map((value) => ({ value, label: t(value) }))}
                 />
             ) : null}
             <Card style={styles.form}>
@@ -214,6 +303,24 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                     </>
                 ) : null}
 
+                {draft.category === "charging" ? (
+                    <>
+                        <View style={styles.columns}>
+                            <View style={styles.column}><FormField label="Energy (kWh)" value={draft.energyKwh} onChangeText={(value) => update("energyKwh", value)} keyboardType="decimal-pad" required /></View>
+                            <View style={styles.column}><FormField label="Price per kWh" value={draft.pricePerKwh} onChangeText={(value) => update("pricePerKwh", value)} keyboardType="decimal-pad" /></View>
+                        </View>
+                        <View style={styles.columns}>
+                            <View style={styles.column}><FormField label="Battery start (%)" value={draft.batteryStartPercent} onChangeText={(value) => update("batteryStartPercent", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label="Battery end (%)" value={draft.batteryEndPercent} onChangeText={(value) => update("batteryEndPercent", value)} keyboardType="decimal-pad" /></View>
+                        </View>
+                        <PresetOrCustomField label="Charger type" value={draft.chargerType} onChange={(value) => update("chargerType", value)} options={chargerTypes} placeholder="Choose charger type" />
+                        <View style={styles.columns}>
+                            <View style={styles.column}><FormField label="Charging speed (kW)" value={draft.chargingSpeedKw} onChangeText={(value) => update("chargingSpeedKw", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label="Efficiency (kWh/100 km)" value={draft.efficiencyKwhPer100Km} onChangeText={(value) => update("efficiencyKwhPer100Km", value)} keyboardType="decimal-pad" /></View>
+                        </View>
+                    </>
+                ) : null}
+
                 {draft.category === "service" ? <PresetOrCustomField label={t("serviceType")} value={draft.title} onChange={(value) => update("title", value)} options={serviceTypes} placeholder={t("selectServiceType")} required /> : null}
                 {draft.category === "insurance" ? (
                     <>
@@ -226,7 +333,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 ) : null}
                 {!["fuel", "service", "insurance"].includes(draft.category) ? <FormField label={t("title")} value={draft.title} onChangeText={(value) => update("title", value)} required /> : null}
 
-                <FormField label={t("amount")} value={draft.amount} onChangeText={(value) => update("amount", value)} keyboardType="decimal-pad" hint={draft.category === "fuel" ? `${t("optional")} — ${t("litres")} × ${t("pricePerLitre")}` : undefined} required={draft.category !== "fuel"} />
+                <FormField label={t("amount")} value={draft.amount} onChangeText={(value) => update("amount", value)} keyboardType="decimal-pad" hint={draft.category === "fuel" ? `${t("optional")} — ${t("litres")} × ${t("pricePerLitre")}` : draft.category === "charging" ? "Optional — kWh × price per kWh" : undefined} required={!['fuel', 'charging'].includes(draft.category)} />
                 {draft.category !== "insurance" ? (
                     <View style={styles.columns}>
                         <View style={styles.column}><DateField label={t("date")} value={draft.date} onChange={(value) => update("date", value)} required /></View>
@@ -234,7 +341,14 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                     </View>
                 ) : null}
                 <FormField label={`${t("odometer")} (${distanceUnit})`} value={draft.odometer} onChangeText={(value) => update("odometer", value)} keyboardType="decimal-pad" />
-                <FormField label={t("place")} value={draft.place} onChangeText={(value) => update("place", value)} />
+                <LocationPickerField
+                    label={t("place")}
+                    value={draft.place}
+                    latitude={draft.latitude}
+                    longitude={draft.longitude}
+                    onChange={(location) => setDraft((current) => ({ ...current, place: location.label, latitude: String(location.latitude), longitude: String(location.longitude) }))}
+                    onClear={() => setDraft((current) => ({ ...current, place: "", latitude: "", longitude: "" }))}
+                />
                 <PresetOrCustomField label={t("paymentMethod")} value={draft.paymentMethod} onChange={(value) => update("paymentMethod", value)} options={paymentMethods} placeholder={t("selectPaymentMethod")} />
                 <FormField label={t("notes")} value={draft.notes} onChangeText={(value) => update("notes", value)} multiline />
             </Card>
@@ -258,7 +372,12 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 </View>
             ) : null}
 
-            {!persistedId ? <Button label={receipt ? `${t("fileSelected")}: ${receipt.fileName}` : t("attachReceipt")} icon="attach-outline" variant="secondary" onPress={attach} /> : null}
+            {!persistedId ? (
+                <View style={styles.receiptActions}>
+                    <Button label={receipt ? `${t("fileSelected")}: ${receipt.fileName}` : t("attachReceipt")} icon="attach-outline" variant="secondary" onPress={attach} />
+                    <Button label="Scan receipt & suggest fields" icon="scan-outline" variant="secondary" onPress={() => void scanReceipt()} loading={ocrBusy} />
+                </View>
+            ) : null}
             <Button label={t("save")} icon="checkmark" onPress={submit} loading={busy} />
             {persistedId ? <Button label={t("delete")} icon="trash-outline" variant="danger" onPress={confirmDelete} /> : null}
         </Screen>
@@ -278,4 +397,5 @@ const styles = StyleSheet.create({
     label: { ...typography.label, color: colors.ink, marginBottom: -spacing.sm },
     switchRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     switchLabel: { ...typography.bodyStrong, color: colors.ink },
+    receiptActions: { gap: spacing.sm },
 });

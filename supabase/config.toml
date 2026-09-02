@@ -1,0 +1,20 @@
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.sync-entitlements]
+verify_jwt = true
+
+[functions.create-fleet-checkout]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.receipt-ocr]
+verify_jwt = true
+
+[functions.send-scheduled-reports]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = true

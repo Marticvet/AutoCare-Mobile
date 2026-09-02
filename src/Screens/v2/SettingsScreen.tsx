@@ -13,15 +13,18 @@ import { useConnectivity } from "../../providers/ConnectivityProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { getReminderNotificationPermission, reconcileReminderNotifications, requestReminderNotificationPermission, sendReminderTestNotification } from "../../services/reminderNotifications";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { deleteCloudAccount, exportAccountData } from "../../services/accountData";
 
 export default function SettingsScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { t, language, currency, distanceUnit, setLanguage, setCurrency, setDistanceUnit } = usePreferences();
     const { profile, session, userId, logout } = useAuth();
-    const { syncState, syncError, lastSyncedAt } = useConnectivity();
-    const { vehicles } = useGarage();
-    const { data: reminders } = useReminders(userId);
+    const { syncState, syncError, lastSyncedAt, pendingUploadCount, hasSynced, retrySync, isOnline } = useConnectivity();
+    const { vehicles, dataOwnerId } = useGarage();
+    const { data: reminders } = useReminders(dataOwnerId);
     const [notificationPermission, setNotificationPermission] = useState<"granted" | "denied" | "undetermined">("undetermined");
+    const [syncBusy, setSyncBusy] = useState(false);
+    const [accountBusy, setAccountBusy] = useState(false);
     const accountType = profile?.account_type || "individual";
 
     useEffect(() => {
@@ -77,6 +80,52 @@ export default function SettingsScreen() {
         { text: t("cancel"), style: "cancel" },
         { text: t("signOut"), style: "destructive", onPress: () => void logoutWithQueueCheck() },
     ]);
+    const retryConnection = async () => {
+        setSyncBusy(true);
+        try {
+            await retrySync();
+        } catch (error) {
+            Alert.alert(t("storageAndSync"), (error as Error).message);
+        } finally {
+            setSyncBusy(false);
+        }
+    };
+    const exportData = async () => {
+        if (!userId) return;
+        setAccountBusy(true);
+        try {
+            await exportAccountData(userId);
+        } catch (error) {
+            Alert.alert("Export account data", (error as Error).message);
+        } finally {
+            setAccountBusy(false);
+        }
+    };
+    const deleteAccount = () => Alert.alert("Delete your AutoCare account?", "This permanently removes your cloud account, vehicles, expenses, reminders, documents, trips, and checklists. Export your data first if you need a copy.", [
+        { text: t("cancel"), style: "cancel" },
+        { text: "Continue", style: "destructive", onPress: () => Alert.alert("Final confirmation", "This action cannot be undone.", [
+            { text: t("cancel"), style: "cancel" },
+            { text: "Delete permanently", style: "destructive", onPress: () => void (async () => {
+                if (!isOnline) {
+                    Alert.alert("Delete account", "Connect to the internet before deleting your cloud account.");
+                    return;
+                }
+                if (pendingUploadCount > 0) {
+                    Alert.alert("Unsynced changes", "Wait for pending changes to upload, or export your local data before deleting the account.");
+                    return;
+                }
+                setAccountBusy(true);
+                try {
+                    await deleteCloudAccount();
+                    await logout();
+                } catch (error) {
+                    Alert.alert("Delete account", (error as Error).message);
+                } finally {
+                    setAccountBusy(false);
+                }
+            })() },
+        ]) },
+    ]);
 
     return (
         <Screen>
@@ -129,6 +178,9 @@ export default function SettingsScreen() {
                     <Row icon={syncState === "synced" ? "cloud-done-outline" : "cloud-offline-outline"} title={t("localFirst")} subtitle={syncError || t("localFirstBody")} tone={syncState === "error" ? "red" : "green"} />
                     <View style={styles.divider} />
                     <Row icon="time-outline" title={t("lastSynced")} subtitle={lastSyncedAt ? lastSyncedAt.toLocaleString() : t("neverSynced")} />
+                    <View style={styles.divider} />
+                    <Row icon="cloud-upload-outline" title="Pending uploads" subtitle={`${pendingUploadCount} local change${pendingUploadCount === 1 ? "" : "s"} waiting · initial sync ${hasSynced ? "complete" : "not complete"}`} tone={pendingUploadCount ? "amber" : "green"} />
+                    <View style={styles.syncAction}><Button label="Retry connection" icon="refresh-outline" variant="secondary" onPress={() => void retryConnection()} loading={syncBusy} disabled={!isOnline} /></View>
                 </Card>
             </View>
 
@@ -148,7 +200,9 @@ export default function SettingsScreen() {
 
             <View style={styles.section}>
                 <SectionHeader title={t("dangerZone")} />
+                <Button label="Export all account data" icon="download-outline" variant="secondary" onPress={() => void exportData()} loading={accountBusy} />
                 <Button label={t("signOut")} icon="log-out-outline" variant="danger" onPress={confirmLogout} />
+                <Button label="Delete account permanently" icon="trash-outline" variant="danger" onPress={deleteAccount} disabled={accountBusy} />
                 <Text style={styles.version}>{t("version")} {Constants.expoConfig?.version ?? "1.0.0"}</Text>
             </View>
         </Screen>
@@ -160,6 +214,7 @@ const styles = StyleSheet.create({
     label: { ...typography.label, color: colors.ink },
     list: { paddingVertical: spacing.sm },
     notificationCard: { gap: spacing.md },
+    syncAction: { padding: spacing.md, paddingTop: 0 },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 54 },
     version: { ...typography.caption, color: colors.inkMuted, textAlign: "center" },
 });

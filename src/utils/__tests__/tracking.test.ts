@@ -34,7 +34,18 @@ const expense = (overrides: Partial<ExpenseRecord>): ExpenseRecord => ({
     fuel_type: null,
     full_tank: false,
     valid_to: null,
+    latitude: null,
+    longitude: null,
+    energy_kwh: null,
+    price_per_kwh: null,
+    battery_start_percent: null,
+    battery_end_percent: null,
+    charger_type: null,
+    charging_speed_kw: null,
+    import_batch_id: null,
+    external_id: null,
     ...overrides,
+    efficiency_kwh_per_100km: overrides.efficiency_kwh_per_100km ?? null,
 });
 
 const reminder = (overrides: Partial<ReminderRecord>): ReminderRecord => ({
@@ -54,6 +65,9 @@ const reminder = (overrides: Partial<ReminderRecord>): ReminderRecord => ({
     completed_at: null,
     created_at: "2026-08-01T00:00:00.000Z",
     related_document_id: null,
+    notify_before_minutes: 0,
+    notification_title: null,
+    notification_body: null,
     ...overrides,
 });
 

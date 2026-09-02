@@ -1,16 +1,17 @@
 import React, { PropsWithChildren, useEffect } from "react";
+import { useSubscription } from "../billing/SubscriptionProvider";
 import { syncPendingDocuments } from "../services/documentStorage";
-import { useAuth } from "./AuthProvider";
 import { useConnectivity } from "./ConnectivityProvider";
+import { useGarage } from "./GarageProvider";
 
 export function DocumentSyncProvider({ children }: PropsWithChildren) {
-    const { userId } = useAuth();
+    const { dataOwnerId } = useGarage();
     const { isOnline } = useConnectivity();
+    const { canCreateDocument } = useSubscription();
 
     useEffect(() => {
-        if (isOnline && userId) void syncPendingDocuments(userId);
-    }, [isOnline, userId]);
+        if (isOnline && dataOwnerId) void syncPendingDocuments(dataOwnerId, canCreateDocument);
+    }, [canCreateDocument, dataOwnerId, isOnline]);
 
     return <>{children}</>;
 }
-

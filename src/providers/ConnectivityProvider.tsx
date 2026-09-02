@@ -15,17 +15,25 @@ type ConnectivityContextValue = {
     syncState: SyncState;
     syncError?: string;
     lastSyncedAt?: Date;
+    pendingUploadCount: number;
+    hasSynced: boolean;
+    retrySync: () => Promise<void>;
 };
 
 const ConnectivityContext = createContext<ConnectivityContextValue>({
     isOnline: true,
     syncState: "connecting",
+    pendingUploadCount: 0,
+    hasSynced: false,
+    retrySync: async () => undefined,
 });
 
 export function ConnectivityProvider({ children }: PropsWithChildren) {
-    const { powersync } = useSystem();
+    const system = useSystem();
+    const { powersync } = system;
     const [isOnline, setIsOnline] = useState(true);
     const [, setStatusVersion] = useState(0);
+    const [pendingUploadCount, setPendingUploadCount] = useState(0);
 
     useEffect(
         () =>
@@ -38,10 +46,17 @@ export function ConnectivityProvider({ children }: PropsWithChildren) {
     useEffect(
         () =>
             powersync.registerListener({
-                statusChanged: () => setStatusVersion((version) => version + 1),
+                statusChanged: () => {
+                    setStatusVersion((version) => version + 1);
+                    void powersync.getUploadQueueStats().then((stats) => setPendingUploadCount(stats.count)).catch(() => undefined);
+                },
             }),
         [powersync]
     );
+
+    useEffect(() => {
+        void powersync.getUploadQueueStats().then((stats) => setPendingUploadCount(stats.count)).catch(() => undefined);
+    }, [powersync]);
 
     const status = powersync.currentStatus;
     const flow = status.dataFlowStatus;
@@ -66,6 +81,12 @@ export function ConnectivityProvider({ children }: PropsWithChildren) {
         syncState,
         syncError,
         lastSyncedAt: status.lastSyncedAt,
+        pendingUploadCount,
+        hasSynced: Boolean(status.hasSynced),
+        retrySync: async () => {
+            await powersync.disconnect();
+            await system.connect();
+        },
     };
 
     return <ConnectivityContext.Provider value={value}>{children}</ConnectivityContext.Provider>;

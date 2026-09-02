@@ -211,9 +211,9 @@ export const csvEscape = (value: unknown) => {
 };
 
 export const expensesToCsv = (expenses: ExpenseRecord[], currency: string) => {
-    const header = ["date", "category", "title", `amount_${currency}`, "odometer", "place", "payment_method", "notes"];
+    const header = ["date", "time", "category", "title", `amount_${currency}`, "odometer", "place", "latitude", "longitude", "payment_method", "litres", "price_per_litre", "energy_kwh", "price_per_kwh", "battery_start_percent", "battery_end_percent", "charger_type", "charging_speed_kw", "efficiency_kwh_per_100km", "notes"];
     const rows = expenses.map((expense) =>
-        [expense.date, expense.category, expense.title, expense.amount, expense.odometer, expense.place, expense.payment_method, expense.notes]
+        [expense.date, expense.time, expense.category, expense.title, expense.amount, expense.odometer, expense.place, expense.latitude, expense.longitude, expense.payment_method, expense.litres, expense.price_per_litre, expense.energy_kwh, expense.price_per_kwh, expense.battery_start_percent, expense.battery_end_percent, expense.charger_type, expense.charging_speed_kw, expense.efficiency_kwh_per_100km, expense.notes]
             .map(csvEscape)
             .join(",")
     );

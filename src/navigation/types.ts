@@ -11,6 +11,16 @@ export type RootStackParamList = {
     ProfileEdit: undefined;
     Settings: undefined;
     Nearby: undefined;
+    Paywall: { source?: "vehicle" | "document" | "export" | "reminder" | "insights" | "family" } | undefined;
+    Subscription: undefined;
+    Memberships: undefined;
+    DataImport: undefined;
+    Ownership: undefined;
+    Trips: undefined;
+    TripForm: { tripId?: string; vehicleId?: string } | undefined;
+    ScheduledReports: undefined;
+    Checklists: undefined;
+    ChecklistRun: { runId: string };
 };
 
 export type MainTabParamList = {

@@ -7,11 +7,14 @@ import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { useAuth } from "../../providers/AuthProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 
 export default function MoreScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { t } = usePreferences();
     const { profile, session } = useAuth();
+    const { isAdmin, hasPlus, hasFamily, hasFleet } = useSubscription();
+    const planName = isAdmin ? "Administrator" : hasFleet ? "AutoCare Fleet" : hasFamily ? "AutoCare Family" : hasPlus ? "AutoCare Plus" : "Free plan";
     const displayName = profile?.full_name || session?.user.email || t("appName");
     return (
         <Screen>
@@ -31,7 +34,21 @@ export default function MoreScreen() {
 
             <SectionHeader title={t("toolsAndServices")} />
             <Card style={styles.list}>
+                <Row icon={isAdmin ? "shield-checkmark-outline" : "sparkles-outline"} title={planName} subtitle={isAdmin ? "All premium features are unlocked" : hasPlus ? "Paid features are active" : "Compare plans and restore purchases"} tone={hasPlus ? "green" : "amber"} onPress={() => navigation.navigate("Subscription")} />
+                <View style={styles.divider} />
+                <Row icon="people-outline" title="Garage members" subtitle="Switch garages, invite drivers, and manage roles" onPress={() => navigation.navigate("Memberships")} />
+                <View style={styles.divider} />
                 <Row icon="documents-outline" title={t("documents")} subtitle={t("noDocumentsBody")} onPress={() => navigation.navigate("Documents")} />
+                <View style={styles.divider} />
+                <Row icon="cloud-upload-outline" title="Import expense history" subtitle="Fuelio, Drivvo, and spreadsheet CSV files" onPress={() => navigation.navigate("DataImport")} />
+                <View style={styles.divider} />
+                <Row icon="analytics-outline" title="Budgets & ownership" subtitle="Budget, cost/km, depreciation, and year-over-year trends" onPress={() => navigation.navigate("Ownership")} />
+                <View style={styles.divider} />
+                <Row icon="navigate-outline" title="Trip log" subtitle="Manual business, commute, and personal trips" onPress={() => navigation.navigate("Trips")} />
+                <View style={styles.divider} />
+                <Row icon="mail-outline" title="Reports" subtitle="Share now or schedule PDF and CSV delivery" onPress={() => navigation.navigate("ScheduledReports")} />
+                <View style={styles.divider} />
+                <Row icon="clipboard-outline" title="Fleet checklists" subtitle="Pre-trip checks, damage reports, and driver sign-off" tone="amber" onPress={() => navigation.navigate("Checklists")} />
                 <View style={styles.divider} />
                 <Row icon="location-outline" title={t("nearby")} subtitle={`${t("nearbyFuel")} · ${t("nearbyService")}`} tone="green" onPress={() => navigation.navigate("Nearby")} />
                 <View style={styles.divider} />

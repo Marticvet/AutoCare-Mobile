@@ -9,7 +9,6 @@ import { ReminderState } from "../../data/models";
 import { completeReminder, reopenReminder } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
-import { useAuth } from "../../providers/AuthProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { cancelReminderNotification } from "../../services/reminderNotifications";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
@@ -19,19 +18,18 @@ type Filter = "active" | "completed" | "all";
 
 export default function RemindersScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { userId } = useAuth();
     const { t, formatDistance } = usePreferences();
-    const { vehicles, selectedVehicleId } = useGarage();
+    const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
     const [scope, setScope] = useState(selectedVehicleId || "all");
     const [filter, setFilter] = useState<Filter>("active");
-    const { data: reminders, loading } = useReminders(userId, scope === "all" ? undefined : scope);
+    const { data: reminders, loading } = useReminders(dataOwnerId, scope === "all" ? undefined : scope);
     const visible = useMemo(() => reminders.filter((reminder) => filter === "all" || (filter === "completed" ? reminder.status === "completed" : reminder.status !== "completed")), [filter, reminders]);
 
     const toggle = async (id: string, completed: boolean) => {
         try {
-            if (completed) await reopenReminder(id, userId);
+            if (completed) await reopenReminder(id, dataOwnerId);
             else {
-                await completeReminder(id, userId);
+                await completeReminder(id, dataOwnerId);
                 await Promise.allSettled([cancelReminderNotification(id)]);
             }
         } catch (error) {

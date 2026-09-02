@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { ReminderRecord, VehicleRecord } from "../data/models";
 
 const CHANNEL_ID = "vehicle-reminders";
+export const REMINDER_CATEGORY_ID = "vehicleReminder";
 const identifierFor = (reminderId: string) => `autocare-reminder-${reminderId}`;
 export const DEFAULT_REMINDER_TIME = "09:00";
 
@@ -17,15 +18,19 @@ export const getReminderNotificationContent = ({
     dueTime,
     vehicleLabel,
     dueLabel,
+    notificationTitle,
+    notificationBody,
 }: {
     title: string;
     dueDate: string;
     dueTime?: string | null;
     vehicleLabel: string;
     dueLabel: string;
+    notificationTitle?: string | null;
+    notificationBody?: string | null;
 }) => ({
-    title: title.trim(),
-    body: `${vehicleLabel} · ${dueLabel}: ${dueDate} · ${normalizeReminderTime(dueTime)}`,
+    title: notificationTitle?.trim() || title.trim(),
+    body: notificationBody?.trim() || `${vehicleLabel} · ${dueLabel}: ${dueDate} · ${normalizeReminderTime(dueTime)}`,
 });
 
 Notifications.setNotificationHandler({
@@ -48,6 +53,13 @@ async function ensureAndroidChannel() {
     });
 }
 
+async function ensureNotificationCategory() {
+    await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY_ID, [
+        { identifier: "openReminder", buttonTitle: "Open" },
+        { identifier: "completeReminder", buttonTitle: "Mark complete" },
+    ]);
+}
+
 export async function getReminderNotificationPermission() {
     const permission = await Notifications.getPermissionsAsync();
     return permission.granted ? "granted" : permission.canAskAgain ? "undetermined" : "denied";
@@ -55,6 +67,7 @@ export async function getReminderNotificationPermission() {
 
 export async function requestReminderNotificationPermission() {
     await ensureAndroidChannel();
+    await ensureNotificationCategory();
     const existing = await Notifications.getPermissionsAsync();
     if (existing.granted) return true;
     if (!existing.canAskAgain) return false;
@@ -75,6 +88,9 @@ export async function scheduleReminderNotification({
     dueTime,
     vehicleLabel,
     dueLabel,
+    notifyBeforeMinutes = 0,
+    notificationTitle,
+    notificationBody,
 }: {
     reminderId: string;
     title: string;
@@ -82,14 +98,19 @@ export async function scheduleReminderNotification({
     dueTime?: string | null;
     vehicleLabel: string;
     dueLabel: string;
+    notifyBeforeMinutes?: number | null;
+    notificationTitle?: string | null;
+    notificationBody?: string | null;
 }) {
     await ensureAndroidChannel();
+    await ensureNotificationCategory();
     await cancelReminderNotification(reminderId);
     const normalizedTime = normalizeReminderTime(dueTime);
     const triggerDate = new Date(`${dueDate}T${normalizedTime}:00`);
+    triggerDate.setMinutes(triggerDate.getMinutes() - Math.max(0, notifyBeforeMinutes ?? 0));
     if (Number.isNaN(triggerDate.getTime()) || triggerDate.getTime() <= Date.now()) return null;
 
-    const content = getReminderNotificationContent({ title, dueDate, dueTime: normalizedTime, vehicleLabel, dueLabel });
+    const content = getReminderNotificationContent({ title, dueDate, dueTime: normalizedTime, vehicleLabel, dueLabel, notificationTitle, notificationBody });
 
     return Notifications.scheduleNotificationAsync({
         identifier: identifierFor(reminderId),
@@ -97,6 +118,7 @@ export async function scheduleReminderNotification({
             ...content,
             sound: "default",
             data: { kind: "vehicle-reminder", reminderId },
+            categoryIdentifier: REMINDER_CATEGORY_ID,
         },
         trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -135,6 +157,9 @@ export async function reconcileReminderNotifications(
             dueTime: reminder.due_time,
             vehicleLabel,
             dueLabel,
+            notifyBeforeMinutes: reminder.notify_before_minutes,
+            notificationTitle: reminder.notification_title,
+            notificationBody: reminder.notification_body,
         });
     }
 }

@@ -1,6 +1,6 @@
 # AutoCare Hub Mobile
 
-Offline-first vehicle management for individuals and small fleets. The Expo React Native app tracks vehicles, fuel, service, insurance, everyday expenses, replaced parts, date/mileage reminders, vehicle documents, nearby services, and reports in English, German, Bulgarian, Spanish, and French.
+Offline-first vehicle management for individuals and small fleets. The Expo React Native app tracks vehicles, fuel, EV charging, service, insurance, everyday expenses, optional locations, trips, ownership costs, reminders, documents, inspections, imports, and reports in English, German, Bulgarian, Spanish, and French.
 
 ## Architecture
 
@@ -30,24 +30,30 @@ EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 EXPO_PUBLIC_POWERSYNC_URL=
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
+EXPO_PUBLIC_REVENUECAT_TEST_API_KEY=
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=
 ```
 
 Nearby search is the only core screen that needs the Google key and live connectivity.
 
 ## Cloud migration
 
-Before using reminders, documents, general expenses, or service parts across devices:
+Before using the complete cloud-backed feature set across devices:
 
 1. Apply all SQL files in `supabase/migrations` in filename order.
 2. Validate and deploy `powersync/sync-config.yaml` in PowerSync Cloud.
-3. Follow `docs/OFFLINE_ONLINE_SETUP.md` for storage, security, and the online/offline acceptance check.
+3. Follow `docs/PRODUCTIVITY_FEATURES_SETUP.md` for Edge Function secrets, report scheduling, and the required verification checks.
+4. Follow `docs/OFFLINE_ONLINE_SETUP.md` for storage, security, and the online/offline acceptance check.
+
+For Free, Plus, Family, and Fleet memberships, follow `docs/SUBSCRIPTIONS_SETUP.md` to configure RevenueCat Test Store, shared garages, and the Stripe Fleet boundary.
 
 ## Quality checks
 
 ```bash
 npm run typecheck
-npm test -- --runInBand
+npm test -- --runInBand --watchman=false
 npm run lint
 ```
 
-The calculation tests cover due-state logic, fuel economy, totals, date validation, and CSV escaping.
+The calculation and importer tests cover due-state logic, fuel economy, totals, date validation, CSV escaping, quoted delimiters, localized numbers, Fuelio/Drivvo-style mapping, EV charging imports, and rejected rows. Optional Maestro smoke flows live in `.maestro`.

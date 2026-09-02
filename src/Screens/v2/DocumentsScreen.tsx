@@ -7,21 +7,29 @@ import { VehicleSelectField } from "../../components/VehicleSelectField";
 import { useDocuments } from "../../data/liveQueries";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
-import { useAuth } from "../../providers/AuthProvider";
 import { useConnectivity } from "../../providers/ConnectivityProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { openDocument } from "../../services/documentStorage";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { isoDate } from "../../utils/tracking";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 
 export default function DocumentsScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { userId } = useAuth();
     const { isOnline } = useConnectivity();
     const { t } = usePreferences();
-    const { vehicles, selectedVehicleId } = useGarage();
+    const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
     const [scope, setScope] = useState(selectedVehicleId || "all");
-    const { data: documents } = useDocuments(userId, scope === "all" ? undefined : scope);
+    const { data: documents } = useDocuments(dataOwnerId, scope === "all" ? undefined : scope);
+    const { canCreateDocument } = useSubscription();
+
+    const addDocument = () => {
+        if (!canCreateDocument) {
+            navigation.navigate("Paywall", { source: "document" });
+            return;
+        }
+        navigation.navigate("DocumentForm", { vehicleId: scope === "all" ? selectedVehicleId : scope });
+    };
 
     const open = async (document: (typeof documents)[number]) => {
         try {
@@ -33,7 +41,7 @@ export default function DocumentsScreen() {
 
     return (
         <Screen>
-            <PageHeader title={t("documents")} action={t("addDocument")} onAction={() => navigation.navigate("DocumentForm", { vehicleId: scope === "all" ? selectedVehicleId : scope })} />
+            <PageHeader title={t("documents")} action={t("addDocument")} onAction={addDocument} />
             <VehicleSelectField
                 vehicles={vehicles}
                 value={scope}
@@ -63,7 +71,7 @@ export default function DocumentsScreen() {
                     })}
                 </View>
             ) : (
-                <EmptyState icon="documents-outline" title={t("noDocuments")} body={t("noDocumentsBody")} action={t("addDocument")} onAction={() => navigation.navigate("DocumentForm", { vehicleId: scope === "all" ? selectedVehicleId : scope })} />
+                <EmptyState icon="documents-outline" title={t("noDocuments")} body={t("noDocumentsBody")} action={t("addDocument")} onAction={addDocument} />
             )}
         </Screen>
     );

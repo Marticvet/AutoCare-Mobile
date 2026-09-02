@@ -24,13 +24,25 @@ import LoginScreen from "./src/Screens/LoginScreen";
 import RegisterScreen from "./src/Screens/RegisterScreen";
 import { PreferencesProvider, usePreferences } from "./src/i18n/PreferencesProvider";
 import { MainTabParamList, RootStackParamList } from "./src/navigation/types";
+import { navigationRef } from "./src/navigation/navigationRef";
 import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
 import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
+import { SubscriptionProvider } from "./src/billing/SubscriptionProvider";
 import { ConnectivityProvider, useConnectivity } from "./src/providers/ConnectivityProvider";
 import { DocumentSyncProvider } from "./src/providers/DocumentSyncProvider";
 import { GarageProvider, useGarage } from "./src/providers/GarageProvider";
 import { ReminderNotificationProvider } from "./src/providers/ReminderNotificationProvider";
 import { colors, spacing, typography } from "./src/theme/tokens";
+import PaywallScreen from "./src/Screens/v2/PaywallScreen";
+import SubscriptionScreen from "./src/Screens/v2/SubscriptionScreen";
+import MembershipsScreen from "./src/Screens/v2/MembershipsScreen";
+import DataImportScreen from "./src/Screens/v2/DataImportScreen";
+import OwnershipScreen from "./src/Screens/v2/OwnershipScreen";
+import TripsScreen from "./src/Screens/v2/TripsScreen";
+import TripFormScreen from "./src/Screens/v2/TripFormScreen";
+import ScheduledReportsScreen from "./src/Screens/v2/ScheduledReportsScreen";
+import ChecklistsScreen from "./src/Screens/v2/ChecklistsScreen";
+import ChecklistRunScreen from "./src/Screens/v2/ChecklistRunScreen";
 
 type AuthStackParamList = { Login: undefined; Register: undefined };
 
@@ -59,14 +71,16 @@ export default function App() {
                     <AuthProvider>
                         <ConnectivityProvider>
                             <GarageProvider>
-                                <ReminderNotificationProvider>
-                                    <DocumentSyncProvider>
-                                        <StatusBar style="dark" />
-                                        <NavigationContainer theme={navigationTheme}>
-                                            <AppNavigator />
-                                        </NavigationContainer>
-                                    </DocumentSyncProvider>
-                                </ReminderNotificationProvider>
+                                <SubscriptionProvider>
+                                    <ReminderNotificationProvider>
+                                        <DocumentSyncProvider>
+                                            <StatusBar style="dark" />
+                                            <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+                                                <AppNavigator />
+                                            </NavigationContainer>
+                                        </DocumentSyncProvider>
+                                    </ReminderNotificationProvider>
+                                </SubscriptionProvider>
                             </GarageProvider>
                         </ConnectivityProvider>
                     </AuthProvider>
@@ -163,6 +177,30 @@ function RootNavigator() {
             <RootStack.Screen name="ProfileEdit" component={ProfileEditScreen} options={{ title: t("editProfile") }} />
             <RootStack.Screen name="Settings" component={SettingsScreen} options={{ title: t("settings") }} />
             <RootStack.Screen name="Nearby" component={NearbyScreen} options={{ title: t("nearby") }} />
+            <RootStack.Screen
+                name="Paywall"
+                component={PaywallScreen}
+                options={({ navigation }) => ({
+                    title: "AutoCare Plus",
+                    presentation: "fullScreenModal",
+                    animation: "slide_from_bottom",
+                    headerRight: () => (
+                        <ModalCloseButton
+                            label={t("close")}
+                            onPress={navigation.goBack}
+                        />
+                    ),
+                })}
+            />
+            <RootStack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: "Subscription" }} />
+            <RootStack.Screen name="Memberships" component={MembershipsScreen} options={{ title: "Garage members" }} />
+            <RootStack.Screen name="DataImport" component={DataImportScreen} options={{ title: "Import history" }} />
+            <RootStack.Screen name="Ownership" component={OwnershipScreen} options={{ title: "Ownership costs" }} />
+            <RootStack.Screen name="Trips" component={TripsScreen} options={{ title: "Trip log" }} />
+            <RootStack.Screen name="TripForm" component={TripFormScreen} options={({ navigation, route }) => ({ title: route.params?.tripId ? "Edit trip" : "Add trip", presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
+            <RootStack.Screen name="ScheduledReports" component={ScheduledReportsScreen} options={{ title: "Reports" }} />
+            <RootStack.Screen name="Checklists" component={ChecklistsScreen} options={{ title: "Fleet checklists" }} />
+            <RootStack.Screen name="ChecklistRun" component={ChecklistRunScreen} options={{ title: "Inspection" }} />
         </RootStack.Navigator>
     );
 }

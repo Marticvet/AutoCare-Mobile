@@ -5,6 +5,7 @@ import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, EmptyState, LoadingState, MetricCard, Row, Screen, SectionHeader } from "../../components/ui";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 import { useExpenses, useFuelLogs, useReminders } from "../../data/liveQueries";
 import { ExpenseCategory } from "../../data/models";
 import { usePreferences } from "../../i18n/PreferencesProvider";
@@ -16,12 +17,13 @@ import { calculateFuelEconomy, getReminderState, isoDate, totalExpenses } from "
 
 export default function DashboardScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { userId, profile } = useAuth();
+    const { profile } = useAuth();
     const { t, formatCurrency, formatDistance } = usePreferences();
-    const { vehicles, selectedVehicle, selectedVehicleId, selectVehicle, loading } = useGarage();
-    const { data: expenses, loading: expensesLoading } = useExpenses(userId);
-    const { data: reminders, loading: remindersLoading } = useReminders(userId);
-    const { data: fuelLogs, loading: fuelLogsLoading } = useFuelLogs(userId, selectedVehicleId);
+    const { vehicles, selectedVehicle, selectedVehicleId, selectVehicle, loading, dataOwnerId } = useGarage();
+    const { canCreateDocument } = useSubscription();
+    const { data: expenses, loading: expensesLoading } = useExpenses(dataOwnerId);
+    const { data: reminders, loading: remindersLoading } = useReminders(dataOwnerId);
+    const { data: fuelLogs, loading: fuelLogsLoading } = useFuelLogs(dataOwnerId, selectedVehicleId);
 
     const monthly = useMemo(() => {
         const month = isoDate().slice(0, 7);
@@ -36,6 +38,13 @@ export default function DashboardScreen() {
         [reminders, vehicles]
     );
     const economy = useMemo(() => calculateFuelEconomy(fuelLogs), [fuelLogs]);
+    const addDocument = () => {
+        if (!canCreateDocument) {
+            navigation.navigate("Paywall", { source: "document" });
+            return;
+        }
+        navigation.navigate("DocumentForm");
+    };
 
     if (loading || expensesLoading || remindersLoading || fuelLogsLoading) return <Screen><LoadingState /></Screen>;
     if (!vehicles.length) {
@@ -97,7 +106,11 @@ export default function DashboardScreen() {
                 <Card style={styles.actionCard}>
                     <QuickAction icon="receipt-outline" label={t("addExpense")} onPress={() => navigation.navigate("ExpenseForm", { category: "fuel" })} />
                     <QuickAction icon="notifications-outline" label={t("addReminder")} onPress={() => navigation.navigate("ReminderForm")} />
-                    <QuickAction icon="document-attach-outline" label={t("addDocument")} onPress={() => navigation.navigate("DocumentForm")} />
+                    <QuickAction
+                        icon="document-attach-outline"
+                        label={t("addDocument")}
+                        onPress={addDocument}
+                    />
                 </Card>
             </View>
 
@@ -132,7 +145,7 @@ function QuickAction({ icon, label, onPress }: { icon: string; label: string; on
     );
 }
 
-const expenseIcon = (category: ExpenseCategory) => ({ fuel: "water-outline", service: "construct-outline", insurance: "shield-checkmark-outline", parking: "car-outline", toll: "trail-sign-outline", tax: "document-text-outline", wash: "sparkles-outline", repair: "hammer-outline", other: "receipt-outline" }[category]);
+const expenseIcon = (category: ExpenseCategory) => ({ fuel: "water-outline", charging: "flash-outline", service: "construct-outline", insurance: "shield-checkmark-outline", parking: "car-outline", toll: "trail-sign-outline", tax: "document-text-outline", wash: "sparkles-outline", repair: "hammer-outline", other: "receipt-outline" }[category]);
 
 const styles = StyleSheet.create({
     centered: { justifyContent: "center" },

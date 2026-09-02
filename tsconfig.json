@@ -8,6 +8,10 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-, "src/powersync/PowerSync.tsx"  ]
+    "expo-env.d.ts",
+    "src/powersync/PowerSync.tsx"
+  ],
+  "exclude": [
+    "supabase/functions/**/*"
+  ]
 }

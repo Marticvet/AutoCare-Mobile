@@ -104,7 +104,7 @@ export async function uploadDocument(document: VehicleDocument, localUri: string
         .execute();
 }
 
-export async function syncPendingDocuments(userId: string) {
+export async function syncPendingDocuments(userId: string, allowUploads = true) {
     const deletionQueue = JSON.parse(
         (await AsyncStorage.getItem(DELETION_QUEUE_KEY)) ?? "[]"
     ) as string[];
@@ -120,6 +120,10 @@ export async function syncPendingDocuments(userId: string) {
         }
     }
     await AsyncStorage.setItem(DELETION_QUEUE_KEY, JSON.stringify(remainingDeletions));
+
+    // Deletions stay available after Plus expires so users retain control of
+    // their data. Only new/replacement uploads are a paid capability.
+    if (!allowUploads) return;
 
     const pending = await system.db
         .selectFrom("vehicle_documents")

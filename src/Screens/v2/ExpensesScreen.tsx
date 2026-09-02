@@ -9,17 +9,17 @@ import { useExpenses } from "../../data/liveQueries";
 import { ExpenseCategory } from "../../data/models";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
-import { useAuth } from "../../providers/AuthProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { exportExpensesCsv } from "../../services/reportExport";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { ExpensePeriod, estimateFuelCo2Kg, expenseDateRangeForPeriod, expenseTrendTotals, filterExpensesByRange, groupExpenseTotals, totalExpenses } from "../../utils/tracking";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 
 export default function ExpensesScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { userId } = useAuth();
     const { t, currency, language, formatCurrency } = usePreferences();
-    const { vehicles, selectedVehicleId } = useGarage();
+    const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
+    const { canExportReports, canUseAdvancedInsights } = useSubscription();
     const [scope, setScope] = useState(selectedVehicleId || "all");
     const [period, setPeriod] = useState<ExpensePeriod>("month");
     const [category, setCategory] = useState<ExpenseCategory | "all">("all");
@@ -27,7 +27,7 @@ export default function ExpensesScreen() {
     const [customStart, setCustomStart] = useState(initialCustomRange.start ?? initialCustomRange.end);
     const [customEnd, setCustomEnd] = useState(initialCustomRange.end);
     const vehicleId = scope === "all" ? undefined : scope;
-    const { data: allExpenses, loading } = useExpenses(userId, vehicleId);
+    const { data: allExpenses, loading } = useExpenses(dataOwnerId, vehicleId);
     const activeRange = useMemo(
         () => period === "custom"
             ? { start: customStart || null, end: customEnd }
@@ -55,6 +55,10 @@ export default function ExpensesScreen() {
     })), [dayFormatter, monthFormatter, trend]);
 
     const exportReport = async () => {
+        if (!canExportReports) {
+            navigation.navigate("Paywall", { source: "export" });
+            return;
+        }
         try {
             await exportExpensesCsv(expenses, currency);
         } catch (error) {
@@ -78,7 +82,10 @@ export default function ExpensesScreen() {
                 <SelectField<ExpensePeriod>
                     label={t("dateRange")}
                     value={period}
-                    onChange={setPeriod}
+                    onChange={(value) => {
+                        if (!canUseAdvancedInsights && value !== "month") navigation.navigate("Paywall", { source: "insights" });
+                        else setPeriod(value);
+                    }}
                     options={[
                         { value: "week", label: t("periodWeek") },
                         { value: "month", label: t("periodMonth") },
@@ -112,8 +119,11 @@ export default function ExpensesScreen() {
                 <SelectField<ExpenseCategory | "all">
                     label={t("expenseType")}
                     value={category}
-                    onChange={setCategory}
-                    options={(["all", "fuel", "service", "insurance", "parking", "toll", "tax", "wash", "repair", "other"] as const).map((value) => ({ value, label: value === "all" ? t("all") : t(value) }))}
+                    onChange={(value) => {
+                        if (!canUseAdvancedInsights && value !== "all") navigation.navigate("Paywall", { source: "insights" });
+                        else setCategory(value);
+                    }}
+                    options={(["all", "fuel", "charging", "service", "insurance", "parking", "toll", "tax", "wash", "repair", "other"] as const).map((value) => ({ value, label: value === "all" ? t("all") : t(value) }))}
                 />
             </View>
 
@@ -124,7 +134,7 @@ export default function ExpensesScreen() {
                         <Text style={styles.summaryValue}>{formatCurrency(totalExpenses(expenses))}</Text>
                     </View>
                     <View style={styles.exportButton}>
-                        <Button label={t("exportCsv")} icon="share-outline" variant="secondary" compact onPress={exportReport} disabled={!expenses.length} />
+                        <Button label={canExportReports ? t("exportCsv") : "Plus export"} icon={canExportReports ? "share-outline" : "lock-closed-outline"} variant="secondary" compact onPress={exportReport} disabled={!expenses.length} />
                     </View>
                 </View>
                 <View style={styles.emissionsRow}>
@@ -137,12 +147,20 @@ export default function ExpensesScreen() {
                 <>
                     <View style={styles.section}>
                         <SectionHeader title={t("spendingTrend")} />
-                        <Card>
-                            <TrendChart
-                                data={trendData}
-                                formatCurrency={formatCurrency}
-                            />
-                        </Card>
+                        {canUseAdvancedInsights ? (
+                            <Card>
+                                <TrendChart
+                                    data={trendData}
+                                    formatCurrency={formatCurrency}
+                                />
+                            </Card>
+                        ) : (
+                            <Card style={styles.plusGate}>
+                                <Text style={styles.plusGateTitle}>Advanced insights with Plus</Text>
+                                <Text style={styles.plusGateBody}>See spending trends, compare time ranges, and filter by category.</Text>
+                                <Button label="Explore AutoCare Plus" icon="sparkles-outline" variant="secondary" onPress={() => navigation.navigate("Paywall", { source: "insights" })} />
+                            </Card>
+                        )}
                     </View>
                     <View style={styles.section}>
                         <SectionHeader title={t("costByCategory")} />
@@ -272,7 +290,7 @@ const compactValue = (value: number) => value >= 1_000_000
         ? `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`
         : String(Math.round(value));
 
-const expenseIcon = (category: ExpenseCategory) => ({ fuel: "water-outline", service: "construct-outline", insurance: "shield-checkmark-outline", parking: "car-outline", toll: "trail-sign-outline", tax: "document-text-outline", wash: "sparkles-outline", repair: "hammer-outline", other: "receipt-outline" }[category]);
+const expenseIcon = (category: ExpenseCategory) => ({ fuel: "water-outline", charging: "flash-outline", service: "construct-outline", insurance: "shield-checkmark-outline", parking: "car-outline", toll: "trail-sign-outline", tax: "document-text-outline", wash: "sparkles-outline", repair: "hammer-outline", other: "receipt-outline" }[category]);
 
 const styles = StyleSheet.create({
     filters: { gap: spacing.md },
@@ -288,6 +306,9 @@ const styles = StyleSheet.create({
     emissionsLabel: { ...typography.caption, color: "rgba(255,255,255,0.68)", flex: 1 },
     emissionsValue: { ...typography.caption, color: "rgba(255,255,255,0.82)", textAlign: "right", flexShrink: 0 },
     section: { gap: spacing.md },
+    plusGate: { gap: spacing.sm, backgroundColor: colors.primarySoft },
+    plusGateTitle: { ...typography.bodyStrong, color: colors.ink },
+    plusGateBody: { ...typography.body, color: colors.inkMuted, marginBottom: spacing.xs },
     trend: { gap: spacing.md },
     chart: { width: "100%", height: 206 },
     trendStats: { flexDirection: "row", gap: spacing.sm },

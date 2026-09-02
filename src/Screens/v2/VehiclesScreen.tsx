@@ -2,17 +2,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import React, { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { Card, EmptyState, FormField, LoadingState, PageHeader, Row, Screen } from "../../components/ui";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { useGarage } from "../../providers/GarageProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { useSubscription } from "../../billing/SubscriptionProvider";
 
 export default function VehiclesScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { t, formatDistance } = usePreferences();
     const { vehicles, selectedVehicleId, loading } = useGarage();
+    const { canAddVehicle, loading: subscriptionLoading } = useSubscription();
     const [search, setSearch] = useState("");
     const filtered = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -20,10 +22,22 @@ export default function VehiclesScreen() {
         return vehicles.filter((vehicle) => [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate, vehicle.vehicle_identification_number].join(" ").toLowerCase().includes(query));
     }, [search, vehicles]);
 
+    const addVehicle = () => {
+        if (subscriptionLoading) {
+            Alert.alert("AutoCare Plus", "Your subscription status is still loading. Please try again in a moment.");
+            return;
+        }
+        if (!canAddVehicle(vehicles.length)) {
+            navigation.navigate("Paywall", { source: "vehicle" });
+            return;
+        }
+        navigation.navigate("VehicleForm");
+    };
+
     if (loading) return <Screen><LoadingState /></Screen>;
     return (
         <Screen>
-            <PageHeader title={t("vehicles")} action={t("addVehicle")} onAction={() => navigation.navigate("VehicleForm")} />
+            <PageHeader title={t("vehicles")} action={t("addVehicle")} onAction={addVehicle} />
             {vehicles.length ? (
                 <>
                     <FormField label={t("search")} value={search} onChangeText={setSearch} />
@@ -52,7 +66,7 @@ export default function VehiclesScreen() {
                     </Card>
                 </>
             ) : (
-                <EmptyState icon="car-sport-outline" title={t("noVehicles")} body={t("noVehiclesBody")} action={t("addVehicle")} onAction={() => navigation.navigate("VehicleForm")} />
+                <EmptyState icon="car-sport-outline" title={t("noVehicles")} body={t("noVehiclesBody")} action={t("addVehicle")} onAction={addVehicle} />
             )}
         </Screen>
     );
