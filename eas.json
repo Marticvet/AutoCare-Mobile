@@ -1,8 +1,12 @@
 {
+  "cli": {
+    "version": ">= 23.2.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
-      "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "ios": {
         "simulator": false
       },
@@ -11,10 +15,17 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
-      "distribution": "store"
+      "distribution": "store",
+      "environment": "production",
+      "autoIncrement": true,
+      "credentialsSource": "remote"
     }
   }
 }

@@ -1,4 +1,4 @@
-package com.marticvet.AutoCareMobile
+package com.marticvet.autocare
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

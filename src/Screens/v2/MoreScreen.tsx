@@ -8,6 +8,7 @@ import { RootStackParamList } from "../../navigation/types";
 import { useAuth } from "../../providers/AuthProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { useSubscription } from "../../billing/SubscriptionProvider";
+import { releaseFeatures } from "../../config/releaseFeatures";
 
 export default function MoreScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -46,7 +47,12 @@ export default function MoreScreen() {
                 <View style={styles.divider} />
                 <Row icon="navigate-outline" title="Trip log" subtitle="Manual business, commute, and personal trips" onPress={() => navigation.navigate("Trips")} />
                 <View style={styles.divider} />
-                <Row icon="mail-outline" title="Reports" subtitle="Share now or schedule PDF and CSV delivery" onPress={() => navigation.navigate("ScheduledReports")} />
+                <Row
+                    icon="mail-outline"
+                    title="Reports"
+                    subtitle={releaseFeatures.scheduledReportDelivery ? "Share now or schedule PDF and CSV delivery" : "Export and share your current expense history"}
+                    onPress={() => navigation.navigate("ScheduledReports")}
+                />
                 <View style={styles.divider} />
                 <Row icon="clipboard-outline" title="Fleet checklists" subtitle="Pre-trip checks, damage reports, and driver sign-off" tone="amber" onPress={() => navigation.navigate("Checklists")} />
                 <View style={styles.divider} />

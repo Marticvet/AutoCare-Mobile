@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Switch, Text, View } from "react-native";
 import { Button, Card, DateField, FormField, LoadingState, PresetOrCustomField, Screen, SectionHeader, SelectField, TimeField } from "../../components/ui";
 import { LocationPickerField } from "../../components/LocationPickerField";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
+import { releaseFeatures } from "../../config/releaseFeatures";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { useFuelLogs } from "../../data/liveQueries";
 import { DocumentDraft, ExpenseCategory, ExpenseDraft, PartDraft } from "../../data/models";
@@ -237,6 +238,10 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
             const captured = await captureDocument(receiptId);
             if (!captured) return;
             setReceipt(captured);
+            if (!releaseFeatures.receiptOcr) {
+                Alert.alert("Receipt saved", "The photo is attached. Enter the expense details and save when you are ready.");
+                return;
+            }
             if (!isOnline) {
                 Alert.alert("Receipt saved", "The image is attached. OCR needs an internet connection, so you can enter the fields manually for now.");
                 return;
@@ -375,7 +380,13 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
             {!persistedId ? (
                 <View style={styles.receiptActions}>
                     <Button label={receipt ? `${t("fileSelected")}: ${receipt.fileName}` : t("attachReceipt")} icon="attach-outline" variant="secondary" onPress={attach} />
-                    <Button label="Scan receipt & suggest fields" icon="scan-outline" variant="secondary" onPress={() => void scanReceipt()} loading={ocrBusy} />
+                    <Button
+                        label={releaseFeatures.receiptOcr ? "Scan receipt & suggest fields" : "Take receipt photo"}
+                        icon={releaseFeatures.receiptOcr ? "scan-outline" : "camera-outline"}
+                        variant="secondary"
+                        onPress={() => void scanReceipt()}
+                        loading={ocrBusy}
+                    />
                 </View>
             ) : null}
             <Button label={t("save")} icon="checkmark" onPress={submit} loading={busy} />

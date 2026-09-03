@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Text, View } from "react-native";
 import { Button, Card, FormField, Row, Screen, SectionHeader, SelectField, TimeField } from "../../components/ui";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { useExpenses, useReportSchedules } from "../../data/liveQueries";
+import { releaseFeatures } from "../../config/releaseFeatures";
 import { ReportScheduleDraft } from "../../data/models";
 import { deleteReportSchedule, saveReportSchedule } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
@@ -68,17 +69,21 @@ export default function ScheduledReportsScreen({ navigation }: Props) {
             <SectionHeader title="Reports" />
             <Card style={styles.intro}>
                 <Text style={styles.title}>Share now</Text>
-                <Text style={styles.body}>Export the currently stored history immediately, or configure automatic weekly and monthly delivery.</Text>
+                <Text style={styles.body}>
+                    {releaseFeatures.scheduledReportDelivery
+                        ? "Export the currently stored history immediately, or configure automatic weekly and monthly delivery."
+                        : "Export the currently stored expense history and share the CSV with any compatible app."}
+                </Text>
                 <Button label="Share current CSV" icon="share-outline" variant="secondary" onPress={() => canExportReports ? void exportExpensesCsv(expenses, currency) : navigation.navigate("Paywall", { source: "export" })} />
             </Card>
-            <SectionHeader title="Automatic delivery" />
-            {!canExportReports ? (
+            {releaseFeatures.scheduledReportDelivery ? <SectionHeader title="Automatic delivery" /> : null}
+            {releaseFeatures.scheduledReportDelivery && !canExportReports ? (
                 <Card style={styles.intro}>
                     <Text style={styles.title}>Scheduled reports are included with Plus</Text>
                     <Text style={styles.body}>Free accounts keep all expense tracking. Plus adds automatic PDF or CSV delivery.</Text>
                     <Button label="Explore AutoCare Plus" icon="sparkles-outline" onPress={() => navigation.navigate("Paywall", { source: "export" })} />
                 </Card>
-            ) : (
+            ) : releaseFeatures.scheduledReportDelivery ? (
                 <Card style={styles.form}>
                     <FormField label="Report name" value={draft.name} onChangeText={(value) => update("name", value)} required />
                     <SelectField label="Vehicle" value={draft.vehicleId || "__all__"} onChange={(value) => update("vehicleId", value === "__all__" ? "" : value)} placeholder="All vehicles" options={[{ value: "__all__", label: "All vehicles" }, ...vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))]} />
@@ -90,8 +95,8 @@ export default function ScheduledReportsScreen({ navigation }: Props) {
                     <Text style={styles.hint}>Timezone: {draft.timezone}</Text>
                     <Button label="Schedule report" icon="calendar-outline" onPress={() => void save()} loading={busy} />
                 </Card>
-            )}
-            {schedules.length ? (
+            ) : null}
+            {releaseFeatures.scheduledReportDelivery && schedules.length ? (
                 <>
                     <SectionHeader title="Active schedules" />
                     <Card style={styles.list}>

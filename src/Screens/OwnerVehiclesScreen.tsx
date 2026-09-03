@@ -310,7 +310,7 @@ export function OwnerVehiclesScreen() {
 
                                         <View style={styles.textInputContainer}>
                                             <AntDesign
-                                                name="search1"
+                                name="search"
                                                 size={20}
                                                 color="#484747"
                                             />

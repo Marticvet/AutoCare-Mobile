@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Linking, StyleSheet, Text, View } from "react-native";
 import { useSubscription } from "../../billing/SubscriptionProvider";
+import { releaseFeatures } from "../../config/releaseFeatures";
 import { Button, Card, ChoiceChips, FormField, LoadingState, Row, Screen, SectionHeader, SelectField } from "../../components/ui";
 import { useFleetBillingAccount, useGarageMemberships, useGarages, useMyPendingGarageInvitations } from "../../data/liveQueries";
 import { RootStackParamList } from "../../navigation/types";
@@ -232,18 +233,20 @@ export default function MembershipsScreen({ navigation }: Props) {
                 </View>
             ) : null}
 
-            <View style={styles.section}>
-                <SectionHeader title="Fleet" />
-                <Card style={styles.fleetCard}>
-                    <Text style={styles.upgradeTitle}>{activeGarage?.kind === "fleet" || hasFleet ? "Fleet workspace" : "Need a business workspace?"}</Text>
-                    <Text style={styles.upgradeBody}>
-                        {fleetAccount
-                            ? `${fleetAccount.licensed_vehicles} vehicle licenses · ${fleetAccount.licensed_members} member licenses · ${fleetAccount.status}`
-                            : "Fleet billing is handled on the web with vehicle and team-member licenses."}
-                    </Text>
-                    <Button label={fleetAccount ? "Manage Fleet billing" : "Learn about AutoCare Fleet"} icon="open-outline" variant="secondary" onPress={() => void openFleet()} />
-                </Card>
-            </View>
+            {releaseFeatures.fleetBilling ? (
+                <View style={styles.section}>
+                    <SectionHeader title="Fleet" />
+                    <Card style={styles.fleetCard}>
+                        <Text style={styles.upgradeTitle}>{activeGarage?.kind === "fleet" || hasFleet ? "Fleet workspace" : "Need a business workspace?"}</Text>
+                        <Text style={styles.upgradeBody}>
+                            {fleetAccount
+                                ? `${fleetAccount.licensed_vehicles} vehicle licenses · ${fleetAccount.licensed_members} member licenses · ${fleetAccount.status}`
+                                : "Fleet billing is handled on the web with vehicle and team-member licenses."}
+                        </Text>
+                        <Button label={fleetAccount ? "Manage Fleet billing" : "Learn about AutoCare Fleet"} icon="open-outline" variant="secondary" onPress={() => void openFleet()} />
+                    </Card>
+                </View>
+            ) : null}
         </Screen>
     );
 }

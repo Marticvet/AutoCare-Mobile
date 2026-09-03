@@ -1,5 +1,12 @@
 import { ExpenseCategory, ExpenseSource } from "../data/models";
 
+export type AuthStackParamList = {
+    Login: undefined;
+    Register: undefined;
+    ForgotPassword: { email?: string } | undefined;
+    ResetPassword: undefined;
+};
+
 export type RootStackParamList = {
     Main: undefined;
     VehicleForm: { vehicleId?: string } | undefined;

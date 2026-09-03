@@ -8,7 +8,7 @@ import { useAuth } from "../providers/AuthProvider";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 export default function LoginScreen({ navigation }: any) {
-    const { signIn, resetPassword, authError } = useAuth();
+    const { signIn, authError } = useAuth();
     const { t } = usePreferences();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -26,19 +26,6 @@ export default function LoginScreen({ navigation }: any) {
             Alert.alert(t("signIn"), (error as Error).message);
         } finally {
             setBusy(false);
-        }
-    };
-
-    const forgot = async () => {
-        if (!email.includes("@")) {
-            Alert.alert(t("forgotPassword"), t("invalidCredentials"));
-            return;
-        }
-        try {
-            await resetPassword(email);
-            Alert.alert(t("forgotPassword"), t("resetSent"));
-        } catch (error) {
-            Alert.alert(t("forgotPassword"), (error as Error).message);
         }
     };
 
@@ -76,7 +63,11 @@ export default function LoginScreen({ navigation }: any) {
                                 onSubmitEditing={submit}
                             />
                             {authError ? <Text style={styles.error}>{authError}</Text> : null}
-                            <Pressable onPress={forgot} hitSlop={8}>
+                            <Pressable
+                                onPress={() => navigation.navigate("ForgotPassword", { email: email.trim() })}
+                                hitSlop={8}
+                                accessibilityRole="button"
+                            >
                                 <Text style={styles.link}>{t("forgotPassword")}</Text>
                             </Pressable>
                             <Button label={t("signIn")} onPress={submit} loading={busy} />

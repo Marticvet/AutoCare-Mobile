@@ -8,9 +8,10 @@ import React, {
     useMemo,
     useState,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Linking } from "react-native";
 import { Profile } from "../powersync/AppSchema";
 import { useSystem } from "../powersync/PowerSync";
+import { parsePasswordRecoveryLink } from "../utils/passwordRecoveryLink";
 
 type RegistrationInput = { email: string; password: string; fullName: string };
 
@@ -20,10 +21,15 @@ type AuthData = {
     userId: string;
     loading: boolean;
     authError: string | null;
+    isPasswordRecovery: boolean;
+    passwordRecoveryLoading: boolean;
+    passwordRecoveryError: string | null;
     isAuthenticated: boolean;
     signIn: (email: string, password: string) => Promise<void>;
     signUp: (input: RegistrationInput) => Promise<{ needsVerification: boolean }>;
     resetPassword: (email: string) => Promise<void>;
+    completePasswordRecovery: (newPassword: string) => Promise<void>;
+    cancelPasswordRecovery: () => Promise<void>;
     changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
     logout: () => Promise<void>;
     refreshProfile: () => Promise<void>;
@@ -35,10 +41,15 @@ const AuthContext = createContext<AuthData>({
     userId: "",
     loading: true,
     authError: null,
+    isPasswordRecovery: false,
+    passwordRecoveryLoading: false,
+    passwordRecoveryError: null,
     isAuthenticated: false,
     signIn: async () => undefined,
     signUp: async () => ({ needsVerification: false }),
     resetPassword: async () => undefined,
+    completePasswordRecovery: async () => undefined,
+    cancelPasswordRecovery: async () => undefined,
     changePassword: async () => undefined,
     logout: async () => undefined,
     refreshProfile: async () => undefined,
@@ -51,7 +62,51 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
+    const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+    const [passwordRecoveryLoading, setPasswordRecoveryLoading] = useState(false);
+    const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
     const userId = session?.user.id ?? "";
+
+    const consumePasswordRecoveryUrl = useCallback(
+        async (url: string) => {
+            const recovery = parsePasswordRecoveryLink(url);
+            if (recovery.kind === "ignore") return false;
+
+            setIsPasswordRecovery(true);
+            setPasswordRecoveryError(null);
+
+            if (recovery.kind === "error") {
+                setPasswordRecoveryError(recovery.message);
+                return true;
+            }
+
+            setPasswordRecoveryLoading(true);
+            try {
+                const result = recovery.kind === "session"
+                    ? await supabaseConnector.client.auth.setSession({
+                        access_token: recovery.accessToken,
+                        refresh_token: recovery.refreshToken,
+                    })
+                    : recovery.kind === "code"
+                        ? await supabaseConnector.client.auth.exchangeCodeForSession(recovery.code)
+                        : await supabaseConnector.client.auth.verifyOtp({
+                            token_hash: recovery.tokenHash,
+                            type: "recovery",
+                        });
+
+                if (result.error) throw result.error;
+                if (!result.data.session) throw new Error("The password reset session could not be created.");
+                setSession(result.data.session);
+                return true;
+            } catch (error) {
+                setPasswordRecoveryError((error as Error).message);
+                return true;
+            } finally {
+                setPasswordRecoveryLoading(false);
+            }
+        },
+        [supabaseConnector]
+    );
 
     const refreshProfile = useCallback(async () => {
         if (!userId) {
@@ -71,11 +126,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, [supabaseConnector]);
 
     useEffect(() => {
+        const subscription = Linking.addEventListener("url", ({ url }) => {
+            void consumePasswordRecoveryUrl(url);
+        });
+        return () => subscription.remove();
+    }, [consumePasswordRecoveryUrl]);
+
+    useEffect(() => {
         let mounted = true;
 
         void (async () => {
             try {
                 await system.initDatabase();
+                const initialUrl = await Linking.getInitialURL();
+                if (initialUrl) await consumePasswordRecoveryUrl(initialUrl);
                 const { data, error } = await supabaseConnector.client.auth.getSession();
                 if (error) throw error;
                 if (mounted) setSession(data.session);
@@ -87,8 +151,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
             }
         })();
 
-        const { data: listener } = supabaseConnector.client.auth.onAuthStateChange((_event, nextSession) => {
+        const { data: listener } = supabaseConnector.client.auth.onAuthStateChange((event, nextSession) => {
             if (!mounted) return;
+            if (event === "PASSWORD_RECOVERY") {
+                setIsPasswordRecovery(true);
+                setPasswordRecoveryError(null);
+            }
             setSession(nextSession);
             setAuthError(null);
             if (nextSession) void system.connect().catch(() => undefined);
@@ -99,7 +167,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             mounted = false;
             listener.subscription.unsubscribe();
         };
-    }, [system, supabaseConnector]);
+    }, [consumePasswordRecoveryUrl, system, supabaseConnector]);
 
     useEffect(() => {
         if (!userId) return;
@@ -194,12 +262,38 @@ export function AuthProvider({ children }: PropsWithChildren) {
         async (email: string) => {
             const { error } = await supabaseConnector.client.auth.resetPasswordForEmail(
                 email.trim().toLowerCase(),
-                { redirectTo: "myapp://reset-password" }
+                { redirectTo: "autocare://reset-password" }
             );
             if (error) throw error;
         },
         [supabaseConnector]
     );
+
+    const completePasswordRecovery = useCallback(
+        async (newPassword: string) => {
+            setPasswordRecoveryError(null);
+            const { error } = await supabaseConnector.client.auth.updateUser({ password: newPassword });
+            if (error) {
+                setPasswordRecoveryError(error.message);
+                throw error;
+            }
+            setIsPasswordRecovery(false);
+            setPasswordRecoveryLoading(false);
+        },
+        [supabaseConnector]
+    );
+
+    const cancelPasswordRecovery = useCallback(async () => {
+        try {
+            await supabaseConnector.client.auth.signOut({ scope: "local" });
+        } finally {
+            setSession(null);
+            setProfile(null);
+            setIsPasswordRecovery(false);
+            setPasswordRecoveryLoading(false);
+            setPasswordRecoveryError(null);
+        }
+    }, [supabaseConnector]);
 
     const changePassword = useCallback(
         async (currentPassword: string, newPassword: string) => {
@@ -232,15 +326,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
             userId,
             loading,
             authError,
+            isPasswordRecovery,
+            passwordRecoveryLoading,
+            passwordRecoveryError,
             isAuthenticated: Boolean(session),
             signIn,
             signUp,
             resetPassword,
+            completePasswordRecovery,
+            cancelPasswordRecovery,
             changePassword,
             logout,
             refreshProfile,
         }),
-        [session, profile, userId, loading, authError, signIn, signUp, resetPassword, changePassword, logout, refreshProfile]
+        [session, profile, userId, loading, authError, isPasswordRecovery, passwordRecoveryLoading, passwordRecoveryError, signIn, signUp, resetPassword, completePasswordRecovery, cancelPasswordRecovery, changePassword, logout, refreshProfile]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

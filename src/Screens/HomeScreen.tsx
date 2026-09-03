@@ -137,7 +137,7 @@ const HomeScreen = () => {
                     Welcome Back, {userProfile?.first_name}!
                 </Text>
                 <Text style={styles.headerSubtitle}>
-                    Keep track of your car's health
+                    Keep track of your car’s health
                 </Text>
             </View>
 

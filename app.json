@@ -5,35 +5,64 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/AutoCareIcon.png",
-    "scheme": "myapp",
+    "scheme": "autocare",
     "newArchEnabled": true,
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.marticvet.AutoCareMobile",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.marticvet.autocare",
+      "buildNumber": "1",
       "userInterfaceStyle": "light",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "We need access to your photo library to let you upload a profile picture.",
         "NSLocationWhenInUseUsageDescription": "AutoCare Hub uses your location only when you choose to attach it to an expense or search for nearby services."
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1", "0A2A.1", "3B52.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": ["35F9.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": ["E174.1", "85F4.1"]
+          }
+        ]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/AutoCareIcon.png",
-        "backgroundColor": "#ffffff",
-        "userInterfaceStyle": "light"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
-      "package": "com.marticvet.AutoCareMobile",
+      "package": "com.marticvet.autocare",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
       "permissions": [
         "com.android.vending.BILLING",
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/AutoCareIcon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
@@ -51,17 +80,15 @@
         }
       ],
       [
-        "@journeyapps/react-native-quick-sqlite",
+        "./plugins/withQuickSQLiteUseFrameworks",
         {
           "staticLibrary": true
         }
       ],
+      "./plugins/withLocalOnlyNotifications",
       "expo-notifications",
       "expo-secure-store"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "328791db-8e15-4bb1-928d-dddadb59567e"

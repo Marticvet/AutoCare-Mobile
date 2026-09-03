@@ -22,8 +22,10 @@ import VehicleFormScreen from "./src/Screens/v2/VehicleFormScreen";
 import VehiclesScreen from "./src/Screens/v2/VehiclesScreen";
 import LoginScreen from "./src/Screens/LoginScreen";
 import RegisterScreen from "./src/Screens/RegisterScreen";
+import ForgotPasswordScreen from "./src/Screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "./src/Screens/ResetPasswordScreen";
 import { PreferencesProvider, usePreferences } from "./src/i18n/PreferencesProvider";
-import { MainTabParamList, RootStackParamList } from "./src/navigation/types";
+import { AuthStackParamList, MainTabParamList, RootStackParamList } from "./src/navigation/types";
 import { navigationRef } from "./src/navigation/navigationRef";
 import { PowerSyncProvider } from "./src/powersync/PowerSyncProvider";
 import { AuthProvider, useAuth } from "./src/providers/AuthProvider";
@@ -43,8 +45,6 @@ import TripFormScreen from "./src/Screens/v2/TripFormScreen";
 import ScheduledReportsScreen from "./src/Screens/v2/ScheduledReportsScreen";
 import ChecklistsScreen from "./src/Screens/v2/ChecklistsScreen";
 import ChecklistRunScreen from "./src/Screens/v2/ChecklistRunScreen";
-
-type AuthStackParamList = { Login: undefined; Register: undefined };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -91,7 +91,7 @@ export default function App() {
 }
 
 function AppNavigator() {
-    const { session, loading } = useAuth();
+    const { session, loading, isPasswordRecovery } = useAuth();
     const { ready, t } = usePreferences();
 
     if (loading || !ready) {
@@ -104,11 +104,20 @@ function AppNavigator() {
         );
     }
 
+    if (isPasswordRecovery) {
+        return (
+            <AuthStack.Navigator key="password-recovery" screenOptions={{ headerShown: false, gestureEnabled: false }}>
+                <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+            </AuthStack.Navigator>
+        );
+    }
+
     if (!session) {
         return (
             <AuthStack.Navigator screenOptions={{ headerShown: false, gestureEnabled: false }}>
                 <AuthStack.Screen name="Login" component={LoginScreen} />
                 <AuthStack.Screen name="Register" component={RegisterScreen} />
+                <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             </AuthStack.Navigator>
         );
     }

@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { ExpenseRecord } from "../data/models";
 import { expensesToCsv, isoDate } from "../utils/tracking";
@@ -12,4 +12,3 @@ export async function exportExpensesCsv(expenses: ExpenseRecord[], currency: str
     await Sharing.shareAsync(path, { mimeType: "text/csv", dialogTitle: "AutoCare expense report" });
     return path;
 }
-
