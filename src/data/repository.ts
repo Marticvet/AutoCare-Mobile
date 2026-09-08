@@ -4,19 +4,30 @@ import {
     ExpenseRecord,
     ExpenseSource,
     ChecklistTemplateDraft,
+    ChecklistRunItemRecord,
+    ChecklistRunRecord,
+    ChecklistTemplateItemRecord,
+    ChecklistTemplateRecord,
     ReportScheduleDraft,
     ReminderDraft,
     TripDraft,
+    TripRecord,
     VehicleBudgetDraft,
     VehicleDraft,
 } from "./models";
 import { system } from "../powersync/PowerSync";
 import { uuid } from "../powersync/uuid";
-import { addMonths, isoDate, isoTime, toNumber } from "../utils/tracking";
+import { isoDate, isoTime, isIsoTime, toNumber } from "../utils/tracking";
 
 const nowIso = () => new Date().toISOString();
 const valueOrNull = (value: string) => value.trim() || null;
 const numericOrNull = (value: string) => (value.trim() ? toNumber(value) : null);
+const storedTime = (value: string | null | undefined, createdAt?: string | null) => {
+    const normalized = String(value ?? "").slice(0, 5);
+    if (isIsoTime(normalized)) return normalized;
+    const created = createdAt ? new Date(createdAt) : new Date();
+    return isoTime(Number.isNaN(created.getTime()) ? new Date() : created);
+};
 
 export const sourceForCategory = (category: ExpenseCategory): ExpenseSource => {
     if (category === "fuel" || category === "charging" || category === "service" || category === "insurance") return category;
@@ -162,7 +173,10 @@ export async function saveExpense(draft: ExpenseDraft) {
             time: valueOrNull(draft.time),
             created_at: createdAt,
         };
-        if (draft.id && previousSource === source) await system.db.updateTable("fuel_expenses").set(row).where("id", "=", id).execute();
+        if (draft.id && previousSource === source) {
+            const { id: _id, created_at: _createdAt, ...updates } = row;
+            await system.db.updateTable("fuel_expenses").set(updates).where("id", "=", id).execute();
+        }
         else await system.db.insertInto("fuel_expenses").values(row).execute();
     } else if (source === "charging") {
         const energyKwh = toNumber(draft.energyKwh);
@@ -192,7 +206,10 @@ export async function saveExpense(draft: ExpenseDraft) {
             external_id: draft.externalId ?? null,
             created_at: createdAt,
         };
-        if (draft.id && previousSource === source) await system.db.updateTable("charging_expenses").set(row).where("id", "=", id).execute();
+        if (draft.id && previousSource === source) {
+            const { id: _id, created_at: _createdAt, ...updates } = row;
+            await system.db.updateTable("charging_expenses").set(updates).where("id", "=", id).execute();
+        }
         else await system.db.insertInto("charging_expenses").values(row).execute();
     } else if (source === "service") {
         const row = {
@@ -214,7 +231,10 @@ export async function saveExpense(draft: ExpenseDraft) {
             odometer,
             created_at: createdAt,
         };
-        if (draft.id && previousSource === source) await system.db.updateTable("service_expenses").set(row).where("id", "=", id).execute();
+        if (draft.id && previousSource === source) {
+            const { id: _id, created_at: _createdAt, ...updates } = row;
+            await system.db.updateTable("service_expenses").set(updates).where("id", "=", id).execute();
+        }
         else await system.db.insertInto("service_expenses").values(row).execute();
 
         await system.db.deleteFrom("service_parts").where("service_expense_id", "=", id).execute();
@@ -251,9 +271,13 @@ export async function saveExpense(draft: ExpenseDraft) {
             external_id: draft.externalId ?? null,
             payment_method: valueOrNull(draft.paymentMethod),
             notes: valueOrNull(draft.notes),
+            time: valueOrNull(draft.time),
             created_at: createdAt,
         };
-        if (draft.id && previousSource === source) await system.db.updateTable("insurance_expenses").set(row).where("id", "=", id).execute();
+        if (draft.id && previousSource === source) {
+            const { id: _id, created_at: _createdAt, ...updates } = row;
+            await system.db.updateTable("insurance_expenses").set(updates).where("id", "=", id).execute();
+        }
         else await system.db.insertInto("insurance_expenses").values(row).execute();
     } else {
         const row = {
@@ -277,7 +301,10 @@ export async function saveExpense(draft: ExpenseDraft) {
             external_id: draft.externalId ?? null,
             created_at: createdAt,
         };
-        if (draft.id && previousSource === source) await system.db.updateTable("general_expenses").set(row).where("id", "=", id).execute();
+        if (draft.id && previousSource === source) {
+            const { id: _id, created_at: _createdAt, ...updates } = row;
+            await system.db.updateTable("general_expenses").set(updates).where("id", "=", id).execute();
+        }
         else await system.db.insertInto("general_expenses").values(row).execute();
     }
 
@@ -331,27 +358,27 @@ export async function loadExpense(id: string, source: ExpenseSource, userId: str
     if (source === "fuel") {
         const row = await system.db.selectFrom("fuel_expenses").selectAll().where("id", "=", id).where("user_id", "=", userId).executeTakeFirst();
         if (!row) return null;
-        return { ...baseDraft("fuel", row.selected_vehicle_id ?? ""), title: "Fuel", amount: String(row.total_cost ?? ""), date: row.date ?? isoDate(), time: row.time ?? isoTime(), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.gas_station ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", litres: String(row.total_litres ?? ""), pricePerLitre: String(row.price_liter ?? ""), fuelType: row.fuel_type ?? "", fullTank: row.full_tank === "1" || row.full_tank === "true", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
+        return { ...baseDraft("fuel", row.selected_vehicle_id ?? ""), title: "Fuel", amount: String(row.total_cost ?? ""), date: row.date ?? isoDate(), time: storedTime(row.time, row.created_at), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.gas_station ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", litres: String(row.total_litres ?? ""), pricePerLitre: String(row.price_liter ?? ""), fuelType: row.fuel_type ?? "", fullTank: row.full_tank === "1" || row.full_tank === "true", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
     }
     if (source === "charging") {
         const row = await system.db.selectFrom("charging_expenses").selectAll().where("id", "=", id).where("user_id", "=", userId).executeTakeFirst();
         if (!row) return null;
-        return { ...baseDraft("charging", row.selected_vehicle_id ?? ""), title: "EV charging", amount: String(row.total_cost ?? ""), date: row.date ?? isoDate(), time: row.time ?? isoTime(), odometer: String(row.odometer ?? ""), place: row.location_name ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", energyKwh: String(row.energy_kwh ?? ""), pricePerKwh: String(row.price_per_kwh ?? ""), batteryStartPercent: String(row.battery_start_percent ?? ""), batteryEndPercent: String(row.battery_end_percent ?? ""), chargerType: row.charger_type ?? "", chargingSpeedKw: String(row.charging_speed_kw ?? ""), efficiencyKwhPer100Km: String(row.efficiency_kwh_per_100km ?? ""), importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
+        return { ...baseDraft("charging", row.selected_vehicle_id ?? ""), title: "EV charging", amount: String(row.total_cost ?? ""), date: row.date ?? isoDate(), time: storedTime(row.time, row.created_at), odometer: String(row.odometer ?? ""), place: row.location_name ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", energyKwh: String(row.energy_kwh ?? ""), pricePerKwh: String(row.price_per_kwh ?? ""), batteryStartPercent: String(row.battery_start_percent ?? ""), batteryEndPercent: String(row.battery_end_percent ?? ""), chargerType: row.charger_type ?? "", chargingSpeedKw: String(row.charging_speed_kw ?? ""), efficiencyKwhPer100Km: String(row.efficiency_kwh_per_100km ?? ""), importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
     }
     if (source === "service") {
         const row = await system.db.selectFrom("service_expenses").selectAll().where("id", "=", id).where("user_id", "=", userId).executeTakeFirst();
         if (!row) return null;
         const parts = await system.db.selectFrom("service_parts").selectAll().where("service_expense_id", "=", id).execute();
-        return { ...baseDraft("service", row.selected_vehicle_id ?? ""), title: row.type_of_service ?? "", amount: String(row.cost ?? ""), date: row.date ?? isoDate(), time: row.time ?? isoTime(), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.place ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined, parts: parts.map((part) => ({ id: part.id ?? undefined, name: part.name ?? "", partNumber: part.part_number ?? "", quantity: String(part.quantity ?? 1), unitCost: String(part.unit_cost ?? ""), installedMileage: String(part.installed_at_mileage ?? ""), notes: part.notes ?? "" })) };
+        return { ...baseDraft("service", row.selected_vehicle_id ?? ""), title: row.type_of_service ?? "", amount: String(row.cost ?? ""), date: row.date ?? isoDate(), time: storedTime(row.time, row.created_at), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.place ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined, parts: parts.map((part) => ({ id: part.id ?? undefined, name: part.name ?? "", partNumber: part.part_number ?? "", quantity: String(part.quantity ?? 1), unitCost: String(part.unit_cost ?? ""), installedMileage: String(part.installed_at_mileage ?? ""), notes: part.notes ?? "" })) };
     }
     if (source === "insurance") {
         const row = await system.db.selectFrom("insurance_expenses").selectAll().where("id", "=", id).where("user_id", "=", userId).executeTakeFirst();
         if (!row) return null;
-        return { ...baseDraft("insurance", row.selected_vehicle_id ?? ""), title: "Insurance", amount: String(row.cost ?? ""), date: row.valid_from ?? isoDate(), time: isoTime(), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.provider ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", validFrom: row.valid_from ?? isoDate(), validTo: row.valid_to ?? "", provider: row.provider ?? "", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
+        return { ...baseDraft("insurance", row.selected_vehicle_id ?? ""), title: "Insurance", amount: String(row.cost ?? ""), date: row.valid_from ?? isoDate(), time: storedTime(row.time, row.created_at), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.provider ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", validFrom: row.valid_from ?? isoDate(), validTo: row.valid_to ?? "", provider: row.provider ?? "", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
     }
     const row = await system.db.selectFrom("general_expenses").selectAll().where("id", "=", id).where("user_id", "=", userId).executeTakeFirst();
     if (!row) return null;
-    return { ...baseDraft((row.category as ExpenseCategory) ?? "other", row.vehicle_id ?? ""), title: row.title ?? "", amount: String(row.amount ?? ""), date: row.date ?? isoDate(), time: row.time ?? isoTime(), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.place ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
+    return { ...baseDraft((row.category as ExpenseCategory) ?? "other", row.vehicle_id ?? ""), title: row.title ?? "", amount: String(row.amount ?? ""), date: row.date ?? isoDate(), time: storedTime(row.time, row.created_at), odometer: String(row.odometer ?? ""), place: row.location_name ?? row.place ?? "", latitude: String(row.latitude ?? ""), longitude: String(row.longitude ?? ""), paymentMethod: row.payment_method ?? "", notes: row.notes ?? "", importBatchId: row.import_batch_id ?? undefined, externalId: row.external_id ?? undefined };
 }
 
 export async function saveReminder(draft: ReminderDraft) {
@@ -374,30 +401,20 @@ export async function saveReminder(draft: ReminderDraft) {
         status: "active",
         notes: valueOrNull(draft.notes),
         completed_at: null,
-        created_at: nowIso(),
         related_document_id: null,
     };
     if (draft.id) await system.db.updateTable("reminders").set(row).where("id", "=", id).where("user_id", "=", draft.userId).execute();
-    else await system.db.insertInto("reminders").values(row).execute();
+    else await system.db.insertInto("reminders").values({ ...row, created_at: nowIso() }).execute();
     return id;
 }
 
 export async function completeReminder(reminderId: string, userId: string) {
-    const reminder = await system.db.selectFrom("reminders").selectAll().where("id", "=", reminderId).where("user_id", "=", userId).executeTakeFirst();
-    if (!reminder) return;
-    await system.db.updateTable("reminders").set({ status: "completed", completed_at: nowIso() }).where("id", "=", reminderId).execute();
-
-    if ((reminder.repeat_months ?? 0) > 0 || (reminder.repeat_km ?? 0) > 0) {
-        await system.db.insertInto("reminders").values({
-            ...reminder,
-            id: uuid(),
-            due_date: reminder.due_date && reminder.repeat_months ? addMonths(reminder.due_date, reminder.repeat_months) : reminder.due_date,
-            due_mileage: reminder.due_mileage !== null && reminder.repeat_km ? reminder.due_mileage + reminder.repeat_km : reminder.due_mileage,
-            status: "active",
-            completed_at: null,
-            created_at: nowIso(),
-        }).execute();
-    }
+    await system.db
+        .updateTable("reminders")
+        .set({ status: "completed", completed_at: nowIso() })
+        .where("id", "=", reminderId)
+        .where("user_id", "=", userId)
+        .execute();
 }
 
 export async function reopenReminder(reminderId: string, userId: string) {
@@ -480,11 +497,11 @@ export async function deleteDocument(documentId: string, userId: string) {
 export async function saveVehicleBudget(draft: VehicleBudgetDraft) {
     const existing = await system.db
         .selectFrom("vehicle_budgets")
-        .select("id")
+        .select(["id", "created_at"])
         .where("user_id", "=", draft.userId)
         .where("vehicle_id", "=", draft.vehicleId)
         .executeTakeFirst();
-    const id = draft.id ?? existing?.id ?? uuid();
+    const id = existing?.id ?? draft.id ?? uuid();
     const row = {
         id,
         user_id: draft.userId,
@@ -494,16 +511,27 @@ export async function saveVehicleBudget(draft: VehicleBudgetDraft) {
         current_value: numericOrNull(draft.currentValue),
         purchase_date: valueOrNull(draft.purchaseDate),
         annual_depreciation_percent: numericOrNull(draft.annualDepreciationPercent),
-        created_at: nowIso(),
+        created_at: existing?.created_at ?? nowIso(),
         updated_at: nowIso(),
     };
-    if (existing || draft.id) await system.db.updateTable("vehicle_budgets").set(row).where("id", "=", id).where("user_id", "=", draft.userId).execute();
+    if (existing) {
+        const { id: _id, created_at: _createdAt, ...updates } = row;
+        await system.db.updateTable("vehicle_budgets").set(updates).where("id", "=", id).where("user_id", "=", draft.userId).execute();
+    }
     else await system.db.insertInto("vehicle_budgets").values(row).execute();
     return id;
 }
 
 export async function saveTrip(draft: TripDraft) {
     const id = draft.id ?? uuid();
+    const existing = draft.id
+        ? await system.db
+            .selectFrom("trips")
+            .select("id")
+            .where("id", "=", draft.id)
+            .where("user_id", "=", draft.userId)
+            .executeTakeFirst()
+        : null;
     const startAt = new Date(`${draft.startDate}T${draft.startTime || "00:00"}:00`).toISOString();
     const endAt = draft.endDate ? new Date(`${draft.endDate}T${draft.endTime || "00:00"}:00`).toISOString() : null;
     const startOdometer = numericOrNull(draft.startOdometer);
@@ -532,13 +560,59 @@ export async function saveTrip(draft: TripDraft) {
         notes: valueOrNull(draft.notes),
         created_at: nowIso(),
     };
-    if (draft.id) await system.db.updateTable("trips").set(row).where("id", "=", id).where("user_id", "=", draft.userId).execute();
+    if (existing) {
+        const { id: _id, created_at: _createdAt, ...updates } = row;
+        await system.db.updateTable("trips").set(updates).where("id", "=", id).where("user_id", "=", draft.userId).execute();
+    }
     else await system.db.insertInto("trips").values(row).execute();
     return id;
 }
 
 export async function deleteTrip(id: string, userId: string) {
-    await system.db.deleteFrom("trips").where("id", "=", id).where("user_id", "=", userId).execute();
+    const existing = await system.db
+        .selectFrom("trips")
+        .select("id")
+        .where("id", "=", id)
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
+
+    if (existing) {
+        await system.db.deleteFrom("trips").where("id", "=", id).where("user_id", "=", userId).execute();
+    }
+
+    // A server-fallback trip may not exist in SQLite yet, so there would be no
+    // local row for PowerSync to turn into a DELETE operation. Delete it
+    // directly in that case. For a local row this also prevents a stale server
+    // fallback from briefly restoring it while the queued delete uploads.
+    const { error } = await system.supabaseConnector.client
+        .from("trips")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", userId);
+    if (error && !existing) throw error;
+}
+
+export async function fetchTripsFromServer(userId: string, vehicleId?: string) {
+    let query = system.supabaseConnector.client
+        .from("trips")
+        .select("*")
+        .eq("user_id", userId);
+    if (vehicleId) query = query.eq("vehicle_id", vehicleId);
+
+    const { data, error } = await query.order("start_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as TripRecord[];
+}
+
+export async function fetchTripFromServer(id: string, userId: string) {
+    const { data, error } = await system.supabaseConnector.client
+        .from("trips")
+        .select("*")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
+    if (error) throw error;
+    return (data as TripRecord | null) ?? null;
 }
 
 function nextReportRun(draft: ReportScheduleDraft) {
@@ -591,6 +665,14 @@ export async function deleteReportSchedule(id: string, userId: string) {
 
 export async function saveChecklistTemplate(draft: ChecklistTemplateDraft) {
     const id = draft.id ?? uuid();
+    const existing = draft.id
+        ? await system.db
+            .selectFrom("checklist_templates")
+            .select(["id", "created_at"])
+            .where("id", "=", draft.id)
+            .where("user_id", "=", draft.userId)
+            .executeTakeFirst()
+        : null;
     const createdAt = nowIso();
     const row = {
         id,
@@ -598,12 +680,15 @@ export async function saveChecklistTemplate(draft: ChecklistTemplateDraft) {
         name: draft.name.trim(),
         description: valueOrNull(draft.description),
         vehicle_type: valueOrNull(draft.vehicleType),
-        is_default: 0,
+        is_default: draft.isDefault ? 1 : 0,
         active: 1,
-        created_at: createdAt,
+        created_at: existing?.created_at ?? createdAt,
         updated_at: createdAt,
     };
-    if (draft.id) await system.db.updateTable("checklist_templates").set(row).where("id", "=", id).where("user_id", "=", draft.userId).execute();
+    if (existing) {
+        const { id: _id, created_at: _createdAt, ...updates } = row;
+        await system.db.updateTable("checklist_templates").set(updates).where("id", "=", id).where("user_id", "=", draft.userId).execute();
+    }
     else await system.db.insertInto("checklist_templates").values(row).execute();
     await system.db.deleteFrom("checklist_template_items").where("template_id", "=", id).where("user_id", "=", draft.userId).execute();
     const items = draft.items.filter((item) => item.label.trim()).map((item, index) => ({
@@ -622,11 +707,26 @@ export async function saveChecklistTemplate(draft: ChecklistTemplateDraft) {
 export async function ensureDefaultChecklist(userId: string) {
     const existing = await system.db.selectFrom("checklist_templates").select("id").where("user_id", "=", userId).where("active", "=", 1).executeTakeFirst();
     if (existing) return existing.id;
+
+    const serverTemplates = await fetchChecklistTemplatesFromServer(userId);
+    if (serverTemplates[0]?.id) return serverTemplates[0].id;
+
+    const inactiveStarter = await system.db
+        .selectFrom("checklist_templates")
+        .select("id")
+        .where("user_id", "=", userId)
+        .where("active", "=", 0)
+        .where("name", "=", "Pre-trip inspection")
+        .orderBy("updated_at", "desc")
+        .executeTakeFirst();
+
     return saveChecklistTemplate({
+        id: inactiveStarter?.id,
         userId,
         name: "Pre-trip inspection",
         description: "A quick safety check before driving.",
         vehicleType: "",
+        isDefault: true,
         items: [
             "Tyres and visible damage",
             "Lights and indicators",
@@ -640,11 +740,46 @@ export async function ensureDefaultChecklist(userId: string) {
     });
 }
 
+export async function deleteChecklistTemplate(templateId: string, userId: string) {
+    const existing = await system.db
+        .selectFrom("checklist_templates")
+        .select("id")
+        .where("id", "=", templateId)
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
+    const updates = { active: 0, updated_at: nowIso() };
+
+    if (existing) {
+        await system.db
+            .updateTable("checklist_templates")
+            .set(updates)
+            .where("id", "=", templateId)
+            .where("user_id", "=", userId)
+            .execute();
+    }
+
+    // If the template was loaded through the server fallback, it may not have
+    // reached SQLite yet. Updating Supabase directly handles that case and also
+    // prevents a stale server result from restoring a locally removed template.
+    const { error } = await system.supabaseConnector.client
+        .from("checklist_templates")
+        .update(updates)
+        .eq("id", templateId)
+        .eq("user_id", userId);
+    if (error && !existing) throw error;
+}
+
 export async function startChecklistRun(userId: string, vehicleId: string, templateId: string, assignedUserId: string, driverName: string) {
     const id = uuid();
     const now = nowIso();
-    const templateItems = await system.db.selectFrom("checklist_template_items").selectAll().where("user_id", "=", userId).where("template_id", "=", templateId).orderBy("sort_order").execute();
-    await system.db.insertInto("checklist_runs").values({
+    let templateItems = await system.db.selectFrom("checklist_template_items").selectAll().where("user_id", "=", userId).where("template_id", "=", templateId).orderBy("sort_order").execute();
+    if (!templateItems.length) {
+        templateItems = await fetchChecklistTemplateItemsFromServer(userId, templateId);
+    }
+    if (!templateItems.length) {
+        throw new Error("This checklist has no items. Refresh the templates or add at least one item before starting.");
+    }
+    const run = {
         id,
         user_id: userId,
         template_id: templateId,
@@ -658,7 +793,8 @@ export async function startChecklistRun(userId: string, vehicleId: string, templ
         started_at: now,
         completed_at: null,
         created_at: now,
-    }).execute();
+    };
+    await system.db.insertInto("checklist_runs").values(run).execute();
     const runItems = templateItems.map((item) => ({
         id: uuid(),
         user_id: userId,
@@ -672,21 +808,148 @@ export async function startChecklistRun(userId: string, vehicleId: string, templ
         created_at: now,
     }));
     if (runItems.length) await system.db.insertInto("checklist_run_items").values(runItems).execute();
-    return id;
+    return { runId: id, run, items: runItems };
 }
 
 export async function setChecklistItemResult(itemId: string, userId: string, result: "pass" | "fail" | "not_applicable") {
-    await system.db.updateTable("checklist_run_items").set({ result }).where("id", "=", itemId).where("user_id", "=", userId).execute();
+    const existing = await system.db
+        .selectFrom("checklist_run_items")
+        .select("id")
+        .where("id", "=", itemId)
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
+    if (existing) {
+        await system.db.updateTable("checklist_run_items").set({ result }).where("id", "=", itemId).where("user_id", "=", userId).execute();
+        return;
+    }
+
+    const { error } = await system.supabaseConnector.client
+        .from("checklist_run_items")
+        .update({ result })
+        .eq("id", itemId)
+        .eq("user_id", userId);
+    if (error) throw error;
 }
 
 export async function completeChecklistRun(runId: string, userId: string, signatureName: string, damageNotes: string) {
-    const items = await system.db.selectFrom("checklist_run_items").select("result").where("run_id", "=", runId).where("user_id", "=", userId).execute();
+    let items: Array<Pick<ChecklistRunItemRecord, "result">> = await system.db.selectFrom("checklist_run_items").select("result").where("run_id", "=", runId).where("user_id", "=", userId).execute();
+    if (!items.length) {
+        items = await fetchChecklistRunItemsFromServer(runId, userId);
+    }
+    if (!items.length) throw new Error("This inspection has no checklist items.");
     if (items.some((item) => item.result === "unchecked")) throw new Error("Complete every checklist item first.");
     const attentionRequired = items.some((item) => item.result === "fail");
-    await system.db.updateTable("checklist_runs").set({
+    const updates = {
         status: attentionRequired ? "attention_required" : "passed",
         signature_name: valueOrNull(signatureName),
         damage_notes: valueOrNull(damageNotes),
         completed_at: nowIso(),
-    }).where("id", "=", runId).where("user_id", "=", userId).execute();
+    };
+    const localRun = await system.db
+        .selectFrom("checklist_runs")
+        .select("id")
+        .where("id", "=", runId)
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
+    if (localRun) {
+        await system.db.updateTable("checklist_runs").set(updates).where("id", "=", runId).where("user_id", "=", userId).execute();
+        return;
+    }
+
+    const { error } = await system.supabaseConnector.client
+        .from("checklist_runs")
+        .update(updates)
+        .eq("id", runId)
+        .eq("user_id", userId);
+    if (error) throw error;
+}
+
+export async function deleteChecklistRun(runId: string, userId: string) {
+    const existing = await system.db
+        .selectFrom("checklist_runs")
+        .select("id")
+        .where("id", "=", runId)
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
+
+    if (existing) {
+        await system.db.transaction().execute(async (transaction) => {
+            await transaction
+                .deleteFrom("checklist_run_items")
+                .where("run_id", "=", runId)
+                .where("user_id", "=", userId)
+                .execute();
+            await transaction
+                .deleteFrom("checklist_runs")
+                .where("id", "=", runId)
+                .where("user_id", "=", userId)
+                .execute();
+        });
+    }
+
+    // Server-fallback runs may not have reached SQLite yet. Deleting the parent
+    // directly also removes its item rows through the database cascade.
+    const { error } = await system.supabaseConnector.client
+        .from("checklist_runs")
+        .delete()
+        .eq("id", runId)
+        .eq("user_id", userId);
+    if (error && !existing) throw error;
+}
+
+export async function fetchChecklistTemplatesFromServer(userId: string) {
+    const { data, error } = await system.supabaseConnector.client
+        .from("checklist_templates")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("active", 1)
+        .order("is_default", { ascending: false })
+        .order("name", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as ChecklistTemplateRecord[];
+}
+
+export async function fetchChecklistTemplateItemsFromServer(userId: string, templateId: string) {
+    const { data, error } = await system.supabaseConnector.client
+        .from("checklist_template_items")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("template_id", templateId)
+        .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as ChecklistTemplateItemRecord[];
+}
+
+export async function fetchChecklistRunsFromServer(userId: string, vehicleId?: string) {
+    let query = system.supabaseConnector.client
+        .from("checklist_runs")
+        .select("*")
+        .eq("user_id", userId);
+    if (vehicleId) query = query.eq("vehicle_id", vehicleId);
+
+    const { data, error } = await query.order("started_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as ChecklistRunRecord[];
+}
+
+export async function fetchChecklistRunFromServer(runId: string, userId: string) {
+    const { data, error } = await system.supabaseConnector.client
+        .from("checklist_runs")
+        .select("*")
+        .eq("id", runId)
+        .eq("user_id", userId)
+        .maybeSingle();
+    if (error) throw error;
+    return (data as ChecklistRunRecord | null) ?? null;
+}
+
+export async function fetchChecklistRunItemsFromServer(runId: string, userId: string) {
+    const { data, error } = await system.supabaseConnector.client
+        .from("checklist_run_items")
+        .select("*")
+        .eq("run_id", runId)
+        .eq("user_id", userId)
+        .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as ChecklistRunItemRecord[];
 }

@@ -119,16 +119,22 @@ function LocationPickerModal({
     const [searching, setSearching] = useState(false);
     const [locating, setLocating] = useState(false);
     const [resolving, setResolving] = useState(false);
+    const [showInstructions, setShowInstructions] = useState(!initialLocation);
 
     useEffect(() => {
         if (!visible) return;
         setQuery(initialValue);
         setSelection(initialLocation);
         setPredictions([]);
-        const timer = setTimeout(() => {
+        setShowInstructions(!initialLocation);
+        const animateTimer = setTimeout(() => {
             if (initialLocation) animateTo(initialLocation.latitude, initialLocation.longitude, mapRef.current);
         }, 250);
-        return () => clearTimeout(timer);
+        const instructionTimer = setTimeout(() => setShowInstructions(false), 4500);
+        return () => {
+            clearTimeout(animateTimer);
+            clearTimeout(instructionTimer);
+        };
     }, [initialLocation, initialValue, visible]);
 
     useEffect(() => {
@@ -154,6 +160,7 @@ function LocationPickerModal({
     }, [query, selection?.label, visible]);
 
     const chooseCoordinates = async (latitude: number, longitude: number, suppliedLabel?: string) => {
+        setShowInstructions(false);
         const temporaryLabel = suppliedLabel || "Finding this address…";
         setSelection({ latitude, longitude, label: temporaryLabel });
         animateTo(latitude, longitude, mapRef.current);
@@ -201,6 +208,7 @@ function LocationPickerModal({
     };
 
     const chooseCurrentLocation = async () => {
+        setShowInstructions(false);
         setLocating(true);
         Keyboard.dismiss();
         try {
@@ -324,10 +332,12 @@ function LocationPickerModal({
                     {locating ? <ActivityIndicator color={colors.white} /> : <Ionicons name="locate" size={25} color={colors.white} />}
                 </Pressable>
 
-                <View style={[styles.instructions, { bottom: safeBottom + 222 }]} pointerEvents="none">
-                    <Ionicons name="hand-left-outline" size={15} color={colors.inkMuted} />
-                    <Text style={styles.instructionsText}>Tap the map or drag the pin</Text>
-                </View>
+                {showInstructions ? (
+                    <View style={[styles.instructions, { bottom: safeBottom + 222 }]} pointerEvents="none">
+                        <Ionicons name="hand-left-outline" size={15} color={colors.inkMuted} />
+                        <Text style={styles.instructionsText}>Tap the map or drag the pin</Text>
+                    </View>
+                ) : null}
 
                 <View style={[styles.selectionPanel, { paddingBottom: Math.max(safeBottom, spacing.md) }]}>
                     <View style={styles.grabber} />

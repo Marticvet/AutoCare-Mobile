@@ -180,7 +180,9 @@ export default function SettingsScreen() {
                     <Row icon="time-outline" title={t("lastSynced")} subtitle={lastSyncedAt ? lastSyncedAt.toLocaleString() : t("neverSynced")} />
                     <View style={styles.divider} />
                     <Row icon="cloud-upload-outline" title="Pending uploads" subtitle={`${pendingUploadCount} local change${pendingUploadCount === 1 ? "" : "s"} waiting · initial sync ${hasSynced ? "complete" : "not complete"}`} tone={pendingUploadCount ? "amber" : "green"} />
-                    <View style={styles.syncAction}><Button label="Retry connection" icon="refresh-outline" variant="secondary" onPress={() => void retryConnection()} loading={syncBusy} disabled={!isOnline} /></View>
+                    {syncState === "error" ? (
+                        <View style={styles.syncAction}><Button label="Retry connection" icon="refresh-outline" variant="secondary" onPress={() => void retryConnection()} loading={syncBusy} disabled={!isOnline} /></View>
+                    ) : null}
                 </Card>
             </View>
 

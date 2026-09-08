@@ -18,7 +18,6 @@ export default function SubscriptionScreen({ navigation }: Props) {
         backendStatus,
         customerInfo,
         error,
-        loading,
         purchasing,
         refresh,
         restorePurchases,
@@ -155,13 +154,14 @@ export default function SubscriptionScreen({ navigation }: Props) {
                         onPress={() => void restore()}
                     />
                 ) : null}
-                <Button
-                    label="Refresh status"
-                    icon="sync-outline"
-                    variant="ghost"
-                    loading={loading}
-                    onPress={() => void refresh()}
-                />
+                {error && !isAdmin ? (
+                    <Button
+                        label="Try again"
+                        icon="sync-outline"
+                        variant="ghost"
+                        onPress={() => void refresh()}
+                    />
+                ) : null}
             </View>
 
             <SectionHeader title="Included on Free" />

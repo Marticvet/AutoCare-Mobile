@@ -128,7 +128,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                 vin,
                 mileage: String(Math.round(storedMileage)),
             });
-            Alert.alert(t("vehicleSaved"));
+            Alert.alert(t(vehicleId ? "vehicleUpdated" : "vehicleSaved"));
             if (vehicleId) navigation.goBack();
             else navigation.replace("VehicleDetail", { vehicleId: savedId });
         } catch (error) {

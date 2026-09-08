@@ -1,11 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
-import { Button, Card, DateField, FormField, Screen, SectionHeader, SelectField, TimeField } from "../../components/ui";
+import { Button, Card, DateField, EmptyState, FormField, LoadingState, Screen, SectionHeader, SelectField, TimeField } from "../../components/ui";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
 import { useTrips } from "../../data/liveQueries";
-import { TripDraft } from "../../data/models";
-import { deleteTrip, saveTrip } from "../../data/repository";
+import { TripDraft, TripRecord } from "../../data/models";
+import { deleteTrip, fetchTripFromServer, saveTrip } from "../../data/repository";
 import { RootStackParamList } from "../../navigation/types";
 import { useGarage } from "../../providers/GarageProvider";
 import { spacing } from "../../theme/tokens";
@@ -16,8 +16,16 @@ type Props = NativeStackScreenProps<RootStackParamList, "TripForm">;
 export default function TripFormScreen({ route, navigation }: Props) {
     const tripId = route.params?.tripId;
     const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
-    const { data: trips } = useTrips(dataOwnerId);
-    const source = trips.find((trip) => trip.id === tripId);
+    const { data: trips, loading } = useTrips(dataOwnerId);
+    const localSource = trips.find((trip) => trip.id === tripId);
+    const serverScope = `${dataOwnerId}:${tripId ?? ""}`;
+    const [serverResult, setServerResult] = useState<{
+        scope: string;
+        trip: TripRecord | null;
+        loading: boolean;
+        error: boolean;
+    }>({ scope: "", trip: null, loading: false, error: false });
+    const [hydratedTripId, setHydratedTripId] = useState<string | null>(null);
     const [draft, setDraft] = useState<TripDraft>({
         id: tripId,
         userId: dataOwnerId,
@@ -39,7 +47,38 @@ export default function TripFormScreen({ route, navigation }: Props) {
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        if (!source) return;
+        if (tripId || !vehicles.length) return;
+        if (vehicles.some((vehicle) => vehicle.id === draft.vehicleId)) return;
+
+        const nextVehicleId = vehicles.some((vehicle) => vehicle.id === selectedVehicleId)
+            ? selectedVehicleId
+            : vehicles[0]?.id ?? "";
+        setDraft((current) => ({ ...current, vehicleId: nextVehicleId }));
+    }, [draft.vehicleId, selectedVehicleId, tripId, vehicles]);
+
+    useEffect(() => {
+        let mounted = true;
+        if (!tripId || !dataOwnerId || loading || localSource?.id) {
+            return () => { mounted = false; };
+        }
+
+        setServerResult({ scope: serverScope, trip: null, loading: true, error: false });
+        void fetchTripFromServer(tripId, dataOwnerId)
+            .then((trip) => {
+                if (mounted) setServerResult({ scope: serverScope, trip, loading: false, error: false });
+            })
+            .catch(() => {
+                if (mounted) setServerResult({ scope: serverScope, trip: null, loading: false, error: true });
+            });
+
+        return () => { mounted = false; };
+    }, [dataOwnerId, loading, localSource?.id, serverScope, tripId]);
+
+    const scopedServerResult = serverResult.scope === serverScope ? serverResult : null;
+    const source = localSource ?? scopedServerResult?.trip;
+
+    useEffect(() => {
+        if (!source || !tripId || hydratedTripId === tripId) return;
         const start = new Date(source.start_at ?? new Date());
         const end = source.end_at ? new Date(source.end_at) : start;
         setDraft({
@@ -60,7 +99,8 @@ export default function TripFormScreen({ route, navigation }: Props) {
             reimbursableRate: String(source.reimbursable_rate ?? ""),
             notes: source.notes ?? "",
         });
-    }, [dataOwnerId, source]);
+        setHydratedTripId(tripId);
+    }, [dataOwnerId, hydratedTripId, source, tripId]);
 
     const update = <K extends keyof TripDraft>(key: K, value: TripDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
     const submit = async () => {
@@ -74,6 +114,7 @@ export default function TripFormScreen({ route, navigation }: Props) {
         setBusy(true);
         try {
             await saveTrip(draft);
+            Alert.alert(tripId ? "Trip updated successfully" : "Trip saved successfully");
             navigation.goBack();
         } catch (error) {
             Alert.alert("Trip", (error as Error).message);
@@ -85,6 +126,28 @@ export default function TripFormScreen({ route, navigation }: Props) {
         { text: "Cancel", style: "cancel" },
         { text: "Delete", style: "destructive", onPress: () => void deleteTrip(tripId, dataOwnerId).then(() => navigation.goBack()) },
     ]);
+
+    const sourceLoading = Boolean(tripId) && (
+        loading
+        || (!localSource && (!scopedServerResult || scopedServerResult.loading))
+        || (Boolean(source) && hydratedTripId !== tripId)
+    );
+    if (sourceLoading) return <Screen><LoadingState /></Screen>;
+    if (tripId && !source) {
+        return (
+            <Screen>
+                <EmptyState
+                    icon="navigate-outline"
+                    title={scopedServerResult?.error ? "Trip could not be loaded" : "Trip not found"}
+                    body={scopedServerResult?.error
+                        ? "Check your connection and open the trip again."
+                        : "This trip may have already been deleted."}
+                    action="Back to trips"
+                    onAction={navigation.goBack}
+                />
+            </Screen>
+        );
+    }
 
     return (
         <Screen>

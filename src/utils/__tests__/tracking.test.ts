@@ -1,6 +1,7 @@
 import { ExpenseRecord, ReminderRecord } from "../../data/models";
 import { FuelExpense } from "../../powersync/AppSchema";
 import {
+    calendarDateValue,
     calculateFuelEconomy,
     estimateFuelCo2Kg,
     expensesToCsv,
@@ -72,6 +73,13 @@ const reminder = (overrides: Partial<ReminderRecord>): ReminderRecord => ({
 });
 
 describe("tracking calculations", () => {
+    test("preserves the calendar day emitted by date pickers", () => {
+        expect(calendarDateValue("2026-09-04T00:00:00.000Z")).toBe("2026-09-04");
+        expect(calendarDateValue(new Date("2026-09-04T00:00:00.000Z"))).toBe("2026-09-04");
+        expect(calendarDateValue({ format: () => "2026-09-04" })).toBe("2026-09-04");
+        expect(calendarDateValue("not-a-date")).toBe("");
+    });
+
     test("validates real ISO calendar dates", () => {
         expect(isIsoDate("2024-02-29")).toBe(true);
         expect(isIsoDate("2025-02-29")).toBe(false);
@@ -128,7 +136,7 @@ describe("tracking calculations", () => {
 
     test("resolves week, month, and year ranges", () => {
         const now = new Date("2026-08-26T12:00:00");
-        expect(expenseDateRangeForPeriod("week", now)).toEqual({ start: "2026-08-20", end: "2026-08-26" });
+        expect(expenseDateRangeForPeriod("week", now)).toEqual({ start: "2026-08-19", end: "2026-08-26" });
         expect(expenseDateRangeForPeriod("month", now)).toEqual({ start: "2026-08-01", end: "2026-08-26" });
         expect(expenseDateRangeForPeriod("year", now)).toEqual({ start: "2026-01-01", end: "2026-08-26" });
         expect(expenseDateRangeForPeriod("all", now)).toEqual({ start: null, end: "2026-08-26" });

@@ -148,7 +148,7 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
             } catch {
                 notificationWarning = t("notificationPermissionDenied");
             }
-            Alert.alert(t("reminderSaved"), notificationWarning);
+            Alert.alert(t(reminderId ? "reminderUpdated" : "reminderSaved"), notificationWarning);
             navigation.goBack();
         } catch (error) {
             Alert.alert(t("reminder"), (error as Error).message);

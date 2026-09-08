@@ -17,20 +17,31 @@ import { FuelExpense } from "../powersync/AppSchema";
 import type { FleetBillingAccount, Garage, GarageMembership } from "../powersync/AppSchema";
 import { useSystem } from "../powersync/PowerSync";
 
+const liveRowsCache = new Map<string, unknown[]>();
+
+function rememberLiveRows(key: string, rows: unknown[]) {
+    liveRowsCache.set(key, rows);
+    if (liveRowsCache.size <= 100) return;
+    const oldestKey = liveRowsCache.keys().next().value;
+    if (oldestKey) liveRowsCache.delete(oldestKey);
+}
+
 export function useLiveRows<T>(sql: string, parameters: unknown[] = []) {
     const { powersync } = useSystem();
-    const [data, setData] = useState<T[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
     const parameterKey = JSON.stringify(parameters);
+    const queryKey = `${sql}\u0000${parameterKey}`;
+    const [data, setData] = useState<T[]>(() => (liveRowsCache.get(queryKey) as T[] | undefined) ?? []);
+    const [loading, setLoading] = useState(() => !liveRowsCache.has(queryKey));
+    const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
         const controller = new AbortController();
         let mounted = true;
         const resolvedParameters = JSON.parse(parameterKey) as unknown[];
-        setLoading(true);
+        const cachedRows = liveRowsCache.get(queryKey) as T[] | undefined;
+        setLoading(!liveRowsCache.has(queryKey));
         setError(null);
-        setData([]);
+        setData(cachedRows ?? []);
 
         void (async () => {
             try {
@@ -39,7 +50,9 @@ export function useLiveRows<T>(sql: string, parameters: unknown[] = []) {
                     throttleMs: 80,
                 })) {
                     if (!mounted) return;
-                    setData(((result.rows as any)?._array ?? []) as T[]);
+                    const rows = ((result.rows as any)?._array ?? []) as T[];
+                    rememberLiveRows(queryKey, rows);
+                    setData(rows);
                     setError(null);
                     setLoading(false);
                 }
@@ -55,7 +68,7 @@ export function useLiveRows<T>(sql: string, parameters: unknown[] = []) {
             mounted = false;
             controller.abort();
         };
-    }, [powersync, sql, parameterKey]);
+    }, [powersync, sql, parameterKey, queryKey]);
 
     return { data, loading, error };
 }
@@ -118,7 +131,7 @@ SELECT * FROM (
     UNION ALL
     SELECT id, 'insurance' AS source, 'insurance' AS category,
         COALESCE(provider, 'Insurance') AS title, COALESCE(cost, 0) AS amount,
-        COALESCE(valid_from, substr(created_at, 1, 10), '') AS date, NULL AS time,
+        COALESCE(valid_from, substr(created_at, 1, 10), '') AS date, time,
         odometer, COALESCE(location_name, provider) AS place, payment_method, notes,
         selected_vehicle_id AS vehicle_id, user_id, NULL AS litres,
         NULL AS price_per_litre, NULL AS fuel_type, '0' AS full_tank,

@@ -136,7 +136,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
                 await deleteRemotePath(source.storage_path, isOnline);
             }
             if (isOnline && (hasLocalFile || !existingId)) void syncPendingDocuments(dataOwnerId);
-            Alert.alert(t("documentSaved"));
+            Alert.alert(t(existingId ? "documentUpdated" : "documentSaved"));
             navigation.goBack();
         } catch (error) {
             Alert.alert(t("documents"), (error as Error).message);

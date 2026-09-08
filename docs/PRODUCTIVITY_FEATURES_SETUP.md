@@ -18,7 +18,7 @@ npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
 ```
 
-The final migration is `supabase/migrations/20260901030000_admin_access.sql`. The productivity migration before it adds expense location/import metadata, custom reminder delivery fields, EV charging, budgets, trips, report schedules, checklist templates/runs, indexes, RLS, and PowerSync publication entries. The final migration adds the trusted administrator flag, assigns it to `martigiant3@gmail.com`, and updates server-side paid-feature checks.
+The final migration is `supabase/migrations/20260904000000_release_bug_fixes.sql`. The productivity migration adds expense location/import metadata, custom reminder delivery fields, EV charging, budgets, trips, report schedules, checklist templates/runs, indexes, RLS, and PowerSync publication entries. The administrator migration assigns trusted administrator access to `martigiant3@gmail.com`; the release bug-fix migration adds expense time support to insurance records and reconciles existing administrator-owned garages with family access.
 
 Do not paste `powersync/sync-config.yaml` into the Supabase SQL editor. It belongs in PowerSync Cloud.
 
@@ -92,7 +92,7 @@ After the Supabase migration succeeds, open the PowerSync project connected to t
 
 This step is required. The updated config streams charging expenses, budgets, trips, report schedules, checklist templates/items/runs, and existing shared-garage data. Supabase migration and PowerSync deployment solve different halves of synchronization; both must be current.
 
-The administrator flag is queried directly from Supabase and is intentionally not stored in the PowerSync client database. Therefore, `20260901030000_admin_access.sql` does not require an additional PowerSync stream change beyond the productivity configuration already described above.
+The administrator flag is queried directly from Supabase and is intentionally not stored in the PowerSync client database. The checked-in stream configuration still must be deployed: if it is not, a newly saved budget, trip, or checklist can appear locally, upload successfully, and then disappear because the cloud stream never sends that table back to the device.
 
 ### 6. Configure expense map search
 

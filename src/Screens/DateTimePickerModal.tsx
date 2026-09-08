@@ -4,6 +4,7 @@ import DateTimePicker, {
     DateType,
     useDefaultStyles,
 } from "react-native-ui-datepicker";
+import { calendarDateValue } from "../utils/tracking";
 
 export interface DateTimePickerModalProps {
     modalVisible: boolean;
@@ -42,16 +43,18 @@ export const DateTimePickerModal = ({
     const defaultStyles = useDefaultStyles();
 
     function handleDateChange({ date }: { date?: DateType }) {
-        // Automatically adapt to user's locale and timezone
-        // @ts-ignore
-        const formattedDate = date.toLocaleDateString(undefined, {
+        const calendarValue = calendarDateValue(date);
+        if (!calendarValue) return;
+        const [year, month, day] = calendarValue.split("-").map(Number);
+        const localDate = new Date(year, month - 1, day);
+        const formattedDate = localDate.toLocaleDateString(undefined, {
             year: "numeric",
             month: "2-digit",
             day: "2-digit",
         });
 
-        // @ts-ignore
-        const formattedTime = date.toLocaleTimeString(undefined, {
+        const resolvedDate = date instanceof Date ? date : new Date(date as string | number);
+        const formattedTime = resolvedDate.toLocaleTimeString(undefined, {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",

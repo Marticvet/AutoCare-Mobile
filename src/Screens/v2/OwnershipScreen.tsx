@@ -1,24 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { Button, Card, DateField, FormField, MetricCard, Screen, SectionHeader } from "../../components/ui";
+import { Button, Card, DateField, FormField, LoadingState, MetricCard, Screen, SectionHeader } from "../../components/ui";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
 import { useExpenses, useReminders, useTrips, useVehicleBudgets } from "../../data/liveQueries";
-import { VehicleBudgetDraft } from "../../data/models";
+import { VehicleBudgetDraft, VehicleBudgetRecord } from "../../data/models";
 import { saveVehicleBudget } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
+import { useSystem } from "../../powersync/PowerSync";
 import { useGarage } from "../../providers/GarageProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { toNumber } from "../../utils/tracking";
 
 export default function OwnershipScreen() {
     const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
+    const { supabaseConnector } = useSystem();
     const { formatCurrency, formatDistance } = usePreferences();
     const [vehicleId, setVehicleId] = useState(selectedVehicleId || vehicles[0]?.id || "");
-    const { data: expenses } = useExpenses(dataOwnerId, vehicleId);
-    const { data: trips } = useTrips(dataOwnerId, vehicleId);
-    const { data: reminders } = useReminders(dataOwnerId, vehicleId);
-    const { data: budgets } = useVehicleBudgets(dataOwnerId, vehicleId);
-    const budget = budgets[0];
+    const { data: expenses, loading: expensesLoading } = useExpenses(dataOwnerId, vehicleId);
+    const { data: trips, loading: tripsLoading } = useTrips(dataOwnerId, vehicleId);
+    const { data: reminders, loading: remindersLoading } = useReminders(dataOwnerId, vehicleId);
+    const { data: budgets, loading: budgetsLoading } = useVehicleBudgets(dataOwnerId, vehicleId);
+    const localBudget = budgets.find((entry) => entry.vehicle_id === vehicleId);
+    const [serverBudget, setServerBudget] = useState<VehicleBudgetRecord | null>(null);
+    const [serverBudgetLoading, setServerBudgetLoading] = useState(false);
+    const [serverBudgetError, setServerBudgetError] = useState(false);
     const [draft, setDraft] = useState<VehicleBudgetDraft>({
         userId: dataOwnerId,
         vehicleId,
@@ -30,18 +35,87 @@ export default function OwnershipScreen() {
     });
     const [busy, setBusy] = useState(false);
 
+    // The provider loads vehicles asynchronously. The state initializer only
+    // runs on the first render, so without this reconciliation vehicleId can
+    // remain empty and every ownership lookup misses its row.
     useEffect(() => {
-        setDraft({
-            id: budget?.id ?? undefined,
-            userId: dataOwnerId,
-            vehicleId,
-            monthlyBudget: String(budget?.monthly_budget ?? ""),
-            purchasePrice: String(budget?.purchase_price ?? ""),
-            currentValue: String(budget?.current_value ?? ""),
-            purchaseDate: budget?.purchase_date ?? "",
-            annualDepreciationPercent: String(budget?.annual_depreciation_percent ?? "15"),
-        });
-    }, [budget, dataOwnerId, vehicleId]);
+        if (!vehicles.length) return;
+        if (vehicles.some((vehicle) => vehicle.id === vehicleId)) return;
+
+        const nextVehicleId = vehicles.some((vehicle) => vehicle.id === selectedVehicleId)
+            ? selectedVehicleId
+            : vehicles[0]?.id ?? "";
+        setVehicleId(nextVehicleId);
+    }, [selectedVehicleId, vehicleId, vehicles]);
+
+    // PowerSync remains the primary source so this screen works offline. If a
+    // row has not reached the local database yet, read the same unique
+    // user/vehicle record directly from Supabase instead of showing blank
+    // fields and accidentally creating a second budget row.
+    useEffect(() => {
+        let mounted = true;
+        setServerBudget(null);
+        setServerBudgetError(false);
+
+        if (!dataOwnerId || !vehicleId || localBudget?.id) {
+            setServerBudgetLoading(false);
+            return () => { mounted = false; };
+        }
+
+        setServerBudgetLoading(true);
+        void (async () => {
+            try {
+                const { data, error } = await supabaseConnector.client
+                    .from("vehicle_budgets")
+                    .select("*")
+                    .eq("user_id", dataOwnerId)
+                    .eq("vehicle_id", vehicleId)
+                    .order("updated_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!mounted) return;
+                if (error) throw error;
+                setServerBudget((data as VehicleBudgetRecord | null) ?? null);
+            } catch {
+                if (mounted) setServerBudgetError(true);
+            } finally {
+                if (mounted) setServerBudgetLoading(false);
+            }
+        })();
+
+        return () => { mounted = false; };
+    }, [dataOwnerId, localBudget?.id, supabaseConnector, vehicleId]);
+
+    const budget = localBudget ?? serverBudget;
+
+    useEffect(() => {
+        if (budget) {
+            setDraft({
+                id: budget.id ?? undefined,
+                userId: dataOwnerId,
+                vehicleId,
+                monthlyBudget: String(budget.monthly_budget ?? ""),
+                purchasePrice: String(budget.purchase_price ?? ""),
+                currentValue: String(budget.current_value ?? ""),
+                purchaseDate: budget.purchase_date ?? "",
+                annualDepreciationPercent: String(budget.annual_depreciation_percent ?? "15"),
+            });
+            return;
+        }
+        if (budgetsLoading) return;
+        setDraft((current) => current.userId === dataOwnerId && current.vehicleId === vehicleId
+            ? current
+            : {
+                userId: dataOwnerId,
+                vehicleId,
+                monthlyBudget: "",
+                purchasePrice: "",
+                currentValue: "",
+                purchaseDate: "",
+                annualDepreciationPercent: "15",
+            });
+    }, [budget, budgetsLoading, dataOwnerId, vehicleId]);
 
     const insights = useMemo(() => {
         const now = new Date();
@@ -72,8 +146,9 @@ export default function OwnershipScreen() {
         if (!vehicleId || !canWrite) return;
         setBusy(true);
         try {
-            await saveVehicleBudget({ ...draft, vehicleId, userId: dataOwnerId });
-            Alert.alert("Ownership settings saved");
+            const savedId = await saveVehicleBudget({ ...draft, vehicleId, userId: dataOwnerId });
+            setDraft((current) => ({ ...current, id: savedId }));
+            Alert.alert("Ownership settings saved successfully");
         } catch (error) {
             Alert.alert("Ownership costs", (error as Error).message);
         } finally {
@@ -81,13 +156,30 @@ export default function OwnershipScreen() {
         }
     };
 
+    if (
+        expensesLoading
+        || tripsLoading
+        || remindersLoading
+        || budgetsLoading
+        || (!localBudget && serverBudgetLoading)
+    ) return <Screen><LoadingState /></Screen>;
+
     return (
         <Screen>
             <SectionHeader title="Budgets & ownership cost" />
+            {serverBudgetError && !budget ? (
+                <Card style={styles.errorCard}>
+                    <Text style={styles.errorText}>Ownership settings could not be refreshed. You can still enter and save them while offline.</Text>
+                </Card>
+            ) : null}
+            <Card style={styles.introCard}>
+                <Text style={styles.insightTitle}>What ownership cost means</Text>
+                <Text style={styles.insightBody}>This combines your recorded expenses, tracked trip distance, monthly budget, and estimated vehicle depreciation. It helps you see what the vehicle costs to own—not only what you paid at the pump.</Text>
+            </Card>
             <VehicleSelectField vehicles={vehicles} value={vehicleId} onChange={setVehicleId} />
             <View style={styles.grid}>
                 <MetricCard label="Spent this month" value={formatCurrency(insights.monthlySpend)} icon="wallet-outline" />
-                <MetricCard label="Budget remaining" value={formatCurrency(insights.budgetRemaining)} icon="speedometer-outline" tone={insights.budgetRemaining < 0 ? "red" : "green"} />
+                <MetricCard label="Budget remaining" value={draft.monthlyBudget.trim() ? formatCurrency(insights.budgetRemaining) : "Not set"} icon="speedometer-outline" tone={insights.budgetRemaining < 0 ? "red" : "green"} />
                 <MetricCard label="Cost per tracked km" value={insights.costPerKm ? formatCurrency(insights.costPerKm) : "—"} icon="analytics-outline" tone="amber" />
                 <MetricCard label="Estimated depreciation" value={insights.depreciation ? formatCurrency(insights.depreciation) : "—"} icon="trending-down-outline" tone="amber" />
             </View>
@@ -112,6 +204,9 @@ export default function OwnershipScreen() {
 
 const styles = StyleSheet.create({
     grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+    errorCard: { backgroundColor: colors.dangerSoft },
+    errorText: { ...typography.caption, color: colors.danger },
+    introCard: { gap: spacing.sm, backgroundColor: colors.primarySoft },
     insightCard: { gap: spacing.sm },
     insightTitle: { ...typography.heading, color: colors.ink },
     insightValue: { ...typography.bodyStrong, color: colors.primary },

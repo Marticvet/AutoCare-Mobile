@@ -1,9 +1,11 @@
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Card, EmptyState, PageHeader, Row, Screen, SelectField } from "../../components/ui";
+import { Card, EmptyState, LoadingState, PageHeader, Row, Screen, SelectField } from "../../components/ui";
 import { useTrips } from "../../data/liveQueries";
+import { TripRecord } from "../../data/models";
+import { fetchTripsFromServer } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { useGarage } from "../../providers/GarageProvider";
@@ -16,7 +18,49 @@ export default function TripsScreen() {
     const { formatDistance, formatCurrency } = usePreferences();
     const [vehicleId, setVehicleId] = useState(selectedVehicleId || "__all__");
     const filteredVehicleId = vehicleId === "__all__" ? "" : vehicleId;
-    const { data: trips } = useTrips(dataOwnerId, filteredVehicleId);
+    const { data: localTrips, loading: localLoading } = useTrips(dataOwnerId, filteredVehicleId);
+    const serverScope = `${dataOwnerId}:${filteredVehicleId}`;
+    const [serverResult, setServerResult] = useState<{
+        scope: string;
+        trips: TripRecord[];
+        loading: boolean;
+        error: boolean;
+    }>({ scope: "", trips: [], loading: false, error: false });
+
+    useFocusEffect(useCallback(() => {
+        let mounted = true;
+        if (!dataOwnerId || localLoading || localTrips.length) {
+            return () => { mounted = false; };
+        }
+
+        setServerResult({ scope: serverScope, trips: [], loading: true, error: false });
+        void fetchTripsFromServer(dataOwnerId, filteredVehicleId || undefined)
+            .then((trips) => {
+                if (mounted) setServerResult({ scope: serverScope, trips, loading: false, error: false });
+            })
+            .catch(() => {
+                if (mounted) setServerResult({ scope: serverScope, trips: [], loading: false, error: true });
+            });
+
+        return () => { mounted = false; };
+    }, [dataOwnerId, filteredVehicleId, localLoading, localTrips.length, serverScope]));
+
+    const scopedServerTrips = serverResult.scope === serverScope ? serverResult.trips : [];
+    const trips = useMemo(() => {
+        const merged = new Map<string, TripRecord>();
+        scopedServerTrips.forEach((trip) => trip.id && merged.set(trip.id, trip));
+        localTrips.forEach((trip) => trip.id && merged.set(trip.id, trip));
+        return [...merged.values()].sort((left, right) =>
+            String(right.start_at ?? "").localeCompare(String(left.start_at ?? ""))
+        );
+    }, [localTrips, scopedServerTrips]);
+    const waitingForServer = !localLoading
+        && !localTrips.length
+        && (serverResult.scope !== serverScope || serverResult.loading);
+    const loading = localLoading || waitingForServer;
+    const serverError = serverResult.scope === serverScope && serverResult.error;
+
+    if (loading) return <Screen><LoadingState /></Screen>;
     return (
         <Screen>
             <PageHeader title="Trip log" action="Add trip" onAction={() => navigation.navigate("TripForm", { vehicleId: filteredVehicleId || undefined })} />
@@ -46,7 +90,15 @@ export default function TripsScreen() {
                         );
                     })}
                 </Card>
-            ) : <EmptyState icon="navigate-outline" title="No trips logged" body="Start with manual business and personal trips. Automatic GPS or Bluetooth tracking can be added later without changing this history." action="Add trip" onAction={() => navigation.navigate("TripForm", { vehicleId: filteredVehicleId || undefined })} />}
+            ) : <EmptyState
+                icon="navigate-outline"
+                title={serverError ? "Trips could not be refreshed" : "No trips logged"}
+                body={serverError
+                    ? "Your local trips are still available. Check the connection and try opening this screen again."
+                    : "Start with manual business and personal trips. Automatic GPS or Bluetooth tracking can be added later without changing this history."}
+                action="Add trip"
+                onAction={() => navigation.navigate("TripForm", { vehicleId: filteredVehicleId || undefined })}
+            />}
         </Screen>
     );
 }

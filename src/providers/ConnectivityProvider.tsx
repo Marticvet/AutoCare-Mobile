@@ -84,6 +84,9 @@ export function ConnectivityProvider({ children }: PropsWithChildren) {
         pendingUploadCount,
         hasSynced: Boolean(status.hasSynced),
         retrySync: async () => {
+            // Refresh the Supabase JWT first so both the PowerSync stream and
+            // PostgREST uploads retry with the current authenticated session.
+            await system.supabaseConnector.refreshSession();
             await powersync.disconnect();
             await system.connect();
         },

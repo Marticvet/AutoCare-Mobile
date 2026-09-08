@@ -10,6 +10,7 @@ import React, {
 import { VehicleRecord } from "../data/models";
 import { GarageAccessRecord, useGarages, useVehicles } from "../data/liveQueries";
 import { selectVehicle as persistSelectedVehicle } from "../data/repository";
+import { useSystem } from "../powersync/PowerSync";
 import { useAuth } from "./AuthProvider";
 
 type GarageContextValue = {
@@ -46,11 +47,20 @@ const GarageContext = createContext<GarageContextValue>({
 
 export function GarageProvider({ children }: PropsWithChildren) {
     const { userId, profile } = useAuth();
+    const { supabaseConnector } = useSystem();
     const { data: allGarages, loading: garagesLoading } = useGarages(userId);
+    const [serverOwnedGarage, setServerOwnedGarage] = useState<GarageAccessRecord | null>(null);
+    const [serverGarageLoading, setServerGarageLoading] = useState(false);
     const [localGarageSelection, setLocalGarageSelection] = useState("");
     const garageStorageKey = `@autocare/selected-garage/${userId}`;
+    const garageSources = useMemo(() => {
+        if (!serverOwnedGarage || allGarages.some((garage) => garage.id === serverOwnedGarage.id)) {
+            return allGarages;
+        }
+        return [serverOwnedGarage, ...allGarages];
+    }, [allGarages, serverOwnedGarage]);
     const garages = useMemo(
-        () => allGarages.filter((garage) =>
+        () => garageSources.filter((garage) =>
             garage.owner_user_id === userId
             || (
                 garage.membership_status === "active"
@@ -58,7 +68,7 @@ export function GarageProvider({ children }: PropsWithChildren) {
                 && (garage.kind === "family" || garage.kind === "fleet")
             )
         ),
-        [allGarages, userId]
+        [garageSources, userId]
     );
     const activeGarage = garages.find((garage) => garage.id === localGarageSelection)
         ?? garages.find((garage) => garage.owner_user_id === userId)
@@ -70,9 +80,43 @@ export function GarageProvider({ children }: PropsWithChildren) {
     const canWrite = currentRole !== "viewer";
     const canManageMembers = currentRole === "owner" || currentRole === "admin";
     const { data: vehicles, loading: vehiclesLoading } = useVehicles(dataOwnerId);
-    const loading = garagesLoading || vehiclesLoading;
+    const loading = vehiclesLoading || (!garages.length && (garagesLoading || serverGarageLoading));
     const [localSelection, setLocalSelection] = useState("");
     const storageKey = `@autocare/selected-vehicle/${userId}/${dataOwnerId}`;
+
+    useEffect(() => {
+        let mounted = true;
+        const localOwnedGarage = allGarages.find((garage) => garage.owner_user_id === userId);
+        if (!userId || localOwnedGarage) {
+            setServerOwnedGarage(null);
+            setServerGarageLoading(false);
+            return () => { mounted = false; };
+        }
+
+        setServerGarageLoading(true);
+        void (async () => {
+            try {
+                const { data, error } = await supabaseConnector.client
+                    .from("garages")
+                    .select("*")
+                    .eq("owner_user_id", userId)
+                    .maybeSingle();
+                if (!mounted) return;
+                if (error) throw error;
+                setServerOwnedGarage(data ? {
+                    ...data,
+                    current_role: "owner",
+                    membership_status: "active",
+                } as GarageAccessRecord : null);
+            } catch {
+                if (mounted) setServerOwnedGarage(null);
+            } finally {
+                if (mounted) setServerGarageLoading(false);
+            }
+        })();
+
+        return () => { mounted = false; };
+    }, [allGarages, supabaseConnector, userId]);
 
     useEffect(() => {
         if (!userId) {

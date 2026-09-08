@@ -195,7 +195,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 await saveDocument(document);
                 if (isOnline) void syncPendingDocuments(dataOwnerId);
             }
-            Alert.alert(t("expenseSaved"));
+            Alert.alert(t(persistedId ? "expenseUpdated" : "expenseSaved"));
             navigation.goBack();
         } catch (error) {
             Alert.alert(formTitle, (error as Error).message);

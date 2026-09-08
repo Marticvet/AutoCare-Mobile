@@ -1,4 +1,4 @@
-import { ExpenseCategory, ExpenseSource } from "../data/models";
+import { ChecklistRunItemRecord, ChecklistRunRecord, ExpenseCategory, ExpenseSource } from "../data/models";
 
 export type AuthStackParamList = {
     Login: undefined;
@@ -27,7 +27,11 @@ export type RootStackParamList = {
     TripForm: { tripId?: string; vehicleId?: string } | undefined;
     ScheduledReports: undefined;
     Checklists: undefined;
-    ChecklistRun: { runId: string };
+    ChecklistRun: {
+        runId: string;
+        initialRun?: ChecklistRunRecord;
+        initialItems?: ChecklistRunItemRecord[];
+    };
 };
 
 export type MainTabParamList = {

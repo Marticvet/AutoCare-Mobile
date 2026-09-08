@@ -6,6 +6,43 @@ export const isoDate = (date = new Date()) => {
     return local.toISOString().slice(0, 10);
 };
 
+/**
+ * Convert the value emitted by the calendar component without allowing a
+ * midnight UTC/local conversion to move the selected day backwards. Date-only
+ * values are calendar days, not instants in time.
+ */
+export const calendarDateValue = (value: unknown) => {
+    if (typeof value === "string") {
+        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+        if (match) return match[0];
+    }
+
+    const formattable = value as { format?: (template: string) => string } | null;
+    if (typeof formattable?.format === "function") {
+        const formatted = formattable.format("YYYY-MM-DD");
+        if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) return formatted;
+    }
+
+    const resolved = value instanceof Date
+        ? value
+        : new Date(value as string | number);
+    if (Number.isNaN(resolved.getTime())) return "";
+
+    // react-native-ui-datepicker normally returns local midnight, but some
+    // platform/time-zone combinations return UTC midnight instead.
+    const isLocalMidnight = resolved.getHours() === 0
+        && resolved.getMinutes() === 0
+        && resolved.getSeconds() === 0;
+    if (isLocalMidnight) return isoDate(resolved);
+
+    const isUtcMidnight = resolved.getUTCHours() === 0
+        && resolved.getUTCMinutes() === 0
+        && resolved.getUTCSeconds() === 0;
+    if (isUtcMidnight) return resolved.toISOString().slice(0, 10);
+
+    return isoDate(resolved);
+};
+
 export const isoTime = (date = new Date()) =>
     `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
@@ -93,7 +130,9 @@ export const expenseDateRangeForPeriod = (
     if (period === "all") return { start: null, end };
 
     const start = new Date(now);
-    if (period === "week") start.setDate(start.getDate() - 6);
+    // "Last 7 days" includes an expense from exactly seven days ago as well
+    // as today. This matches how people interpret "a week ago" in the UI.
+    if (period === "week") start.setDate(start.getDate() - 7);
     if (period === "month") start.setDate(1);
     if (period === "year") start.setMonth(0, 1);
     return { start: isoDate(start), end };

@@ -99,6 +99,7 @@ const insurance_expenses = new Table({
     cost: column.real,
     valid_from: column.text,
     valid_to: column.text,
+    time: column.text,
     notes: column.text,
     user_id: column.text,
     selected_vehicle_id: column.text,

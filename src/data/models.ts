@@ -195,6 +195,7 @@ export type ChecklistTemplateDraft = {
     name: string;
     description: string;
     vehicleType: string;
+    isDefault?: boolean;
     items: ChecklistItemDraft[];
 };
 
