@@ -28,4 +28,13 @@ describe("edge function errors", () => {
         await expect(edgeFunctionErrorMessage(new Error("Network request failed")))
             .resolves.toBe("Network request failed");
     });
+
+    test("supports feature-specific status messages", async () => {
+        await expect(edgeFunctionErrorMessage(
+            { message: "Edge Function returned a non-2xx status code" },
+            response(404),
+            "Places are unavailable.",
+            { 404: "Google Places search has not been deployed yet." }
+        )).resolves.toBe("Google Places search has not been deployed yet.");
+    });
 });

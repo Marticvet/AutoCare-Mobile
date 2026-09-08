@@ -1,6 +1,9 @@
 import Expo
 import React
 import ReactAppDependencyProvider
+#if canImport(GoogleMaps)
+import GoogleMaps
+#endif
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -13,6 +16,12 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+#if canImport(GoogleMaps)
+    if let apiKey = Self.googleMapsApiKey() {
+      GMSServices.provideAPIKey(apiKey)
+    }
+#endif
+
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -30,6 +39,27 @@ public class AppDelegate: ExpoAppDelegate {
 #endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private static func googleMapsApiKey() -> String? {
+    if let configured = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String,
+       configured.hasPrefix("AIza") {
+      return configured
+    }
+
+    guard let bundleURL = Bundle.main.url(forResource: "EXConstants", withExtension: "bundle"),
+          let constantsBundle = Bundle(url: bundleURL),
+          let configURL = constantsBundle.url(forResource: "app", withExtension: "config"),
+          let data = try? Data(contentsOf: configURL),
+          let object = try? JSONSerialization.jsonObject(with: data),
+          let appConfig = object as? [String: Any],
+          let extra = appConfig["extra"] as? [String: Any],
+          let mapsConfig = extra["googleMapsNative"] as? [String: Any],
+          let apiKey = mapsConfig["iosApiKey"] as? String,
+          apiKey.hasPrefix("AIza") else {
+      return nil
+    }
+    return apiKey
   }
 
   // Linking API

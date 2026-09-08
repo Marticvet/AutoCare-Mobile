@@ -8,12 +8,15 @@ def localEnvironmentFile = rootProject.file("../.env")
 if (localEnvironmentFile.exists()) {
     localEnvironmentFile.withInputStream { localEnvironment.load(it) }
 }
-def googleMapsApiKey = System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY")
-        ?: System.getenv("EXPO_GOOGLE_API_KEY")
-        ?: localEnvironment.getProperty("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY")
-        ?: localEnvironment.getProperty("EXPO_GOOGLE_API_KEY")
-        ?: findProperty("GOOGLE_MAPS_API_KEY")
-        ?: ""
+def googleMapsApiKey = [
+        System.getenv("GOOGLE_MAPS_ANDROID_API_KEY"),
+        System.getenv("EXPO_GOOGLE_API_KEY"),
+        System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"),
+        localEnvironment.getProperty("GOOGLE_MAPS_ANDROID_API_KEY"),
+        localEnvironment.getProperty("EXPO_GOOGLE_API_KEY"),
+        localEnvironment.getProperty("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"),
+        findProperty("GOOGLE_MAPS_API_KEY")
+].find { value -> value?.trim()?.startsWith("AIza") } ?: ""
 
 /**
  * This is the configuration block to customize your React Native Android app.

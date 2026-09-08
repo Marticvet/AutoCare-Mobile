@@ -45,13 +45,17 @@ async function responseMessage(response?: ResponseLike) {
 export async function edgeFunctionErrorMessage(
     error: unknown,
     response?: ResponseLike,
-    fallback = "The server request failed."
+    fallback = "The server request failed.",
+    statusMessages: Partial<Record<number, string>> = {}
 ) {
     const functionResponse = responseFrom(error, response);
     const serverMessage = await responseMessage(functionResponse);
     if (serverMessage) return serverMessage;
 
-    switch (functionResponse?.status) {
+    const status = functionResponse?.status;
+    if (status !== undefined && statusMessages[status]) return statusMessages[status];
+
+    switch (status) {
         case 401:
             return "Your session has expired. Sign in again and retry.";
         case 404:

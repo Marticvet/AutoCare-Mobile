@@ -8,6 +8,7 @@ import {
     TextInput,
     FlatList,
     Keyboard,
+    Platform,
 } from "react-native";
 import MapView, { Callout, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import {
@@ -233,6 +234,7 @@ export default function MapScreen({ route }: any) {
             {/* Map */}
             <MapView
                 ref={mapRef}
+                provider={Platform.OS === "ios" ? PROVIDER_GOOGLE : undefined}
                 style={styles.map}
                 initialRegion={{
                     latitude: 51.13,
@@ -242,6 +244,10 @@ export default function MapScreen({ route }: any) {
                 }}
                 onPress={selectLocationHandler}
                 showsUserLocation={true}
+                showsCompass={true}
+                rotateEnabled={true}
+                pitchEnabled={true}
+                scrollDuringRotateOrZoomEnabled={true}
             >
                 {/* ✅ Safe Marker Render*/}
                 {selectedLocation && (

@@ -15,20 +15,24 @@ import {
     TextInput,
     View,
 } from "react-native";
-import MapView, { MapPressEvent, Marker, MarkerDragStartEndEvent, Region } from "react-native-maps";
+import MapView, { MapPressEvent, Marker, MarkerDragStartEndEvent, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { captureCurrentLocation, resolveLocationLabel } from "../services/currentLocation";
+import { captureCurrentLocation, captureDeviceCoordinates, resolveLocationLabel } from "../services/currentLocation";
+import {
+    autocompletePlaces,
+    getPlaceDetails,
+    PlaceOrigin,
+    PlaceSuggestion,
+    searchClosestPlace,
+} from "../services/googlePlaces";
 import { colors, radius, shadow, spacing, typography } from "../theme/tokens";
-import { GOOGLE_API_KEY } from "../utils/location";
 
 export type PickedLocation = {
     label: string;
     latitude: number;
     longitude: number;
 };
-
-type Prediction = { place_id: string; description: string };
 
 const DEFAULT_REGION: Region = {
     latitude: 51,
@@ -113,57 +117,116 @@ function LocationPickerModal({
     const safeTop = insets.top || (Platform.OS === "ios" ? 44 : NativeStatusBar.currentHeight ?? 24);
     const safeBottom = insets.bottom || (Platform.OS === "ios" ? 20 : 0);
     const mapRef = useRef<MapView>(null);
+    const mapReadyRef = useRef(false);
+    const pendingCenterRef = useRef<PlaceOrigin | null>(null);
     const [query, setQuery] = useState(initialValue);
     const [selection, setSelection] = useState<PickedLocation | null>(initialLocation);
-    const [predictions, setPredictions] = useState<Prediction[]>([]);
+    const [predictions, setPredictions] = useState<PlaceSuggestion[]>([]);
+    const [searchOrigin, setSearchOrigin] = useState<PlaceOrigin | null>(null);
+    const [initialMapRegion, setInitialMapRegion] = useState<Region | null>(
+        initialLocation ? regionFor(initialLocation.latitude, initialLocation.longitude) : null
+    );
     const [searching, setSearching] = useState(false);
+    const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+    const [suggestionsError, setSuggestionsError] = useState("");
     const [locating, setLocating] = useState(false);
     const [resolving, setResolving] = useState(false);
     const [showInstructions, setShowInstructions] = useState(!initialLocation);
 
+    const centerMap = (latitude: number, longitude: number) => {
+        pendingCenterRef.current = { latitude, longitude };
+        if (mapReadyRef.current) animateTo(latitude, longitude, mapRef.current);
+    };
+
     useEffect(() => {
         if (!visible) return;
+        let cancelled = false;
+        mapReadyRef.current = false;
         setQuery(initialValue);
         setSelection(initialLocation);
         setPredictions([]);
+        setSuggestionsLoading(false);
+        setSuggestionsError("");
         setShowInstructions(!initialLocation);
+        if (initialLocation) {
+            pendingCenterRef.current = initialLocation;
+            setSearchOrigin(initialLocation);
+            setInitialMapRegion(regionFor(initialLocation.latitude, initialLocation.longitude));
+            setLocating(false);
+        } else {
+            pendingCenterRef.current = null;
+            setSearchOrigin(null);
+            setInitialMapRegion(null);
+            setLocating(true);
+        }
         const animateTimer = setTimeout(() => {
-            if (initialLocation) animateTo(initialLocation.latitude, initialLocation.longitude, mapRef.current);
+            if (initialLocation) centerMap(initialLocation.latitude, initialLocation.longitude);
+            void captureDeviceCoordinates({ allowRecentLocation: true })
+                .then((current) => {
+                    if (cancelled) return;
+                    setSearchOrigin(current);
+                    if (!initialLocation) {
+                        pendingCenterRef.current = current;
+                        setInitialMapRegion(regionFor(current.latitude, current.longitude));
+                    }
+                })
+                .catch((error) => {
+                    if (!cancelled && !initialLocation) {
+                        setInitialMapRegion(DEFAULT_REGION);
+                        Alert.alert("Current location", (error as Error).message);
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled && !initialLocation) setLocating(false);
+                });
         }, 250);
         const instructionTimer = setTimeout(() => setShowInstructions(false), 4500);
         return () => {
+            cancelled = true;
             clearTimeout(animateTimer);
             clearTimeout(instructionTimer);
         };
     }, [initialLocation, initialValue, visible]);
 
     useEffect(() => {
-        if (!visible || !GOOGLE_API_KEY || query.trim().length < 3 || query.trim() === selection?.label) {
+        if (!visible || query.trim().length < 3 || query.trim() === selection?.label) {
             setPredictions([]);
+            setSuggestionsLoading(false);
+            setSuggestionsError("");
             return;
         }
-        const controller = new AbortController();
+        let cancelled = false;
+        setSuggestionsError("");
         const timer = setTimeout(() => {
-            const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query.trim())}&key=${encodeURIComponent(GOOGLE_API_KEY)}`;
-            void fetch(url, { signal: controller.signal })
-                .then((response) => response.json())
-                .then((payload) => {
-                    if (payload.status === "OK") setPredictions(payload.predictions ?? []);
-                    else setPredictions([]);
+            setSuggestionsLoading(true);
+            void autocompletePlaces(query.trim(), searchOrigin)
+                .then((results) => {
+                    if (!cancelled) {
+                        setPredictions(results);
+                        setSuggestionsError(results.length ? "" : "No nearby matches found.");
+                    }
                 })
-                .catch(() => undefined);
+                .catch((error) => {
+                    if (!cancelled) {
+                        setPredictions([]);
+                        setSuggestionsError((error as Error).message);
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) setSuggestionsLoading(false);
+                });
         }, 350);
         return () => {
+            cancelled = true;
             clearTimeout(timer);
-            controller.abort();
         };
-    }, [query, selection?.label, visible]);
+    }, [query, searchOrigin, selection?.label, visible]);
 
     const chooseCoordinates = async (latitude: number, longitude: number, suppliedLabel?: string) => {
         setShowInstructions(false);
         const temporaryLabel = suppliedLabel || "Finding this address…";
         setSelection({ latitude, longitude, label: temporaryLabel });
-        animateTo(latitude, longitude, mapRef.current);
+        centerMap(latitude, longitude);
         setResolving(true);
         try {
             const locationLabel = suppliedLabel || await reverseGeocode(latitude, longitude);
@@ -171,7 +234,7 @@ function LocationPickerModal({
             setSelection(next);
             setQuery(locationLabel);
             setPredictions([]);
-            animateTo(latitude, longitude, mapRef.current);
+            centerMap(latitude, longitude);
         } catch (error) {
             Alert.alert("Choose location", (error as Error).message);
         } finally {
@@ -185,7 +248,7 @@ function LocationPickerModal({
         setSearching(true);
         Keyboard.dismiss();
         try {
-            const result = await geocodeAddress(address);
+            const result = await geocodeAddress(address, searchOrigin);
             await chooseCoordinates(result.latitude, result.longitude, result.label);
         } catch (error) {
             Alert.alert("Address search", (error as Error).message);
@@ -194,11 +257,11 @@ function LocationPickerModal({
         }
     };
 
-    const choosePrediction = async (prediction: Prediction) => {
+    const choosePrediction = async (prediction: PlaceSuggestion) => {
         setSearching(true);
         Keyboard.dismiss();
         try {
-            const result = await placeDetails(prediction.place_id, prediction.description);
+            const result = await getPlaceDetails(prediction.placeId);
             await chooseCoordinates(result.latitude, result.longitude, result.label);
         } catch (error) {
             Alert.alert("Address search", (error as Error).message);
@@ -213,10 +276,11 @@ function LocationPickerModal({
         Keyboard.dismiss();
         try {
             const current = await captureCurrentLocation();
+            setSearchOrigin(current);
             setSelection(current);
             setQuery(current.label);
             setPredictions([]);
-            animateTo(current.latitude, current.longitude, mapRef.current);
+            centerMap(current.latitude, current.longitude);
         } catch (error) {
             Alert.alert("Current location", (error as Error).message);
         } finally {
@@ -241,22 +305,38 @@ function LocationPickerModal({
         >
             <StatusBar style="dark" translucent backgroundColor="transparent" />
             <View style={styles.modal}>
-                <MapView
-                    ref={mapRef}
-                    style={StyleSheet.absoluteFill}
-                    initialRegion={initialLocation ? regionFor(initialLocation.latitude, initialLocation.longitude) : DEFAULT_REGION}
-                    mapPadding={{ top: safeTop + 142, right: spacing.md, bottom: safeBottom + 214, left: spacing.md }}
-                    onPress={selectFromMap}
-                    showsUserLocation
-                    showsMyLocationButton={false}
-                    showsCompass
-                    loadingEnabled
-                    loadingBackgroundColor={colors.canvas}
-                    toolbarEnabled={false}
-                    moveOnMarkerPress={false}
-                >
-                    {selection ? <Marker coordinate={selection} draggable onDragEnd={selectFromMap} title={selection.label || "Selected location"} /> : null}
-                </MapView>
+                {initialMapRegion ? (
+                    <MapView
+                        ref={mapRef}
+                        provider={Platform.OS === "ios" ? PROVIDER_GOOGLE : undefined}
+                        style={StyleSheet.absoluteFill}
+                        initialRegion={initialMapRegion}
+                        mapPadding={{ top: safeTop + 142, right: spacing.md, bottom: safeBottom + 214, left: spacing.md }}
+                        onPress={selectFromMap}
+                        showsUserLocation
+                        showsMyLocationButton={false}
+                        showsCompass
+                        rotateEnabled
+                        pitchEnabled
+                        scrollDuringRotateOrZoomEnabled
+                        loadingEnabled
+                        loadingBackgroundColor={colors.canvas}
+                        toolbarEnabled={false}
+                        moveOnMarkerPress={false}
+                        onMapReady={() => {
+                            mapReadyRef.current = true;
+                            const pending = pendingCenterRef.current;
+                            if (pending) animateTo(pending.latitude, pending.longitude, mapRef.current);
+                        }}
+                    >
+                        {selection ? <Marker coordinate={selection} draggable onDragEnd={selectFromMap} title={selection.label || "Selected location"} /> : null}
+                    </MapView>
+                ) : (
+                    <View style={styles.mapBoot}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={styles.mapBootText}>Finding your location…</Text>
+                    </View>
+                )}
 
                 <View style={[styles.topControls, { top: safeTop + spacing.sm }]} pointerEvents="box-none">
                     <Pressable
@@ -293,6 +373,7 @@ function LocationPickerModal({
                                 onPress={() => {
                                     setQuery("");
                                     setPredictions([]);
+                                    setSuggestionsError("");
                                 }}
                                 hitSlop={8}
                                 accessibilityRole="button"
@@ -301,16 +382,16 @@ function LocationPickerModal({
                                 <Ionicons name="close-circle" size={21} color={colors.borderStrong} />
                             </Pressable>
                         ) : null}
-                        {searching ? <ActivityIndicator color={colors.primary} /> : (
+                        {searching ? <ActivityIndicator color={colors.primary} /> : query.trim().length > 0 ? (
                             <Pressable onPress={() => void searchAddress()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Search">
                                 <View style={styles.searchSubmit}><Ionicons name="arrow-forward" size={19} color={colors.white} /></View>
                             </Pressable>
-                        )}
+                        ) : null}
                     </View>
                     {predictions.length ? (
                         <FlatList
                             data={predictions.slice(0, 5)}
-                            keyExtractor={(item) => item.place_id}
+                            keyExtractor={(item) => item.placeId}
                             keyboardShouldPersistTaps="handled"
                             style={styles.predictions}
                             renderItem={({ item }) => (
@@ -320,6 +401,14 @@ function LocationPickerModal({
                                 </Pressable>
                             )}
                         />
+                    ) : null}
+                    {suggestionsLoading ? (
+                        <View style={styles.suggestionStatus}>
+                            <ActivityIndicator size="small" color={colors.primary} />
+                            <Text style={styles.suggestionStatusText}>Searching nearby places…</Text>
+                        </View>
+                    ) : suggestionsError ? (
+                        <Text style={[styles.suggestionStatus, styles.suggestionError]}>{suggestionsError}</Text>
                     ) : null}
                 </View>
 
@@ -378,38 +467,24 @@ function LocationPickerModal({
 }
 
 async function reverseGeocode(latitude: number, longitude: number) {
-    if (GOOGLE_API_KEY) {
-        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${encodeURIComponent(GOOGLE_API_KEY)}`);
-        const payload = await response.json();
-        if (response.ok && payload.status === "OK" && payload.results?.[0]?.formatted_address) return payload.results[0].formatted_address as string;
-    }
     return resolveLocationLabel(latitude, longitude);
 }
 
-async function geocodeAddress(address: string): Promise<PickedLocation> {
-    if (GOOGLE_API_KEY) {
-        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${encodeURIComponent(GOOGLE_API_KEY)}`);
-        const payload = await response.json();
-        if (!response.ok || payload.status !== "OK" || !payload.results?.[0]) throw new Error(payload.error_message || "No matching address was found.");
-        const result = payload.results[0];
-        return { latitude: result.geometry.location.lat, longitude: result.geometry.location.lng, label: result.formatted_address || address };
+async function geocodeAddress(address: string, origin: PlaceOrigin | null): Promise<PickedLocation> {
+    let placesError: unknown;
+    try {
+        const place = await searchClosestPlace(address, origin);
+        if (place) return place;
+    } catch (error) {
+        placesError = error;
     }
     const results = await Location.geocodeAsync(address);
-    if (!results[0]) throw new Error("No matching address was found. Add a Google Maps key for richer address search.");
-    const first = results[0];
-    return { latitude: first.latitude, longitude: first.longitude, label: await resolveLocationLabel(first.latitude, first.longitude) };
-}
-
-async function placeDetails(placeId: string, fallbackLabel: string): Promise<PickedLocation> {
-    if (!GOOGLE_API_KEY) return geocodeAddress(fallbackLabel);
-    const response = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=formatted_address,geometry,name&key=${encodeURIComponent(GOOGLE_API_KEY)}`);
-    const payload = await response.json();
-    if (!response.ok || payload.status !== "OK" || !payload.result?.geometry?.location) throw new Error(payload.error_message || "This place could not be opened.");
-    return {
-        latitude: payload.result.geometry.location.lat,
-        longitude: payload.result.geometry.location.lng,
-        label: payload.result.formatted_address || payload.result.name || fallbackLabel,
-    };
+    if (results[0]) {
+        const first = results[0];
+        return { latitude: first.latitude, longitude: first.longitude, label: await resolveLocationLabel(first.latitude, first.longitude) };
+    }
+    if (placesError instanceof Error) throw placesError;
+    throw new Error("No matching address or nearby business was found.");
 }
 
 function regionFor(latitude: number, longitude: number): Region {
@@ -432,6 +507,8 @@ const styles = StyleSheet.create({
     placeholder: { color: colors.inkMuted },
     hint: { ...typography.caption, color: colors.inkMuted },
     modal: { flex: 1, backgroundColor: colors.canvas },
+    mapBoot: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.canvas },
+    mapBootText: { ...typography.bodyStrong, color: colors.inkMuted },
     topControls: { position: "absolute", left: spacing.md, right: spacing.md, zIndex: 30, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
     roundControl: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.96)", ...shadow },
     controlPressed: { transform: [{ scale: 0.96 }], backgroundColor: colors.primarySoft },
@@ -447,6 +524,9 @@ const styles = StyleSheet.create({
     predictionPressed: { backgroundColor: colors.primarySoft },
     predictionIcon: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.primarySoft },
     predictionText: { flex: 1, ...typography.body, color: colors.ink },
+    suggestionStatus: { minHeight: 40, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+    suggestionStatusText: { ...typography.caption, color: colors.inkMuted },
+    suggestionError: { ...typography.caption, color: colors.danger },
     locateButton: { position: "absolute", right: spacing.md, zIndex: 15, width: 54, height: 54, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", ...shadow },
     locatePressed: { transform: [{ scale: 0.96 }], backgroundColor: colors.primaryDark },
     instructions: { position: "absolute", left: spacing.md, zIndex: 14, minHeight: 38, maxWidth: "65%", paddingHorizontal: spacing.md, borderRadius: radius.md, flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: "rgba(255,255,255,0.96)", ...shadow },
