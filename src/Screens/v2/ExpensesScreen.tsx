@@ -17,7 +17,7 @@ import { useSubscription } from "../../billing/SubscriptionProvider";
 
 export default function ExpensesScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { t, currency, language, formatCurrency } = usePreferences();
+    const { t, currency, locale, formatCurrency } = usePreferences();
     const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
     const { canExportReports, canUseAdvancedInsights } = useSubscription();
     const [scope, setScope] = useState(selectedVehicleId || "all");
@@ -47,8 +47,8 @@ export default function ExpensesScreen() {
         () => expenseTrendTotals(expenses, activeRange.start, activeRange.end),
         [activeRange.end, activeRange.start, expenses]
     );
-    const dayFormatter = useMemo(() => new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }), [language]);
-    const monthFormatter = useMemo(() => new Intl.DateTimeFormat(language, { month: "short", year: "2-digit" }), [language]);
+    const dayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }), [locale]);
+    const monthFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { month: "short", year: "2-digit" }), [locale]);
     const trendData = useMemo(() => trend.map((entry) => ({
         label: formatTrendLabel(entry.start, entry.end, dayFormatter, monthFormatter),
         value: entry.total,
@@ -60,7 +60,7 @@ export default function ExpensesScreen() {
             return;
         }
         try {
-            await exportExpensesCsv(expenses, currency);
+            await exportExpensesCsv(expenses, currency, t("sharingUnavailable"), t("expenseReportDialog"));
         } catch (error) {
             Alert.alert(t("exportCsv"), (error as Error).message);
         }
@@ -134,7 +134,7 @@ export default function ExpensesScreen() {
                         <Text style={styles.summaryValue}>{formatCurrency(totalExpenses(expenses))}</Text>
                     </View>
                     <View style={styles.exportButton}>
-                        <Button label={canExportReports ? t("exportCsv") : "Plus export"} icon={canExportReports ? "share-outline" : "lock-closed-outline"} variant="secondary" compact onPress={exportReport} disabled={!expenses.length} />
+                        <Button label={canExportReports ? t("exportCsv") : t("plusExport")} icon={canExportReports ? "share-outline" : "lock-closed-outline"} variant="secondary" compact onPress={exportReport} disabled={!expenses.length} />
                     </View>
                 </View>
                 <View style={styles.emissionsRow}>
@@ -156,9 +156,9 @@ export default function ExpensesScreen() {
                             </Card>
                         ) : (
                             <Card style={styles.plusGate}>
-                                <Text style={styles.plusGateTitle}>Advanced insights with Plus</Text>
-                                <Text style={styles.plusGateBody}>See spending trends, compare time ranges, and filter by category.</Text>
-                                <Button label="Explore AutoCare Plus" icon="sparkles-outline" variant="secondary" onPress={() => navigation.navigate("Paywall", { source: "insights" })} />
+                                <Text style={styles.plusGateTitle}>{t("advancedInsightsPlus")}</Text>
+                                <Text style={styles.plusGateBody}>{t("advancedInsightsBody")}</Text>
+                                <Button label={t("explorePlus")} icon="sparkles-outline" variant="secondary" onPress={() => navigation.navigate("Paywall", { source: "insights" })} />
                             </Card>
                         )}
                     </View>

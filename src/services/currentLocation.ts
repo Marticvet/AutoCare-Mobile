@@ -8,24 +8,31 @@ export type CapturedLocation = {
 
 export type DeviceCoordinates = Pick<CapturedLocation, "latitude" | "longitude">;
 
-async function requireForegroundLocationPermission() {
+export type LocationPermissionMessages = {
+    disabled: string;
+    denied: string;
+};
+
+async function requireForegroundLocationPermission(messages: LocationPermissionMessages) {
     let permission = await Location.getForegroundPermissionsAsync();
     if (permission.status === "granted") return;
     if (!permission.canAskAgain) {
-        throw new Error("Location access is disabled. Enable it for AutoCare Hub in your device settings.");
+        throw new Error(messages.disabled);
     }
     permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
-        throw new Error("Location permission was not granted.");
+        throw new Error(messages.denied);
     }
 }
 
 export async function captureDeviceCoordinates({
     allowRecentLocation = false,
+    permissionMessages,
 }: {
     allowRecentLocation?: boolean;
-} = {}): Promise<DeviceCoordinates> {
-    await requireForegroundLocationPermission();
+    permissionMessages: LocationPermissionMessages;
+}): Promise<DeviceCoordinates> {
+    await requireForegroundLocationPermission(permissionMessages);
 
     if (allowRecentLocation) {
         const recent = await Location.getLastKnownPositionAsync({
@@ -65,8 +72,8 @@ export async function resolveLocationLabel(latitude: number, longitude: number) 
     }
 }
 
-export async function captureCurrentLocation(): Promise<CapturedLocation> {
-    const { latitude, longitude } = await captureDeviceCoordinates();
+export async function captureCurrentLocation(permissionMessages: LocationPermissionMessages): Promise<CapturedLocation> {
+    const { latitude, longitude } = await captureDeviceCoordinates({ permissionMessages });
     const label = await resolveLocationLabel(latitude, longitude);
     return { latitude, longitude, label };
 }

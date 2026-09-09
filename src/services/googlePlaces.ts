@@ -27,7 +27,15 @@ export type NearbyPlace = PlaceLocation & {
 
 type PlacesAction = "autocomplete" | "details" | "searchText" | "nearby";
 
-async function callPlaces<T>(action: PlacesAction, body: Record<string, unknown>): Promise<T> {
+export type GooglePlacesErrorMessages = {
+    unavailable: string;
+    sessionExpired: string;
+    notDeployed: string;
+    busy: string;
+    notConfigured: string;
+};
+
+async function callPlaces<T>(action: PlacesAction, body: Record<string, unknown>, messages: GooglePlacesErrorMessages): Promise<T> {
     const { data, error, response } = await system.supabaseConnector.client.functions.invoke("google-places", {
         body: { action, ...body },
     });
@@ -35,11 +43,12 @@ async function callPlaces<T>(action: PlacesAction, body: Record<string, unknown>
         throw new Error(await edgeFunctionErrorMessage(
             error,
             response,
-            "Google Places search is temporarily unavailable.",
+            messages.unavailable,
             {
-                404: "Google Places search has not been deployed yet.",
-                429: "Google Places search is temporarily busy. Please try again shortly.",
-                503: "Google Places search is not configured yet.",
+                401: messages.sessionExpired,
+                404: messages.notDeployed,
+                429: messages.busy,
+                503: messages.notConfigured,
             }
         ));
     }
@@ -47,27 +56,27 @@ async function callPlaces<T>(action: PlacesAction, body: Record<string, unknown>
     return data as T;
 }
 
-export async function autocompletePlaces(input: string, origin?: PlaceOrigin | null) {
+export async function autocompletePlaces(input: string, origin: PlaceOrigin | null | undefined, messages: GooglePlacesErrorMessages) {
     const data = await callPlaces<{ suggestions: PlaceSuggestion[] }>("autocomplete", {
         input,
         origin: origin ?? undefined,
-    });
+    }, messages);
     return data.suggestions;
 }
 
-export async function searchClosestPlace(query: string, origin?: PlaceOrigin | null) {
+export async function searchClosestPlace(query: string, origin: PlaceOrigin | null | undefined, messages: GooglePlacesErrorMessages) {
     const data = await callPlaces<{ places: PlaceLocation[] }>("searchText", {
         query,
         origin: origin ?? undefined,
-    });
+    }, messages);
     return data.places[0] ?? null;
 }
 
-export async function getPlaceDetails(placeId: string): Promise<PlaceLocation> {
-    return callPlaces<PlaceLocation>("details", { placeId });
+export async function getPlaceDetails(placeId: string, messages: GooglePlacesErrorMessages): Promise<PlaceLocation> {
+    return callPlaces<PlaceLocation>("details", { placeId }, messages);
 }
 
-export async function searchNearbyPlaces(type: "gas_station" | "car_repair", origin: PlaceOrigin) {
-    const data = await callPlaces<{ places: NearbyPlace[] }>("nearby", { type, origin });
+export async function searchNearbyPlaces(type: "gas_station" | "car_repair", origin: PlaceOrigin, messages: GooglePlacesErrorMessages) {
+    const data = await callPlaces<{ places: NearbyPlace[] }>("nearby", { type, origin }, messages);
     return data.places;
 }

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -27,6 +27,7 @@ import {
     searchClosestPlace,
 } from "../services/googlePlaces";
 import { colors, radius, shadow, spacing, typography } from "../theme/tokens";
+import { usePreferences } from "../i18n/PreferencesProvider";
 
 export type PickedLocation = {
     label: string;
@@ -56,6 +57,7 @@ export function LocationPickerField({
     onChange: (location: PickedLocation) => void;
     onClear: () => void;
 }) {
+    const { t } = usePreferences();
     const [visible, setVisible] = useState(false);
     const parsedLatitude = Number(latitude);
     const parsedLongitude = Number(longitude);
@@ -73,13 +75,13 @@ export function LocationPickerField({
                 <View style={styles.triggerIcon}><Ionicons name="location-outline" size={20} color={colors.primary} /></View>
                 <View style={styles.triggerText}>
                     <Text numberOfLines={2} style={[styles.triggerValue, !value && styles.placeholder]}>
-                        {value || "Search an address or choose on the map"}
+                        {value || t("locationFieldPlaceholder")}
                     </Text>
                     {hasCoordinates ? <Text style={styles.coordinates}>{parsedLatitude.toFixed(5)}, {parsedLongitude.toFixed(5)}</Text> : null}
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.inkMuted} />
             </Pressable>
-            <Text style={styles.hint}>Optional · tap to search, use your location, or place a pin manually.</Text>
+            <Text style={styles.hint}>{t("locationFieldHint")}</Text>
             <LocationPickerModal
                 visible={visible}
                 initialValue={value}
@@ -113,6 +115,18 @@ function LocationPickerModal({
     onClear: () => void;
     onConfirm: (location: PickedLocation) => void;
 }) {
+    const { t } = usePreferences();
+    const permissionMessages = useMemo(() => ({
+        disabled: t("locationAccessDisabled"),
+        denied: t("locationPermissionDenied"),
+    }), [t]);
+    const placesMessages = useMemo(() => ({
+        unavailable: t("placesUnavailable"),
+        sessionExpired: t("sessionExpired"),
+        notDeployed: t("placesNotDeployed"),
+        busy: t("placesBusy"),
+        notConfigured: t("placesNotConfigured"),
+    }), [t]);
     const insets = useSafeAreaInsets();
     const safeTop = insets.top || (Platform.OS === "ios" ? 44 : NativeStatusBar.currentHeight ?? 24);
     const safeBottom = insets.bottom || (Platform.OS === "ios" ? 20 : 0);
@@ -161,7 +175,7 @@ function LocationPickerModal({
         }
         const animateTimer = setTimeout(() => {
             if (initialLocation) centerMap(initialLocation.latitude, initialLocation.longitude);
-            void captureDeviceCoordinates({ allowRecentLocation: true })
+            void captureDeviceCoordinates({ allowRecentLocation: true, permissionMessages })
                 .then((current) => {
                     if (cancelled) return;
                     setSearchOrigin(current);
@@ -173,7 +187,7 @@ function LocationPickerModal({
                 .catch((error) => {
                     if (!cancelled && !initialLocation) {
                         setInitialMapRegion(DEFAULT_REGION);
-                        Alert.alert("Current location", (error as Error).message);
+                        Alert.alert(t("currentLocation"), (error as Error).message);
                     }
                 })
                 .finally(() => {
@@ -186,7 +200,7 @@ function LocationPickerModal({
             clearTimeout(animateTimer);
             clearTimeout(instructionTimer);
         };
-    }, [initialLocation, initialValue, visible]);
+    }, [initialLocation, initialValue, permissionMessages, t, visible]);
 
     useEffect(() => {
         if (!visible || query.trim().length < 3 || query.trim() === selection?.label) {
@@ -199,11 +213,11 @@ function LocationPickerModal({
         setSuggestionsError("");
         const timer = setTimeout(() => {
             setSuggestionsLoading(true);
-            void autocompletePlaces(query.trim(), searchOrigin)
+            void autocompletePlaces(query.trim(), searchOrigin, placesMessages)
                 .then((results) => {
                     if (!cancelled) {
                         setPredictions(results);
-                        setSuggestionsError(results.length ? "" : "No nearby matches found.");
+                        setSuggestionsError(results.length ? "" : t("noNearbyMatches"));
                     }
                 })
                 .catch((error) => {
@@ -220,11 +234,11 @@ function LocationPickerModal({
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [query, searchOrigin, selection?.label, visible]);
+    }, [placesMessages, query, searchOrigin, selection?.label, t, visible]);
 
     const chooseCoordinates = async (latitude: number, longitude: number, suppliedLabel?: string) => {
         setShowInstructions(false);
-        const temporaryLabel = suppliedLabel || "Finding this address…";
+        const temporaryLabel = suppliedLabel || t("findingAddress");
         setSelection({ latitude, longitude, label: temporaryLabel });
         centerMap(latitude, longitude);
         setResolving(true);
@@ -236,7 +250,7 @@ function LocationPickerModal({
             setPredictions([]);
             centerMap(latitude, longitude);
         } catch (error) {
-            Alert.alert("Choose location", (error as Error).message);
+            Alert.alert(t("chooseLocation"), (error as Error).message);
         } finally {
             setResolving(false);
         }
@@ -248,10 +262,10 @@ function LocationPickerModal({
         setSearching(true);
         Keyboard.dismiss();
         try {
-            const result = await geocodeAddress(address, searchOrigin);
+            const result = await geocodeAddress(address, searchOrigin, t("noMatchingLocation"), placesMessages);
             await chooseCoordinates(result.latitude, result.longitude, result.label);
         } catch (error) {
-            Alert.alert("Address search", (error as Error).message);
+            Alert.alert(t("addressSearch"), (error as Error).message);
         } finally {
             setSearching(false);
         }
@@ -261,10 +275,10 @@ function LocationPickerModal({
         setSearching(true);
         Keyboard.dismiss();
         try {
-            const result = await getPlaceDetails(prediction.placeId);
+            const result = await getPlaceDetails(prediction.placeId, placesMessages);
             await chooseCoordinates(result.latitude, result.longitude, result.label);
         } catch (error) {
-            Alert.alert("Address search", (error as Error).message);
+            Alert.alert(t("addressSearch"), (error as Error).message);
         } finally {
             setSearching(false);
         }
@@ -275,14 +289,14 @@ function LocationPickerModal({
         setLocating(true);
         Keyboard.dismiss();
         try {
-            const current = await captureCurrentLocation();
+            const current = await captureCurrentLocation(permissionMessages);
             setSearchOrigin(current);
             setSelection(current);
             setQuery(current.label);
             setPredictions([]);
             centerMap(current.latitude, current.longitude);
         } catch (error) {
-            Alert.alert("Current location", (error as Error).message);
+            Alert.alert(t("currentLocation"), (error as Error).message);
         } finally {
             setLocating(false);
         }
@@ -329,12 +343,12 @@ function LocationPickerModal({
                             if (pending) animateTo(pending.latitude, pending.longitude, mapRef.current);
                         }}
                     >
-                        {selection ? <Marker coordinate={selection} draggable onDragEnd={selectFromMap} title={selection.label || "Selected location"} /> : null}
+                        {selection ? <Marker coordinate={selection} draggable onDragEnd={selectFromMap} title={selection.label || t("selectedLocation")} /> : null}
                     </MapView>
                 ) : (
                     <View style={styles.mapBoot}>
                         <ActivityIndicator size="large" color={colors.primary} />
-                        <Text style={styles.mapBootText}>Finding your location…</Text>
+                        <Text style={styles.mapBootText}>{t("findingLocation")}</Text>
                     </View>
                 )}
 
@@ -343,13 +357,13 @@ function LocationPickerModal({
                         onPress={onCancel}
                         style={({ pressed }) => [styles.roundControl, pressed && styles.controlPressed]}
                         accessibilityRole="button"
-                        accessibilityLabel="Close location picker"
+                        accessibilityLabel={t("closeLocationPicker")}
                     >
                         <Ionicons name="close" size={25} color={colors.ink} />
                     </Pressable>
                     <View style={styles.titlePill}>
                         <Ionicons name="map-outline" size={18} color={colors.primary} />
-                        <Text numberOfLines={1} style={styles.floatingTitle}>Choose location</Text>
+                        <Text numberOfLines={1} style={styles.floatingTitle}>{t("chooseLocation")}</Text>
                     </View>
                     <View style={styles.controlSpacer} />
                 </View>
@@ -361,12 +375,12 @@ function LocationPickerModal({
                             value={query}
                             onChangeText={setQuery}
                             onSubmitEditing={() => void searchAddress()}
-                            placeholder="Search address, station, or workshop"
+                            placeholder={t("locationSearchPlaceholder")}
                             placeholderTextColor={colors.inkMuted}
                             returnKeyType="search"
                             autoCorrect={false}
                             style={styles.searchInput}
-                            accessibilityLabel="Search address"
+                            accessibilityLabel={t("searchAddress")}
                         />
                         {query.length > 0 && !searching ? (
                             <Pressable
@@ -377,13 +391,13 @@ function LocationPickerModal({
                                 }}
                                 hitSlop={8}
                                 accessibilityRole="button"
-                                accessibilityLabel="Clear address search"
+                                accessibilityLabel={t("clearAddressSearch")}
                             >
                                 <Ionicons name="close-circle" size={21} color={colors.borderStrong} />
                             </Pressable>
                         ) : null}
                         {searching ? <ActivityIndicator color={colors.primary} /> : query.trim().length > 0 ? (
-                            <Pressable onPress={() => void searchAddress()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Search">
+                            <Pressable onPress={() => void searchAddress()} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("search")}>
                                 <View style={styles.searchSubmit}><Ionicons name="arrow-forward" size={19} color={colors.white} /></View>
                             </Pressable>
                         ) : null}
@@ -405,7 +419,7 @@ function LocationPickerModal({
                     {suggestionsLoading ? (
                         <View style={styles.suggestionStatus}>
                             <ActivityIndicator size="small" color={colors.primary} />
-                            <Text style={styles.suggestionStatusText}>Searching nearby places…</Text>
+                            <Text style={styles.suggestionStatusText}>{t("searchingNearbyPlaces")}</Text>
                         </View>
                     ) : suggestionsError ? (
                         <Text style={[styles.suggestionStatus, styles.suggestionError]}>{suggestionsError}</Text>
@@ -416,7 +430,7 @@ function LocationPickerModal({
                     style={({ pressed }) => [styles.locateButton, { bottom: safeBottom + 220 }, pressed && styles.locatePressed]}
                     onPress={() => void chooseCurrentLocation()}
                     accessibilityRole="button"
-                    accessibilityLabel="Use current location"
+                    accessibilityLabel={t("useCurrentLocation")}
                 >
                     {locating ? <ActivityIndicator color={colors.white} /> : <Ionicons name="locate" size={25} color={colors.white} />}
                 </Pressable>
@@ -424,17 +438,17 @@ function LocationPickerModal({
                 {showInstructions ? (
                     <View style={[styles.instructions, { bottom: safeBottom + 222 }]} pointerEvents="none">
                         <Ionicons name="hand-left-outline" size={15} color={colors.inkMuted} />
-                        <Text style={styles.instructionsText}>Tap the map or drag the pin</Text>
+                        <Text style={styles.instructionsText}>{t("mapPinInstruction")}</Text>
                     </View>
                 ) : null}
 
                 <View style={[styles.selectionPanel, { paddingBottom: Math.max(safeBottom, spacing.md) }]}>
                     <View style={styles.grabber} />
                     <View style={styles.selectionHeader}>
-                        <Text style={styles.selectionLabel}>SELECTED LOCATION</Text>
+                        <Text style={styles.selectionLabel}>{t("selectedLocationHeading")}</Text>
                         {selection ? (
-                            <Pressable onPress={onClear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear selected location">
-                                <Text style={styles.clearText}>Clear</Text>
+                            <Pressable onPress={onClear} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("clearSelectedLocation")}>
+                                <Text style={styles.clearText}>{t("clear")}</Text>
                             </Pressable>
                         ) : null}
                     </View>
@@ -442,7 +456,7 @@ function LocationPickerModal({
                         <View style={styles.selectionIcon}><Ionicons name="location" size={21} color={colors.primary} /></View>
                         <View style={styles.selectionCopy}>
                             <Text numberOfLines={2} style={[styles.selectionValue, !selection && styles.placeholder]}>
-                                {selection?.label || "Search above or tap anywhere on the map"}
+                                {selection?.label || t("locationEmptyBody")}
                             </Text>
                             {selection ? (
                                 <Text style={styles.selectionCoordinates}>{selection.latitude.toFixed(5)}, {selection.longitude.toFixed(5)}</Text>
@@ -455,10 +469,10 @@ function LocationPickerModal({
                         onPress={() => selection && onConfirm(selection)}
                         style={({ pressed }) => [styles.confirmButton, (!selection || resolving) && styles.confirmDisabled, pressed && selection && !resolving && styles.confirmPressed]}
                         accessibilityRole="button"
-                        accessibilityLabel="Use selected location"
+                        accessibilityLabel={t("useSelectedLocation")}
                     >
                         <Ionicons name="checkmark-circle" size={21} color={colors.white} />
-                        <Text style={styles.confirmText}>Use this location</Text>
+                        <Text style={styles.confirmText}>{t("useThisLocation")}</Text>
                     </Pressable>
                 </View>
             </View>
@@ -470,10 +484,15 @@ async function reverseGeocode(latitude: number, longitude: number) {
     return resolveLocationLabel(latitude, longitude);
 }
 
-async function geocodeAddress(address: string, origin: PlaceOrigin | null): Promise<PickedLocation> {
+async function geocodeAddress(
+    address: string,
+    origin: PlaceOrigin | null,
+    noMatchMessage: string,
+    placesMessages: Parameters<typeof searchClosestPlace>[2]
+): Promise<PickedLocation> {
     let placesError: unknown;
     try {
-        const place = await searchClosestPlace(address, origin);
+        const place = await searchClosestPlace(address, origin, placesMessages);
         if (place) return place;
     } catch (error) {
         placesError = error;
@@ -484,7 +503,7 @@ async function geocodeAddress(address: string, origin: PlaceOrigin | null): Prom
         return { latitude: first.latitude, longitude: first.longitude, label: await resolveLocationLabel(first.latitude, first.longitude) };
     }
     if (placesError instanceof Error) throw placesError;
-    throw new Error("No matching address or nearby business was found.");
+    throw new Error(noMatchMessage);
 }
 
 function regionFor(latitude: number, longitude: number): Region {

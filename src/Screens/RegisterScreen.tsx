@@ -33,8 +33,8 @@ export default function RegisterScreen({ navigation }: any) {
                     { text: t("done"), onPress: () => navigation.navigate("Login") },
                 ]);
             }
-        } catch (error) {
-            Alert.alert(t("signUp"), (error as Error).message);
+        } catch {
+            Alert.alert(t("signUp"), t("signUpFailed"));
         } finally {
             setBusy(false);
         }
@@ -50,7 +50,7 @@ export default function RegisterScreen({ navigation }: any) {
                             <Text style={styles.subtitle}>{t("authWelcome")}</Text>
                             <FormField label={t("fullName")} value={fullName} onChangeText={setFullName} autoComplete="name" required />
                             <FormField label={t("email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" required />
-                            <FormField label={t("password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" hint="8+ characters" required />
+                            <FormField label={t("password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" hint={t("eightCharactersMinimum")} required />
                             <FormField label={t("confirmPassword")} value={confirmation} onChangeText={setConfirmation} secureTextEntry autoComplete="new-password" required />
                             <Button label={t("signUp")} onPress={submit} loading={busy} />
                             <View style={styles.inline}>

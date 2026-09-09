@@ -14,7 +14,15 @@ export type ReceiptSuggestion = {
     confidence: { amount: string; date: string; vendor: string };
 };
 
-export async function recognizeReceipt(localUri: string): Promise<ReceiptSuggestion> {
+export type ReceiptOcrErrorMessages = {
+    unavailable: string;
+    sessionExpired: string;
+    notDeployed: string;
+    photoTooLarge: string;
+    busy: string;
+};
+
+export async function recognizeReceipt(localUri: string, messages: ReceiptOcrErrorMessages): Promise<ReceiptSuggestion> {
     const optimized = await ImageManipulator.manipulateAsync(
         localUri,
         [{ resize: { width: 1600 } }],
@@ -30,7 +38,13 @@ export async function recognizeReceipt(localUri: string): Promise<ReceiptSuggest
         throw new Error(await edgeFunctionErrorMessage(
             error,
             response,
-            "Receipt scanning is temporarily unavailable."
+            messages.unavailable,
+            {
+                401: messages.sessionExpired,
+                404: messages.notDeployed,
+                413: messages.photoTooLarge,
+                429: messages.busy,
+            }
         ));
     }
     if (data?.error) throw new Error(data.error);

@@ -9,8 +9,10 @@ import React, {
     useState,
 } from "react";
 import { TranslationKey, translations } from "./translations";
+import { Language, localeForLanguage } from "./languages";
 
-export type Language = "en" | "de" | "bg" | "es" | "fr";
+export { languageOptions } from "./languages";
+export type { Language } from "./languages";
 export type Currency = "EUR" | "USD" | "GBP" | "BGN" | "CHF" | "PLN" | "RON" | "CZK" | "HUF" | "SEK" | "NOK" | "DKK" | "CAD" | "AUD" | "JPY";
 export type DistanceUnit = "km" | "mi";
 
@@ -22,13 +24,23 @@ type Preferences = {
 
 type PreferencesContextValue = Preferences & {
     ready: boolean;
+    locale: string;
     setLanguage: (language: Language) => void;
     setCurrency: (currency: Currency) => void;
     setDistanceUnit: (unit: DistanceUnit) => void;
-    t: (key: TranslationKey) => string;
+    t: (key: TranslationKey, params?: TranslationParams) => string;
     formatCurrency: (value: number) => string;
     formatDistance: (kilometers: number) => string;
 };
+
+type TranslationParams = Record<string, string | number>;
+
+function interpolate(template: string, params?: TranslationParams) {
+    if (!params) return template;
+    return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key: string) =>
+        Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : match
+    );
+}
 
 const STORAGE_KEY = "@autocare/preferences/v1";
 const defaults: Preferences = { language: "en", currency: "EUR", distanceUnit: "km" };
@@ -36,10 +48,11 @@ const defaults: Preferences = { language: "en", currency: "EUR", distanceUnit: "
 const PreferencesContext = createContext<PreferencesContextValue>({
     ...defaults,
     ready: false,
+    locale: "en-US",
     setLanguage: () => undefined,
     setCurrency: () => undefined,
     setDistanceUnit: () => undefined,
-    t: (key) => translations.en[key],
+    t: (key, params) => interpolate(translations.en[key], params),
     formatCurrency: (value) => `${value.toFixed(2)} EUR`,
     formatDistance: (value) => `${Math.round(value)} km`,
 });
@@ -67,20 +80,15 @@ export function PreferencesProvider({ children }: PropsWithChildren) {
     }, []);
 
     const value = useMemo<PreferencesContextValue>(() => {
-        const locale = {
-            en: "en-US",
-            de: "de-DE",
-            bg: "bg-BG",
-            es: "es-ES",
-            fr: "fr-FR",
-        }[preferences.language];
+        const locale = localeForLanguage(preferences.language);
         return {
             ...preferences,
             ready,
+            locale,
             setLanguage: (language) => update({ language }),
             setCurrency: (currency) => update({ currency }),
             setDistanceUnit: (distanceUnit) => update({ distanceUnit }),
-            t: (key) => translations[preferences.language][key],
+            t: (key, params) => interpolate(translations[preferences.language][key], params),
             formatCurrency: (value) =>
                 new Intl.NumberFormat(locale, {
                     style: "currency",

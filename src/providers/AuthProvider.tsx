@@ -95,7 +95,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                         });
 
                 if (result.error) throw result.error;
-                if (!result.data.session) throw new Error("The password reset session could not be created.");
+                if (!result.data.session) throw new Error("password_recovery_session_missing");
                 setSession(result.data.session);
                 return true;
             } catch (error) {
@@ -298,7 +298,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const changePassword = useCallback(
         async (currentPassword: string, newPassword: string) => {
             const email = session?.user.email;
-            if (!email) throw new Error("No email address is available for this account.");
+            if (!email) throw new Error("account_email_missing");
 
             const { error: verificationError } = await supabaseConnector.client.auth.signInWithPassword({
                 email,

@@ -36,14 +36,14 @@ export default function ResetPasswordScreen() {
         try {
             await completePasswordRecovery(password);
             Alert.alert(t("passwordChanged"), t("passwordResetSuccess"));
-        } catch (updateError) {
-            setError((updateError as Error).message);
+        } catch {
+            setError(t("passwordUpdateFailed"));
         } finally {
             setBusy(false);
         }
     };
 
-    const linkError = passwordRecoveryError || (!passwordRecoveryLoading && !session ? t("resetLinkInvalid") : null);
+    const linkError = Boolean(passwordRecoveryError || (!passwordRecoveryLoading && !session));
 
     return (
         <LinearGradient colors={["#102044", "#2F6BFF"]} style={styles.flex}>
@@ -67,7 +67,7 @@ export default function ResetPasswordScreen() {
                             ) : linkError ? (
                                 <>
                                     <View style={styles.errorBox}>
-                                        <Text style={styles.error}>{linkError}</Text>
+                                        <Text style={styles.error}>{t("resetLinkInvalid")}</Text>
                                     </View>
                                     <Button label={t("backToSignIn")} onPress={() => void cancelPasswordRecovery()} />
                                 </>

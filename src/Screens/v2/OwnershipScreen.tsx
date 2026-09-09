@@ -14,7 +14,7 @@ import { toNumber } from "../../utils/tracking";
 export default function OwnershipScreen() {
     const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
     const { supabaseConnector } = useSystem();
-    const { formatCurrency, formatDistance } = usePreferences();
+    const { formatCurrency, formatDistance, t } = usePreferences();
     const [vehicleId, setVehicleId] = useState(selectedVehicleId || vehicles[0]?.id || "");
     const { data: expenses, loading: expensesLoading } = useExpenses(dataOwnerId, vehicleId);
     const { data: trips, loading: tripsLoading } = useTrips(dataOwnerId, vehicleId);
@@ -148,9 +148,9 @@ export default function OwnershipScreen() {
         try {
             const savedId = await saveVehicleBudget({ ...draft, vehicleId, userId: dataOwnerId });
             setDraft((current) => ({ ...current, id: savedId }));
-            Alert.alert("Ownership settings saved successfully");
+            Alert.alert(t("ownershipSaved"));
         } catch (error) {
-            Alert.alert("Ownership costs", (error as Error).message);
+            Alert.alert(t("ownershipCosts"), (error as Error).message);
         } finally {
             setBusy(false);
         }
@@ -166,38 +166,38 @@ export default function OwnershipScreen() {
 
     return (
         <Screen>
-            <SectionHeader title="Budgets & ownership cost" />
+            <SectionHeader title={t("budgetsOwnership")} />
             {serverBudgetError && !budget ? (
                 <Card style={styles.errorCard}>
-                    <Text style={styles.errorText}>Ownership settings could not be refreshed. You can still enter and save them while offline.</Text>
+                    <Text style={styles.errorText}>{t("ownershipRefreshError")}</Text>
                 </Card>
             ) : null}
             <Card style={styles.introCard}>
-                <Text style={styles.insightTitle}>What ownership cost means</Text>
-                <Text style={styles.insightBody}>This combines your recorded expenses, tracked trip distance, monthly budget, and estimated vehicle depreciation. It helps you see what the vehicle costs to own—not only what you paid at the pump.</Text>
+                <Text style={styles.insightTitle}>{t("ownershipMeaning")}</Text>
+                <Text style={styles.insightBody}>{t("ownershipMeaningBody")}</Text>
             </Card>
             <VehicleSelectField vehicles={vehicles} value={vehicleId} onChange={setVehicleId} />
             <View style={styles.grid}>
-                <MetricCard label="Spent this month" value={formatCurrency(insights.monthlySpend)} icon="wallet-outline" />
-                <MetricCard label="Budget remaining" value={draft.monthlyBudget.trim() ? formatCurrency(insights.budgetRemaining) : "Not set"} icon="speedometer-outline" tone={insights.budgetRemaining < 0 ? "red" : "green"} />
-                <MetricCard label="Cost per tracked km" value={insights.costPerKm ? formatCurrency(insights.costPerKm) : "—"} icon="analytics-outline" tone="amber" />
-                <MetricCard label="Estimated depreciation" value={insights.depreciation ? formatCurrency(insights.depreciation) : "—"} icon="trending-down-outline" tone="amber" />
+                <MetricCard label={t("spentThisMonth")} value={formatCurrency(insights.monthlySpend)} icon="wallet-outline" />
+                <MetricCard label={t("budgetRemaining")} value={draft.monthlyBudget.trim() ? formatCurrency(insights.budgetRemaining) : t("notSet")} icon="speedometer-outline" tone={insights.budgetRemaining < 0 ? "red" : "green"} />
+                <MetricCard label={t("costPerTrackedKm")} value={insights.costPerKm ? formatCurrency(insights.costPerKm) : "—"} icon="analytics-outline" tone="amber" />
+                <MetricCard label={t("estimatedDepreciation")} value={insights.depreciation ? formatCurrency(insights.depreciation) : "—"} icon="trending-down-outline" tone="amber" />
             </View>
             <Card style={styles.insightCard}>
-                <Text style={styles.insightTitle}>Year-over-year</Text>
-                <Text style={styles.insightValue}>{insights.yearComparison === null ? "Add last year’s expenses to compare" : `${insights.yearComparison >= 0 ? "+" : ""}${insights.yearComparison.toFixed(1)}% vs last year`}</Text>
-                <Text style={styles.insightBody}>{insights.dueSoon} upcoming reminder{insights.dueSoon === 1 ? "" : "s"} in the next 90 days. Expected cost appears once you record it as an expense.</Text>
-                <Text style={styles.insightBody}>Cost/km uses {formatDistance(trips.reduce((sum, trip) => sum + toNumber(trip.distance_km), 0))} of tracked trips.</Text>
+                <Text style={styles.insightTitle}>{t("yearOverYear")}</Text>
+                <Text style={styles.insightValue}>{insights.yearComparison === null ? t("addLastYearExpenses") : t("comparedWithLastYear", { percent: `${insights.yearComparison >= 0 ? "+" : ""}${insights.yearComparison.toFixed(1)}` })}</Text>
+                <Text style={styles.insightBody}>{t("upcomingRemindersSummary", { count: insights.dueSoon })}</Text>
+                <Text style={styles.insightBody}>{t("trackedTripCostSummary", { distance: formatDistance(trips.reduce((sum, trip) => sum + toNumber(trip.distance_km), 0)) })}</Text>
             </Card>
-            <SectionHeader title="Ownership assumptions" />
+            <SectionHeader title={t("ownershipAssumptions")} />
             <Card style={styles.form}>
-                <FormField label="Monthly budget" value={draft.monthlyBudget} onChangeText={(value) => setDraft((current) => ({ ...current, monthlyBudget: value }))} keyboardType="decimal-pad" />
-                <FormField label="Purchase price" value={draft.purchasePrice} onChangeText={(value) => setDraft((current) => ({ ...current, purchasePrice: value }))} keyboardType="decimal-pad" />
-                <FormField label="Current value" value={draft.currentValue} onChangeText={(value) => setDraft((current) => ({ ...current, currentValue: value }))} keyboardType="decimal-pad" hint="Leave empty to estimate from the annual depreciation rate." />
-                <DateField label="Purchase date" value={draft.purchaseDate} onChange={(value) => setDraft((current) => ({ ...current, purchaseDate: value }))} />
-                <FormField label="Annual depreciation (%)" value={draft.annualDepreciationPercent} onChangeText={(value) => setDraft((current) => ({ ...current, annualDepreciationPercent: value }))} keyboardType="decimal-pad" />
+                <FormField label={t("monthlyBudget")} value={draft.monthlyBudget} onChangeText={(value) => setDraft((current) => ({ ...current, monthlyBudget: value }))} keyboardType="decimal-pad" />
+                <FormField label={t("purchasePrice")} value={draft.purchasePrice} onChangeText={(value) => setDraft((current) => ({ ...current, purchasePrice: value }))} keyboardType="decimal-pad" />
+                <FormField label={t("currentValue")} value={draft.currentValue} onChangeText={(value) => setDraft((current) => ({ ...current, currentValue: value }))} keyboardType="decimal-pad" hint={t("currentValueHint")} />
+                <DateField label={t("purchaseDate")} value={draft.purchaseDate} onChange={(value) => setDraft((current) => ({ ...current, purchaseDate: value }))} />
+                <FormField label={t("annualDepreciation")} value={draft.annualDepreciationPercent} onChangeText={(value) => setDraft((current) => ({ ...current, annualDepreciationPercent: value }))} keyboardType="decimal-pad" />
             </Card>
-            <Button label="Save ownership settings" icon="checkmark" onPress={() => void save()} loading={busy} disabled={!vehicleId || !canWrite} />
+            <Button label={t("saveOwnershipSettings")} icon="checkmark" onPress={() => void save()} loading={busy} disabled={!vehicleId || !canWrite} />
         </Screen>
     );
 }

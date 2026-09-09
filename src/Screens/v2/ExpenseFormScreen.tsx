@@ -98,7 +98,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
         { value: "repair", label: t("repair") },
     ];
     const chargerTypes = [
-        { value: "domestic-socket", label: "Domestic socket" },
+        { value: "domestic-socket", label: t("domesticSocket") },
         { value: "ac-type-2", label: "AC Type 2" },
         { value: "wallbox", label: "Wallbox" },
         { value: "dc-ccs", label: "DC CCS" },
@@ -138,7 +138,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
 
     const submit = async () => {
         if (!canWrite) {
-            Alert.alert(formTitle, "Your garage role is view-only.");
+            Alert.alert(formTitle, t("viewOnlyGarage"));
             return;
         }
         const computedAmount = toNumber(draft.amount)
@@ -153,13 +153,13 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
             return;
         }
         if (draft.category === "charging" && toNumber(draft.energyKwh) <= 0) {
-            Alert.alert(formTitle, "Enter the energy delivered in kWh.");
+            Alert.alert(formTitle, t("enterEnergyKwh"));
             return;
         }
         const startBattery = toNumber(draft.batteryStartPercent);
         const endBattery = toNumber(draft.batteryEndPercent);
         if ((draft.batteryStartPercent && (startBattery < 0 || startBattery > 100)) || (draft.batteryEndPercent && (endBattery < 0 || endBattery > 100))) {
-            Alert.alert(formTitle, "Battery percentages must be between 0 and 100.");
+            Alert.alert(formTitle, t("batteryPercentRange"));
             return;
         }
         if (receipt && !canCreateDocument) {
@@ -235,29 +235,35 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
             return;
         }
         try {
-            const captured = await captureDocument(receiptId);
+            const captured = await captureDocument(receiptId, t("cameraPermissionDenied"));
             if (!captured) return;
             setReceipt(captured);
             if (!releaseFeatures.receiptOcr) {
-                Alert.alert("Receipt saved", "The photo is attached. Enter the expense details and save when you are ready.");
+                Alert.alert(t("receiptSaved"), t("receiptPhotoAttached"));
                 return;
             }
             if (!isOnline) {
-                Alert.alert("Receipt saved", "The image is attached. OCR needs an internet connection, so you can enter the fields manually for now.");
+                Alert.alert(t("receiptSaved"), t("receiptOfflineAttached"));
                 return;
             }
             setOcrBusy(true);
-            const suggestion = await recognizeReceipt(captured.localUri);
+            const suggestion = await recognizeReceipt(captured.localUri, {
+                unavailable: t("receiptScanUnavailable"),
+                sessionExpired: t("sessionExpired"),
+                notDeployed: t("receiptScanNotDeployed"),
+                photoTooLarge: t("receiptPhotoTooLarge"),
+                busy: t("receiptScanBusy"),
+            });
             const summary = [
-                suggestion.vendor && `Vendor: ${suggestion.vendor}`,
-                suggestion.amount !== null && `Amount: ${suggestion.amount.toFixed(2)}`,
-                suggestion.date && `Date: ${suggestion.date}`,
-                `Category: ${suggestion.category}`,
+                suggestion.vendor && `${t("vendor")}: ${suggestion.vendor}`,
+                suggestion.amount !== null && `${t("amount")}: ${suggestion.amount.toFixed(2)}`,
+                suggestion.date && `${t("date")}: ${suggestion.date}`,
+                `${t("category")}: ${t(suggestion.category)}`,
             ].filter(Boolean).join("\n");
-            Alert.alert("Receipt suggestions", summary, [
+            Alert.alert(t("receiptSuggestions"), summary, [
                 { text: t("cancel"), style: "cancel" },
                 {
-                    text: "Apply",
+                    text: t("apply"),
                     onPress: () => setDraft((current) => ({
                         ...current,
                         category: suggestion.category,
@@ -271,7 +277,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 },
             ]);
         } catch (error) {
-            Alert.alert("Receipt OCR", `${(error as Error).message}\n\nThe receipt is still attached and you can enter the fields manually.`);
+            Alert.alert(t("receiptOcr"), `${(error as Error).message}\n\n${t("receiptStillAttached")}`);
         } finally {
             setOcrBusy(false);
         }
@@ -311,17 +317,17 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 {draft.category === "charging" ? (
                     <>
                         <View style={styles.columns}>
-                            <View style={styles.column}><FormField label="Energy (kWh)" value={draft.energyKwh} onChangeText={(value) => update("energyKwh", value)} keyboardType="decimal-pad" required /></View>
-                            <View style={styles.column}><FormField label="Price per kWh" value={draft.pricePerKwh} onChangeText={(value) => update("pricePerKwh", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label={t("energyKwh")} value={draft.energyKwh} onChangeText={(value) => update("energyKwh", value)} keyboardType="decimal-pad" required /></View>
+                            <View style={styles.column}><FormField label={t("pricePerKwh")} value={draft.pricePerKwh} onChangeText={(value) => update("pricePerKwh", value)} keyboardType="decimal-pad" /></View>
                         </View>
                         <View style={styles.columns}>
-                            <View style={styles.column}><FormField label="Battery start (%)" value={draft.batteryStartPercent} onChangeText={(value) => update("batteryStartPercent", value)} keyboardType="decimal-pad" /></View>
-                            <View style={styles.column}><FormField label="Battery end (%)" value={draft.batteryEndPercent} onChangeText={(value) => update("batteryEndPercent", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label={t("batteryStart")} value={draft.batteryStartPercent} onChangeText={(value) => update("batteryStartPercent", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label={t("batteryEnd")} value={draft.batteryEndPercent} onChangeText={(value) => update("batteryEndPercent", value)} keyboardType="decimal-pad" /></View>
                         </View>
-                        <PresetOrCustomField label="Charger type" value={draft.chargerType} onChange={(value) => update("chargerType", value)} options={chargerTypes} placeholder="Choose charger type" />
+                        <PresetOrCustomField label={t("chargerType")} value={draft.chargerType} onChange={(value) => update("chargerType", value)} options={chargerTypes} placeholder={t("chooseChargerType")} />
                         <View style={styles.columns}>
-                            <View style={styles.column}><FormField label="Charging speed (kW)" value={draft.chargingSpeedKw} onChangeText={(value) => update("chargingSpeedKw", value)} keyboardType="decimal-pad" /></View>
-                            <View style={styles.column}><FormField label="Efficiency (kWh/100 km)" value={draft.efficiencyKwhPer100Km} onChangeText={(value) => update("efficiencyKwhPer100Km", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label={t("chargingSpeed")} value={draft.chargingSpeedKw} onChangeText={(value) => update("chargingSpeedKw", value)} keyboardType="decimal-pad" /></View>
+                            <View style={styles.column}><FormField label={t("chargingEfficiency")} value={draft.efficiencyKwhPer100Km} onChangeText={(value) => update("efficiencyKwhPer100Km", value)} keyboardType="decimal-pad" /></View>
                         </View>
                     </>
                 ) : null}
@@ -338,7 +344,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 ) : null}
                 {!["fuel", "service", "insurance"].includes(draft.category) ? <FormField label={t("title")} value={draft.title} onChangeText={(value) => update("title", value)} required /> : null}
 
-                <FormField label={t("amount")} value={draft.amount} onChangeText={(value) => update("amount", value)} keyboardType="decimal-pad" hint={draft.category === "fuel" ? `${t("optional")} — ${t("litres")} × ${t("pricePerLitre")}` : draft.category === "charging" ? "Optional — kWh × price per kWh" : undefined} required={!['fuel', 'charging'].includes(draft.category)} />
+                <FormField label={t("amount")} value={draft.amount} onChangeText={(value) => update("amount", value)} keyboardType="decimal-pad" hint={draft.category === "fuel" ? `${t("optional")} — ${t("litres")} × ${t("pricePerLitre")}` : draft.category === "charging" ? t("chargingAmountHint") : undefined} required={!['fuel', 'charging'].includes(draft.category)} />
                 {draft.category !== "insurance" ? (
                     <View style={styles.columns}>
                         <View style={styles.column}><DateField label={t("date")} value={draft.date} onChange={(value) => update("date", value)} required /></View>
@@ -381,7 +387,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 <View style={styles.receiptActions}>
                     <Button label={receipt ? `${t("fileSelected")}: ${receipt.fileName}` : t("attachReceipt")} icon="attach-outline" variant="secondary" onPress={attach} />
                     <Button
-                        label={releaseFeatures.receiptOcr ? "Scan receipt & suggest fields" : "Take receipt photo"}
+                        label={releaseFeatures.receiptOcr ? t("scanReceiptSuggest") : t("takeReceiptPhoto")}
                         icon={releaseFeatures.receiptOcr ? "scan-outline" : "camera-outline"}
                         variant="secondary"
                         onPress={() => void scanReceipt()}

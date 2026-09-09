@@ -7,6 +7,13 @@ export const REMINDER_CATEGORY_ID = "vehicleReminder";
 const identifierFor = (reminderId: string) => `autocare-reminder-${reminderId}`;
 export const DEFAULT_REMINDER_TIME = "09:00";
 
+export type ReminderSystemLabels = {
+    channelName: string;
+    channelDescription: string;
+    open: string;
+    markComplete: string;
+};
+
 export const normalizeReminderTime = (value?: string | null) => {
     const match = value?.match(/^([01]\d|2[0-3]):([0-5]\d)/);
     return match ? `${match[1]}:${match[2]}` : DEFAULT_REMINDER_TIME;
@@ -43,21 +50,21 @@ Notifications.setNotificationHandler({
     }),
 });
 
-async function ensureAndroidChannel() {
+async function ensureAndroidChannel(labels: ReminderSystemLabels) {
     if (Platform.OS !== "android") return;
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-        name: "Vehicle reminders",
-        description: "Maintenance, insurance, inspection, and document reminders",
+        name: labels.channelName,
+        description: labels.channelDescription,
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 200, 250],
         sound: "default",
     });
 }
 
-async function ensureNotificationCategory() {
+async function ensureNotificationCategory(labels: ReminderSystemLabels) {
     await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY_ID, [
-        { identifier: "openReminder", buttonTitle: "Open" },
-        { identifier: "completeReminder", buttonTitle: "Mark complete" },
+        { identifier: "openReminder", buttonTitle: labels.open },
+        { identifier: "completeReminder", buttonTitle: labels.markComplete },
     ]);
 }
 
@@ -66,9 +73,9 @@ export async function getReminderNotificationPermission() {
     return permission.granted ? "granted" : permission.canAskAgain ? "undetermined" : "denied";
 }
 
-export async function requestReminderNotificationPermission() {
-    await ensureAndroidChannel();
-    await ensureNotificationCategory();
+export async function requestReminderNotificationPermission(systemLabels: ReminderSystemLabels) {
+    await ensureAndroidChannel(systemLabels);
+    await ensureNotificationCategory(systemLabels);
     const existing = await Notifications.getPermissionsAsync();
     if (existing.granted) return true;
     if (!existing.canAskAgain) return false;
@@ -92,6 +99,7 @@ export async function scheduleReminderNotification({
     notifyBeforeMinutes = 0,
     notificationTitle,
     notificationBody,
+    systemLabels,
 }: {
     reminderId: string;
     title: string;
@@ -102,9 +110,10 @@ export async function scheduleReminderNotification({
     notifyBeforeMinutes?: number | null;
     notificationTitle?: string | null;
     notificationBody?: string | null;
+    systemLabels: ReminderSystemLabels;
 }) {
-    await ensureAndroidChannel();
-    await ensureNotificationCategory();
+    await ensureAndroidChannel(systemLabels);
+    await ensureNotificationCategory(systemLabels);
     await cancelReminderNotification(reminderId);
     const normalizedTime = normalizeReminderTime(dueTime);
     const triggerDate = new Date(`${dueDate}T${normalizedTime}:00`);
@@ -133,10 +142,11 @@ export async function reconcileReminderNotifications(
     reminders: ReminderRecord[],
     vehicles: VehicleRecord[],
     dueLabel: string,
-    vehicleFallback: string
+    vehicleFallback: string,
+    systemLabels: ReminderSystemLabels
 ) {
     if ((await getReminderNotificationPermission()) !== "granted") return;
-    await ensureAndroidChannel();
+    await ensureAndroidChannel(systemLabels);
 
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     await Promise.all(
@@ -161,12 +171,13 @@ export async function reconcileReminderNotifications(
             notifyBeforeMinutes: reminder.notify_before_minutes,
             notificationTitle: reminder.notification_title,
             notificationBody: reminder.notification_body,
+            systemLabels,
         });
     }
 }
 
-export async function sendReminderTestNotification(title: string, body: string) {
-    await ensureAndroidChannel();
+export async function sendReminderTestNotification(title: string, body: string, systemLabels: ReminderSystemLabels) {
+    await ensureAndroidChannel(systemLabels);
     return Notifications.scheduleNotificationAsync({
         content: { title, body, sound: "default", data: { kind: "notification-test" } },
         trigger: {

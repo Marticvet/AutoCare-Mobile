@@ -92,8 +92,8 @@ export default function ProfileEditScreen({ navigation }: Props) {
             setNewPassword("");
             setConfirmNewPassword("");
             Alert.alert(t("passwordChanged"));
-        } catch (error) {
-            Alert.alert(t("accountSecurity"), (error as Error).message);
+        } catch {
+            Alert.alert(t("accountSecurity"), t("passwordUpdateFailed"));
         } finally {
             setPasswordBusy(false);
         }

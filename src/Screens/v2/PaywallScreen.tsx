@@ -8,40 +8,12 @@ import { ENTITLEMENTS } from "../../billing/entitlements";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { usePreferences } from "../../i18n/PreferencesProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Paywall">;
 
-const benefits = [
-    [
-        "car-sport-outline",
-        "More than one vehicle",
-        "Track a household or growing garage.",
-    ],
-    [
-        "documents-outline",
-        "Documents and uploads",
-        "Keep important vehicle files organized.",
-    ],
-    [
-        "analytics-outline",
-        "Reports and advanced insights",
-        "Export data and explore deeper trends.",
-    ],
-    [
-        "repeat-outline",
-        "Recurring reminders",
-        "Automate repeating maintenance schedules.",
-    ],
-] as const;
-
-const familyBenefits = [
-    ["people-outline", "Up to six people", "Invite family members, drivers, or a trusted viewer."],
-    ["swap-horizontal-outline", "Shared garage", "Everyone sees the same vehicles, expenses, documents, and reminders."],
-    ["shield-checkmark-outline", "Roles and permissions", "Choose admin, driver, or view-only access."],
-    ["sparkles-outline", "Everything in Plus", "Unlimited vehicles, documents, exports, insights, and recurring reminders."],
-] as const;
-
 export default function PaywallScreen({ navigation, route }: Props) {
+    const { t } = usePreferences();
     const {
         configured,
         currentOffering,
@@ -55,6 +27,19 @@ export default function PaywallScreen({ navigation, route }: Props) {
         clearError,
     } = useSubscription();
     const familyMode = route.params?.source === "family";
+    const planLabel = familyMode ? t("family") : "Plus";
+    const benefits = [
+        ["car-sport-outline", t("moreThanOneVehicle"), t("moreVehiclesBody")],
+        ["documents-outline", t("documentsUploads"), t("documentsUploadsBody")],
+        ["analytics-outline", t("reportsAdvancedInsights"), t("reportsAdvancedInsightsBody")],
+        ["repeat-outline", t("recurringReminders"), t("recurringRemindersBenefitBody")],
+    ] as const;
+    const familyBenefits = [
+        ["people-outline", t("upToSixPeople"), t("upToSixPeopleBody")],
+        ["swap-horizontal-outline", t("sharedGarage"), t("sharedGarageBody")],
+        ["shield-checkmark-outline", t("rolesPermissions"), t("rolesPermissionsBody")],
+        ["sparkles-outline", t("everythingInPlus"), t("everythingInPlusBody")],
+    ] as const;
     const packages = useMemo(() => {
         const available = currentOffering?.availablePackages ?? [];
         return available.filter((item) => familyMode ? isFamilyPackage(item) : !isFamilyPackage(item));
@@ -70,28 +55,24 @@ export default function PaywallScreen({ navigation, route }: Props) {
         () =>
             ((
                 {
-                    vehicle: "A second vehicle is included with AutoCare Plus.",
-                    document:
-                        "Document storage and automatic upload are included with AutoCare Plus.",
-                    export: "CSV reports are included with AutoCare Plus.",
-                    reminder:
-                        "Recurring reminders are included with AutoCare Plus.",
-                    insights:
-                        "Advanced insights are included with AutoCare Plus.",
-                    family:
-                        "Share one garage with up to six family members or drivers.",
+                    vehicle: t("secondVehiclePlus"),
+                    document: t("documentStoragePlus"),
+                    export: t("csvReportsPlus"),
+                    reminder: t("recurringIncludedPlus"),
+                    insights: t("insightsIncludedPlus"),
+                    family: t("shareSixFamily"),
                 } as Record<string, string>
             )[route.params?.source ?? ""] ??
-            "Unlock every Plus feature for your garage."),
-        [route.params?.source]
+            t("unlockPlus")),
+        [route.params?.source, t]
     );
 
     const buy = async () => {
         if (!selected) return;
         clearError();
         if (await purchase(selected, familyMode ? ENTITLEMENTS.sharedGarage : ENTITLEMENTS.plusFeatures)) {
-            Alert.alert(`AutoCare ${familyMode ? "Family" : "Plus"}`, `${familyMode ? "Family" : "Plus"} is active on your account.`, [
-                { text: "Continue", onPress: navigation.goBack },
+            Alert.alert(`AutoCare ${planLabel}`, t("planActiveBody", { plan: planLabel }), [
+                { text: t("continue"), onPress: navigation.goBack },
             ]);
         }
     };
@@ -100,10 +81,10 @@ export default function PaywallScreen({ navigation, route }: Props) {
         clearError();
         const restored = await restorePurchases(familyMode ? ENTITLEMENTS.sharedGarage : ENTITLEMENTS.plusFeatures);
         Alert.alert(
-            "Restore purchases",
+            t("restorePurchases"),
             restored
-                ? `Your AutoCare ${familyMode ? "Family" : "Plus"} purchase was restored.`
-                : `No active ${familyMode ? "Family" : "Plus"} purchase was found.`
+                ? t("purchaseRestored", { plan: planLabel })
+                : t("noActivePlanPurchase", { plan: planLabel })
         );
         if (restored) navigation.goBack();
     };
@@ -116,13 +97,10 @@ export default function PaywallScreen({ navigation, route }: Props) {
                 <View style={styles.successIcon}>
                     <Ionicons name="checkmark" color={colors.white} size={34} />
                 </View>
-                <Text style={styles.hero}>AutoCare {familyMode ? "Family" : "Plus"} is active</Text>
-                <Text style={styles.subtitle}>
-                    Your paid features are available on every device signed into
-                    this account.
-                </Text>
+                <Text style={styles.hero}>{t("planIsActive", { plan: planLabel })}</Text>
+                <Text style={styles.subtitle}>{t("paidFeaturesAllDevices")}</Text>
                 <Button
-                    label="Continue"
+                    label={t("continue")}
                     icon="arrow-forward"
                     onPress={navigation.goBack}
                 />
@@ -135,8 +113,8 @@ export default function PaywallScreen({ navigation, route }: Props) {
             <View style={styles.heroMark}>
                 <Ionicons name="sparkles" color={colors.white} size={28} />
             </View>
-            <Text style={styles.eyebrow}>AUTOCARE {familyMode ? "FAMILY" : "PLUS"}</Text>
-            <Text style={styles.hero}>{familyMode ? "One garage. Everyone in sync." : "More capability for every mile."}</Text>
+            <Text style={styles.eyebrow}>{`AUTOCARE ${planLabel.toLocaleUpperCase()}`}</Text>
+            <Text style={styles.hero}>{familyMode ? t("familyHero") : t("plusHero")}</Text>
             <Text style={styles.subtitle}>{sourceMessage}</Text>
 
             <View style={styles.benefits}>
@@ -171,11 +149,10 @@ export default function PaywallScreen({ navigation, route }: Props) {
             {!loading && !configured ? (
                 <Card style={styles.notice}>
                     <Text style={styles.noticeTitle}>
-                        Billing setup required
+                        {t("billingSetupRequired")}
                     </Text>
                     <Text style={styles.noticeBody}>
-                        Add the RevenueCat public SDK key to this development
-                        build to load Test Store products.
+                        {t("billingSetupBody")}
                     </Text>
                 </Card>
             ) : null}
@@ -206,7 +183,7 @@ export default function PaywallScreen({ navigation, route }: Props) {
                             </View>
                             <View style={styles.packageCopy}>
                                 <Text style={styles.packageTitle}>
-                                    {packageLabel(item)}
+                                    {packageLabel(item, t)}
                                 </Text>
                                 <Text
                                     style={styles.packageDescription}
@@ -221,7 +198,7 @@ export default function PaywallScreen({ navigation, route }: Props) {
                                     {item.product.priceString}
                                 </Text>
                                 <Text style={styles.pricePeriod}>
-                                    {periodLabel(item)}
+                                    {periodLabel(item, t)}
                                 </Text>
                             </View>
                         </Pressable>
@@ -232,12 +209,10 @@ export default function PaywallScreen({ navigation, route }: Props) {
             {!loading && configured && packages.length === 0 ? (
                 <Card style={styles.notice}>
                     <Text style={styles.noticeTitle}>
-                        No offering available
+                        {t("noOfferingAvailable")}
                     </Text>
                     <Text style={styles.noticeBody}>
-                        Create monthly or yearly {familyMode ? "Family" : "Plus"} products, attach
-                        them to the current offering, and map them to the{" "}
-                        {familyMode ? `${ENTITLEMENTS.plusFeatures} and ${ENTITLEMENTS.sharedGarage}` : ENTITLEMENTS.plusFeatures} entitlement{familyMode ? "s" : ""}.
+                        {t("noOfferingBody", { plan: planLabel })}
                     </Text>
                 </Card>
             ) : null}
@@ -245,8 +220,8 @@ export default function PaywallScreen({ navigation, route }: Props) {
             <Button
                 label={
                     selected
-                        ? `Continue with ${selected.product.priceString}`
-                        : "Choose a plan"
+                        ? t("continueWithPrice", { price: selected.product.priceString })
+                        : t("choosePlan")
                 }
                 icon="lock-open-outline"
                 loading={purchasing}
@@ -254,24 +229,24 @@ export default function PaywallScreen({ navigation, route }: Props) {
                 onPress={() => void buy()}
             />
             <Button
-                label="Restore purchases"
+                label={t("restorePurchases")}
                 variant="ghost"
                 loading={purchasing}
                 onPress={() => void restore()}
             />
             <Text style={styles.finePrint}>
-                Payment renews according to the selected store plan until
-                cancelled. The localized price above comes directly from
-                RevenueCat.
+                {t("paymentFinePrint")}
             </Text>
         </Screen>
     );
 }
 
-function packageLabel(item: PurchasesPackage) {
+type Translate = ReturnType<typeof usePreferences>["t"];
+
+function packageLabel(item: PurchasesPackage, t: Translate) {
     const identity = `${item.identifier} ${item.product.identifier}`;
-    if (item.packageType === "ANNUAL" || /annual|year/i.test(identity)) return "Yearly";
-    if (item.packageType === "MONTHLY" || /month/i.test(identity)) return "Monthly";
+    if (item.packageType === "ANNUAL" || /annual|year/i.test(identity)) return t("yearly");
+    if (item.packageType === "MONTHLY" || /month/i.test(identity)) return t("monthly");
     return item.product.title || item.identifier;
 }
 
@@ -283,10 +258,10 @@ function isFamilyPackage(item: PurchasesPackage) {
     ].join(" "));
 }
 
-function periodLabel(item: PurchasesPackage) {
+function periodLabel(item: PurchasesPackage, t: Translate) {
     const identity = `${item.identifier} ${item.product.identifier}`;
-    if (item.packageType === "ANNUAL" || /annual|year/i.test(identity)) return "per year";
-    if (item.packageType === "MONTHLY" || /month/i.test(identity)) return "per month";
+    if (item.packageType === "ANNUAL" || /annual|year/i.test(identity)) return t("perYear");
+    if (item.packageType === "MONTHLY" || /month/i.test(identity)) return t("perMonth");
     return "";
 }
 

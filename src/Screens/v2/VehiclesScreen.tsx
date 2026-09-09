@@ -24,7 +24,7 @@ export default function VehiclesScreen() {
 
     const addVehicle = () => {
         if (subscriptionLoading) {
-            Alert.alert("AutoCare Plus", "Your subscription status is still loading. Please try again in a moment.");
+            Alert.alert("AutoCare Plus", t("subscriptionStillLoading"));
             return;
         }
         if (!canAddVehicle(vehicles.length)) {

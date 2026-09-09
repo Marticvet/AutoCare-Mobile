@@ -27,6 +27,7 @@ import { useSystem } from "../../powersync/PowerSync";
 import { useAuth } from "../../providers/AuthProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { usePreferences } from "../../i18n/PreferencesProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Memberships">;
 type MemberRole = "admin" | "driver" | "viewer";
@@ -44,6 +45,7 @@ function requestErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function MembershipsScreen({ navigation }: Props) {
+    const { t } = usePreferences();
     const { profile, userId } = useAuth();
     const { supabaseConnector } = useSystem();
     const {
@@ -80,6 +82,18 @@ export default function MembershipsScreen({ navigation }: Props) {
     const resolvedGarageId = activeGarageId || serverGarage?.id || "";
     const { data: members, loading } = useGarageMemberships(resolvedGarageId);
     const { data: fleetAccount } = useFleetBillingAccount(resolvedGarageId);
+    const roleLabel = useCallback((memberRole?: string | null) => {
+        if (memberRole === "owner") return t("owner");
+        if (memberRole === "admin") return t("admin");
+        if (memberRole === "driver") return t("driver");
+        if (memberRole === "viewer") return t("viewer");
+        return t("member");
+    }, [t]);
+    const tierLabel = useCallback((kind?: string | null) => {
+        if (kind === "family") return t("family");
+        if (kind === "fleet") return t("fleet");
+        return t("personal");
+    }, [t]);
 
     useEffect(() => {
         const rememberedName = activeGarage?.id
@@ -213,14 +227,14 @@ export default function MembershipsScreen({ navigation }: Props) {
             );
             if (rpcError) throw rpcError;
             await refreshGarageSnapshot().catch(() => undefined);
-            if (success) Alert.alert("Garage", success);
+            if (success) Alert.alert(t("garage"), success);
             return true;
         } catch (caught) {
             Alert.alert(
-                "Garage",
+                t("garage"),
                 requestErrorMessage(
                     caught,
-                    "The request could not be completed."
+                    t("requestIncomplete")
                 )
             );
             return false;
@@ -233,17 +247,17 @@ export default function MembershipsScreen({ navigation }: Props) {
         const normalizedEmail = email.trim().toLowerCase();
         if (!resolvedGarageId) {
             Alert.alert(
-                "Garage unavailable",
-                "The garage is still loading. Check the connection and try again."
+                t("garageUnavailable"),
+                t("garageStillLoading")
             );
             return;
         }
         if (!isValidEmail(normalizedEmail)) {
-            setEmailError("Enter a valid email address.");
+            setEmailError(t("invalidEmail"));
             return;
         }
         if (normalizedEmail === profile?.email?.trim().toLowerCase()) {
-            setEmailError("You are already the owner of this garage.");
+            setEmailError(t("alreadyGarageOwner"));
             return;
         }
         setEmailError(null);
@@ -254,7 +268,7 @@ export default function MembershipsScreen({ navigation }: Props) {
                 invite_email: normalizedEmail,
                 invite_role: role,
             },
-            "Invitation created. It will appear for that person after they sign in with this email."
+            t("invitationCreated")
         );
         if (sent) {
             setEmail("");
@@ -267,7 +281,7 @@ export default function MembershipsScreen({ navigation }: Props) {
             await call(
                 "accept_garage_invitation",
                 { target_membership_id: membershipId },
-                "Invitation accepted."
+                t("invitationAccepted")
             )
         ) {
             await selectGarage(garageId);
@@ -276,12 +290,12 @@ export default function MembershipsScreen({ navigation }: Props) {
 
     const decline = (membershipId: string) => {
         Alert.alert(
-            "Decline invitation?",
-            "You can only join later if another invitation is created.",
+            t("declineInvitationQuestion"),
+            t("declineInvitationBody"),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t("cancel"), style: "cancel" },
                 {
-                    text: "Decline",
+                    text: t("decline"),
                     style: "destructive",
                     onPress: () =>
                         void call("decline_garage_invitation", {
@@ -294,12 +308,12 @@ export default function MembershipsScreen({ navigation }: Props) {
 
     const remove = (membershipId: string, label: string) => {
         Alert.alert(
-            "Remove member?",
-            `${label} will lose access to this garage.`,
+            t("removeMemberQuestion"),
+            t("removeMemberBody", { name: label }),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t("cancel"), style: "cancel" },
                 {
-                    text: "Remove",
+                    text: t("remove"),
                     style: "destructive",
                     onPress: () =>
                         void call("remove_garage_member", {
@@ -312,8 +326,8 @@ export default function MembershipsScreen({ navigation }: Props) {
 
     const chooseRole = (membershipId: string) => {
         Alert.alert(
-            "Member role",
-            "Drivers can edit garage data. Viewers can only read it. Admins can also manage members.",
+            t("memberRole"),
+            t("memberRoleBody"),
             [
                 ...(["admin", "driver", "viewer"] as MemberRole[]).map(
                     (newRole) => ({
@@ -325,7 +339,7 @@ export default function MembershipsScreen({ navigation }: Props) {
                             }),
                     })
                 ),
-                { text: "Cancel", style: "cancel" as const },
+                { text: t("cancel"), style: "cancel" as const },
             ]
         );
     };
@@ -334,8 +348,8 @@ export default function MembershipsScreen({ navigation }: Props) {
         const nextName = garageName.trim();
         if (!resolvedGarageId) {
             Alert.alert(
-                "Garage unavailable",
-                "The garage is still loading. Check the connection and try again."
+                t("garageUnavailable"),
+                t("garageStillLoading")
             );
             return;
         }
@@ -363,15 +377,15 @@ export default function MembershipsScreen({ navigation }: Props) {
             setSavedGarageName(confirmedName);
             setGarageName(confirmedName);
             await refreshGarageSnapshot().catch(() => undefined);
-            Alert.alert("Garage updated successfully");
+            Alert.alert(t("garageUpdated"));
         } catch (caught) {
             setSavedGarageName(previousName);
             setGarageName(previousName);
             Alert.alert(
-                "Garage",
+                t("garage"),
                 requestErrorMessage(
                     caught,
-                    "The garage name could not be updated."
+                    t("garageNameUpdateError")
                 )
             );
         } finally {
@@ -384,7 +398,7 @@ export default function MembershipsScreen({ navigation }: Props) {
         if (!url) {
             Alert.alert(
                 "AutoCare Fleet",
-                "Add EXPO_PUBLIC_FLEET_URL after the Fleet web checkout is published."
+                t("fleetUrlMissing")
             );
             return;
         }
@@ -402,26 +416,24 @@ export default function MembershipsScreen({ navigation }: Props) {
         <Screen>
             {invitationCards.length ? (
                 <View style={styles.section}>
-                    <SectionHeader title="Garage invitations" />
+                    <SectionHeader title={t("garageInvitations")} />
                     {invitationCards.map(({ invitation, garage }) => (
                         <Card key={invitation.id} style={styles.invitation}>
                             <Row
                                 icon="mail-unread-outline"
                                 tone="amber"
-                                title={garage?.name ?? "Shared garage"}
-                                subtitle={`Invited as ${roleLabel(
-                                    invitation.role
-                                )}`}
+                                title={garage?.name ?? t("sharedGarage")}
+                                subtitle={t("invitedAs", { role: roleLabel(invitation.role) })}
                             />
                             <View style={styles.actions}>
                                 <Button
-                                    label="Decline"
+                                    label={t("decline")}
                                     variant="ghost"
                                     compact
                                     onPress={() => decline(invitation.id)}
                                 />
                                 <Button
-                                    label="Accept"
+                                    label={t("accept")}
                                     compact
                                     loading={busy}
                                     onPress={() =>
@@ -438,15 +450,15 @@ export default function MembershipsScreen({ navigation }: Props) {
             ) : null}
 
             <View style={styles.section}>
-                <SectionHeader title="Active garage" />
+                <SectionHeader title={t("activeGarage")} />
                 {garages.length > 1 ? (
                     <SelectField
-                        label="Garage"
+                        label={t("garage")}
                         value={activeGarageId}
                         onChange={(value) => void selectGarage(value)}
                         options={garages.map((garage) => ({
                             value: garage.id,
-                            label: garage.name ?? "Garage",
+                            label: garage.name ?? t("garage"),
                         }))}
                     />
                 ) : null}
@@ -479,14 +491,14 @@ export default function MembershipsScreen({ navigation }: Props) {
                 {canManageMembers ? (
                     <Card style={styles.form}>
                         <FormField
-                            label="Garage name"
+                            label={t("garageName")}
                             value={garageName}
                             onChangeText={setGarageName}
                             maxLength={80}
                             editable={garageSnapshotResolved}
                         />
                         <Button
-                            label="Save name"
+                            label={t("saveName")}
                             variant="secondary"
                             disabled={
                                 !garageName.trim() ||
@@ -505,17 +517,16 @@ export default function MembershipsScreen({ navigation }: Props) {
             !hasFleet ? (
                 <Card style={styles.upgrade}>
                     <Text style={styles.upgradeTitle}>
-                        Share this garage with Family
+                        {t("shareGarageFamily")}
                     </Text>
                     <Text style={styles.upgradeBody}>
-                        Family includes every Plus feature and supports up to
-                        six people, including you.
+                        {t("familyPlanBody")}
                     </Text>
                     <Button
                         label={
                             hasFamily
-                                ? "Family status is syncing"
-                                : "Compare Family plans"
+                                ? t("familyStatusSyncing")
+                                : t("compareFamilyPlans")
                         }
                         icon="people-outline"
                         onPress={() =>
@@ -527,10 +538,10 @@ export default function MembershipsScreen({ navigation }: Props) {
 
             {canInvite ? (
                 <View style={styles.section}>
-                    <SectionHeader title="Add a garage member" />
+                    <SectionHeader title={t("addGarageMember")} />
                     <Card style={styles.form}>
                         <FormField
-                            label="Email address"
+                            label={t("emailAddress")}
                             value={email}
                             onChangeText={(value) => {
                                 setEmail(value);
@@ -544,23 +555,21 @@ export default function MembershipsScreen({ navigation }: Props) {
                             textContentType="emailAddress"
                             required
                         />
-                        <Text style={styles.label}>Role</Text>
+                        <Text style={styles.label}>{t("role")}</Text>
                         <ChoiceChips
                             value={role}
                             onChange={setRole}
                             options={[
-                                { value: "driver", label: "Driver" },
-                                { value: "viewer", label: "Viewer" },
-                                { value: "admin", label: "Admin" },
+                                { value: "driver", label: t("driver") },
+                                { value: "viewer", label: t("viewer") },
+                                { value: "admin", label: t("admin") },
                             ]}
                         />
                         <Text style={styles.hint}>
-                            Enter the email they use for AutoCare Hub. Drivers
-                            can edit records, viewers can only read them, and
-                            admins can also manage members.
+                            {t("inviteRoleHint")}
                         </Text>
                         <Button
-                            label="Create invitation"
+                            label={t("createInvitation")}
                             icon="person-add-outline"
                             loading={busy}
                             disabled={!email.trim()}
@@ -572,9 +581,7 @@ export default function MembershipsScreen({ navigation }: Props) {
 
             <View style={styles.section}>
                 <SectionHeader
-                    title={`Members (${activeMemberCount}${
-                        displayedSeatLimit ? `/${displayedSeatLimit}` : ""
-                    })`}
+                    title={t("membersCount", { count: `${activeMemberCount}${displayedSeatLimit ? `/${displayedSeatLimit}` : ""}` })}
                 />
                 <Card style={styles.list}>
                     {ownerMembershipMissing ? (
@@ -585,9 +592,9 @@ export default function MembershipsScreen({ navigation }: Props) {
                                 title={
                                     profile?.full_name ||
                                     profile?.email ||
-                                    "You"
+                                    t("you")
                                 }
-                                subtitle="Owner"
+                                subtitle={t("owner")}
                             />
                             {activeMembers.length ? (
                                 <View style={styles.divider} />
@@ -608,7 +615,7 @@ export default function MembershipsScreen({ navigation }: Props) {
                                 title={
                                     member.display_name ||
                                     member.email ||
-                                    "Member"
+                                    t("member")
                                 }
                                 subtitle={roleLabel(member.role)}
                                 onPress={
@@ -620,13 +627,13 @@ export default function MembershipsScreen({ navigation }: Props) {
                             {canManageMembers && member.role !== "owner" ? (
                                 <View style={styles.memberActions}>
                                     <Button
-                                        label="Change role"
+                                        label={t("changeRole")}
                                         compact
                                         variant="ghost"
                                         onPress={() => chooseRole(member.id)}
                                     />
                                     <Button
-                                        label="Remove"
+                                        label={t("remove")}
                                         compact
                                         variant="danger"
                                         onPress={() =>
@@ -634,7 +641,7 @@ export default function MembershipsScreen({ navigation }: Props) {
                                                 member.id,
                                                 member.display_name ||
                                                     member.email ||
-                                                    "Member"
+                                                    t("member")
                                             )
                                         }
                                     />
@@ -647,7 +654,7 @@ export default function MembershipsScreen({ navigation }: Props) {
                     ))}
                     {!activeMemberCount ? (
                         <Text style={styles.empty}>
-                            No active members are available yet.
+                            {t("noActiveMembers")}
                         </Text>
                     ) : null}
                 </Card>
@@ -655,21 +662,19 @@ export default function MembershipsScreen({ navigation }: Props) {
 
             {canManageMembers && pendingMembers.length ? (
                 <View style={styles.section}>
-                    <SectionHeader title="Pending invitations" />
+                    <SectionHeader title={t("pendingInvitations")} />
                     <Card style={styles.list}>
                         {pendingMembers.map((member) => (
                             <Row
                                 key={member.id}
                                 icon="time-outline"
                                 tone="amber"
-                                title={member.email ?? "Pending member"}
-                                subtitle={`${roleLabel(
-                                    member.role
-                                )} · waiting for acceptance`}
+                                title={member.email ?? t("pendingMember")}
+                                subtitle={t("waitingForAcceptance", { role: roleLabel(member.role) })}
                                 onPress={() =>
                                     remove(
                                         member.id,
-                                        member.email ?? "Pending member"
+                                        member.email ?? t("pendingMember")
                                     )
                                 }
                             />
@@ -680,23 +685,23 @@ export default function MembershipsScreen({ navigation }: Props) {
 
             {releaseFeatures.fleetBilling ? (
                 <View style={styles.section}>
-                    <SectionHeader title="Fleet" />
+                    <SectionHeader title={t("fleet")} />
                     <Card style={styles.fleetCard}>
                         <Text style={styles.upgradeTitle}>
                             {displayedGarageKind === "fleet" || hasFleet
-                                ? "Fleet workspace"
-                                : "Need a business workspace?"}
+                                ? t("fleetWorkspace")
+                                : t("needBusinessWorkspace")}
                         </Text>
                         <Text style={styles.upgradeBody}>
                             {fleetAccount
-                                ? `${fleetAccount.licensed_vehicles} vehicle licenses · ${fleetAccount.licensed_members} member licenses · ${fleetAccount.status}`
-                                : "Fleet billing is handled on the web with vehicle and team-member licenses."}
+                                ? t("fleetLicenses", { vehicles: fleetAccount.licensed_vehicles ?? 0, members: fleetAccount.licensed_members ?? 0, status: fleetAccount.status ?? "" })
+                                : t("fleetBillingBody")}
                         </Text>
                         <Button
                             label={
                                 fleetAccount
-                                    ? "Manage Fleet billing"
-                                    : "Learn about AutoCare Fleet"
+                                    ? t("manageFleetBilling")
+                                    : t("learnAboutFleet")
                             }
                             icon="open-outline"
                             variant="secondary"
@@ -707,17 +712,6 @@ export default function MembershipsScreen({ navigation }: Props) {
             ) : null}
         </Screen>
     );
-}
-
-function roleLabel(role?: string | null) {
-    if (!role) return "Member";
-    return role.slice(0, 1).toUpperCase() + role.slice(1);
-}
-
-function tierLabel(kind?: string | null) {
-    if (kind === "family") return "Family";
-    if (kind === "fleet") return "Fleet";
-    return "Personal";
 }
 
 const styles = StyleSheet.create({

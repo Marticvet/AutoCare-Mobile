@@ -158,12 +158,14 @@ export function mapCsvExpenses({
     userId,
     vehicleId,
     batchId,
+    defaultTitles,
 }: {
     csv: ParsedCsv;
     source: CsvImportSource;
     userId: string;
     vehicleId: string;
     batchId: string;
+    defaultTitles?: Partial<Record<ExpenseCategory, string>>;
 }): { expenses: ImportedExpense[]; rejected: { rowNumber: number; reason: string }[] } {
     const expenses: ImportedExpense[] = [];
     const rejected: { rowNumber: number; reason: string }[] = [];
@@ -195,7 +197,9 @@ export function mapCsvExpenses({
         }
         const rawFingerprint = [source, ...row].join("|");
         const externalId = `${source}:${fingerprint(rawFingerprint)}`;
-        const title = valueFor(csv.headers, row, "title") || (category === "service" ? "Imported service" : category === "other" ? "Imported expense" : category);
+        const title = valueFor(csv.headers, row, "title")
+            || defaultTitles?.[category]
+            || (category === "service" ? "Imported service" : category === "other" ? "Imported expense" : category);
         expenses.push({
             rowNumber,
             fingerprint: externalId,

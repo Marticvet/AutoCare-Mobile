@@ -44,9 +44,9 @@ export async function pickDocument(documentId: string) {
     };
 }
 
-export async function captureDocument(documentId: string) {
+export async function captureDocument(documentId: string, permissionDeniedMessage: string) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) throw new Error("Camera permission was not granted.");
+    if (!permission.granted) throw new Error(permissionDeniedMessage);
     const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.9,

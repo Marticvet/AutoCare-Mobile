@@ -15,7 +15,7 @@ import { toNumber } from "../../utils/tracking";
 export default function TripsScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
-    const { formatDistance, formatCurrency } = usePreferences();
+    const { formatDistance, formatCurrency, t } = usePreferences();
     const [vehicleId, setVehicleId] = useState(selectedVehicleId || "__all__");
     const filteredVehicleId = vehicleId === "__all__" ? "" : vehicleId;
     const { data: localTrips, loading: localLoading } = useTrips(dataOwnerId, filteredVehicleId);
@@ -63,13 +63,13 @@ export default function TripsScreen() {
     if (loading) return <Screen><LoadingState /></Screen>;
     return (
         <Screen>
-            <PageHeader title="Trip log" action="Add trip" onAction={() => navigation.navigate("TripForm", { vehicleId: filteredVehicleId || undefined })} />
+            <PageHeader title={t("tripLog")} action={t("addTrip")} onAction={() => navigation.navigate("TripForm", { vehicleId: filteredVehicleId || undefined })} />
             <SelectField
-                label="Vehicle"
+                label={t("vehicle")}
                 value={vehicleId}
                 onChange={setVehicleId}
-                placeholder="All vehicles"
-                options={[{ value: "__all__", label: "All vehicles" }, ...vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))]}
+                placeholder={t("allVehicles")}
+                options={[{ value: "__all__", label: t("allVehicles") }, ...vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))]}
             />
             {trips.length ? (
                 <Card style={styles.list}>
@@ -80,8 +80,8 @@ export default function TripsScreen() {
                             <View key={trip.id ?? index}>
                                 <Row
                                     icon={trip.purpose === "business" ? "briefcase-outline" : "navigate-outline"}
-                                    title={trip.title || `${trip.origin || "Start"} → ${trip.destination || "Destination"}`}
-                                    subtitle={`${String(trip.start_at).slice(0, 10)} · ${formatDistance(toNumber(trip.distance_km))} · ${vehicle?.vehicle_license_plate || vehicle?.vehicle_model || "Vehicle"}${reimbursement ? ` · ${formatCurrency(reimbursement)} reimbursable` : ""}`}
+                                    title={trip.title || `${trip.origin || t("tripStart")} → ${trip.destination || t("destination")}`}
+                                    subtitle={`${String(trip.start_at).slice(0, 10)} · ${formatDistance(toNumber(trip.distance_km))} · ${vehicle?.vehicle_license_plate || vehicle?.vehicle_model || t("vehicle")}${reimbursement ? ` · ${formatCurrency(reimbursement)} ${t("reimbursable").toLocaleLowerCase()}` : ""}`}
                                     tone={trip.purpose === "business" ? "green" : "blue"}
                                     onPress={() => trip.id && navigation.navigate("TripForm", { tripId: trip.id })}
                                 />
@@ -92,11 +92,11 @@ export default function TripsScreen() {
                 </Card>
             ) : <EmptyState
                 icon="navigate-outline"
-                title={serverError ? "Trips could not be refreshed" : "No trips logged"}
+                title={serverError ? t("tripRefreshFailed") : t("noTripsLogged")}
                 body={serverError
-                    ? "Your local trips are still available. Check the connection and try opening this screen again."
-                    : "Start with manual business and personal trips. Automatic GPS or Bluetooth tracking can be added later without changing this history."}
-                action="Add trip"
+                    ? t("tripRefreshFailedBody")
+                    : t("noTripsBody")}
+                action={t("addTrip")}
                 onAction={() => navigation.navigate("TripForm", { vehicleId: filteredVehicleId || undefined })}
             />}
         </Screen>

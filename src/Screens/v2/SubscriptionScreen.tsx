@@ -6,10 +6,12 @@ import { Button, Card, Row, Screen, SectionHeader } from "../../components/ui";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { usePreferences } from "../../i18n/PreferencesProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Subscription">;
 
 export default function SubscriptionScreen({ navigation }: Props) {
+    const { t, locale } = usePreferences();
     const {
         isAdmin,
         hasPlus,
@@ -26,7 +28,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
     const [restored, setRestored] = useState(false);
     const entitlement = customerInfo?.entitlements.active.shared_garage
         ?? customerInfo?.entitlements.active.plus_features;
-    const planName = isAdmin ? "Administrator" : hasFleet ? "AutoCare Fleet" : hasFamily ? "AutoCare Family" : hasPlus ? "AutoCare Plus" : "Free";
+    const planName = isAdmin ? t("administrator") : hasFleet ? "AutoCare Fleet" : hasFamily ? "AutoCare Family" : hasPlus ? "AutoCare Plus" : t("free");
     const expiration =
         entitlement?.expirationDate ?? backendStatus?.expires_at ?? null;
     const willRenew =
@@ -38,16 +40,16 @@ export default function SubscriptionScreen({ navigation }: Props) {
         const active = await restorePurchases();
         setRestored(true);
         Alert.alert(
-            "Restore purchases",
+            t("restorePurchases"),
             active
-                ? "AutoCare Plus is active."
-                : "No active purchase was found."
+                ? t("plusActive")
+                : t("noActivePurchase")
         );
     };
 
     return (
         <Screen>
-            <SectionHeader title="Your plan" />
+            <SectionHeader title={t("yourPlan")} />
             <View style={[styles.plan, hasPlus && styles.planPlus]}>
                 <View style={styles.planTop}>
                     <View style={[styles.icon, hasPlus && styles.iconPlus]}>
@@ -73,12 +75,12 @@ export default function SubscriptionScreen({ navigation }: Props) {
                             ]}
                         >
                             {isAdmin
-                                ? "Administrator access · no subscription required"
+                                ? t("adminAccessStatus")
                                 : hasPlus
                                 ? willRenew
-                                    ? "Active · renews automatically"
-                                    : "Active · ends at expiry"
-                                : "Core tracking for one vehicle"}
+                                    ? t("activeRenews")
+                                    : t("activeEnds")
+                                : t("coreTrackingOneVehicle")}
                         </Text>
                     </View>
                 </View>
@@ -89,8 +91,9 @@ export default function SubscriptionScreen({ navigation }: Props) {
                             hasPlus && styles.planStatusPlus,
                         ]}
                     >
-                        {willRenew ? "Renews" : "Expires"}{" "}
-                        {new Date(expiration).toLocaleDateString()}
+                        {willRenew
+                            ? t("renewsOn", { date: new Date(expiration).toLocaleDateString(locale) })
+                            : t("expiresOn", { date: new Date(expiration).toLocaleDateString(locale) })}
                     </Text>
                 ) : null}
                 {!isAdmin && productId ? (
@@ -118,7 +121,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
                         color={colors.success}
                     />
                     <Text style={styles.successText}>
-                        Purchase history checked.
+                        {t("purchaseHistoryChecked")}
                     </Text>
                 </View>
             ) : null}
@@ -126,20 +129,20 @@ export default function SubscriptionScreen({ navigation }: Props) {
             <View style={styles.actions}>
                 {!hasPlus ? (
                     <Button
-                        label="Compare Plus plans"
+                        label={t("comparePlusPlans")}
                         icon="sparkles-outline"
                         onPress={() => navigation.navigate("Paywall")}
                     />
                 ) : !isAdmin ? (
                     <Button
-                        label="Manage subscription"
+                        label={t("manageSubscription")}
                         icon="open-outline"
                         onPress={() => void manageSubscription()}
                     />
                 ) : null}
                 {!isAdmin && !hasFamily && !hasFleet ? (
                     <Button
-                        label="Compare Family plans"
+                        label={t("compareFamilyPlans")}
                         icon="people-outline"
                         variant="secondary"
                         onPress={() => navigation.navigate("Paywall", { source: "family" })}
@@ -147,7 +150,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
                 ) : null}
                 {!isAdmin ? (
                     <Button
-                        label="Restore purchases"
+                        label={t("restorePurchases")}
                         icon="refresh-outline"
                         variant="secondary"
                         loading={purchasing}
@@ -156,7 +159,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
                 ) : null}
                 {error && !isAdmin ? (
                     <Button
-                        label="Try again"
+                        label={t("retry")}
                         icon="sync-outline"
                         variant="ghost"
                         onPress={() => void refresh()}
@@ -164,27 +167,27 @@ export default function SubscriptionScreen({ navigation }: Props) {
                 ) : null}
             </View>
 
-            <SectionHeader title="Included on Free" />
+            <SectionHeader title={t("includedOnFree")} />
             <Card style={styles.list}>
-                <Feature title="One vehicle" />
-                <Feature title="Expenses and fuel history" />
-                <Feature title="Basic reminders" />
-                <Feature title="Offline-first synchronization" />
+                <Feature title={t("oneVehicle")} />
+                <Feature title={t("expensesFuelHistory")} />
+                <Feature title={t("basicReminders")} />
+                <Feature title={t("offlineFirstSync")} />
             </Card>
-            <SectionHeader title="Legal and support" />
+            <SectionHeader title={t("legalSupport")} />
             <Card style={styles.list}>
                 <ExternalRow
-                    title="Terms of service"
+                    title={t("termsOfService")}
                     envKey={process.env.EXPO_PUBLIC_TERMS_URL}
                 />
                 <View style={styles.divider} />
                 <ExternalRow
-                    title="Privacy policy"
+                    title={t("privacyPolicy")}
                     envKey={process.env.EXPO_PUBLIC_PRIVACY_URL}
                 />
                 <View style={styles.divider} />
                 <ExternalRow
-                    title="Contact support"
+                    title={t("contactSupport")}
                     envKey={process.env.EXPO_PUBLIC_SUPPORT_URL}
                 />
             </Card>
@@ -206,14 +209,15 @@ function Feature({ title }: { title: string }) {
 }
 
 function ExternalRow({ title, envKey }: { title: string; envKey?: string }) {
+    const { t } = usePreferences();
     const open = async () => {
         if (!envKey)
             return Alert.alert(
                 title,
-                "Configure this URL in the app environment before release."
+                t("configureUrl")
             );
         if (!(await Linking.canOpenURL(envKey)))
-            return Alert.alert(title, "This link could not be opened.");
+            return Alert.alert(title, t("linkOpenFailed"));
         await Linking.openURL(envKey);
     };
     return (

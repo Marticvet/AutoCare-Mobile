@@ -171,6 +171,8 @@ function RootNavigator() {
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.ink,
         headerTitleStyle: { fontWeight: "700" as const },
+        headerBackTitle: t("back"),
+        headerBackButtonDisplayMode: "default" as const,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.canvas },
     };
@@ -201,15 +203,15 @@ function RootNavigator() {
                     ),
                 })}
             />
-            <RootStack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: "Subscription" }} />
-            <RootStack.Screen name="Memberships" component={MembershipsScreen} options={{ title: "Garage members" }} />
-            <RootStack.Screen name="DataImport" component={DataImportScreen} options={{ title: "Import history" }} />
-            <RootStack.Screen name="Ownership" component={OwnershipScreen} options={{ title: "Ownership costs" }} />
-            <RootStack.Screen name="Trips" component={TripsScreen} options={{ title: "Trip log" }} />
-            <RootStack.Screen name="TripForm" component={TripFormScreen} options={({ navigation, route }) => ({ title: route.params?.tripId ? "Edit trip" : "Add trip", presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
-            <RootStack.Screen name="ScheduledReports" component={ScheduledReportsScreen} options={{ title: "Reports" }} />
-            <RootStack.Screen name="Checklists" component={ChecklistsScreen} options={{ title: "Fleet checklists" }} />
-            <RootStack.Screen name="ChecklistRun" component={ChecklistRunScreen} options={{ title: "Inspection" }} />
+            <RootStack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: t("subscription") }} />
+            <RootStack.Screen name="Memberships" component={MembershipsScreen} options={{ title: t("garageMembers") }} />
+            <RootStack.Screen name="DataImport" component={DataImportScreen} options={{ title: t("importHistory") }} />
+            <RootStack.Screen name="Ownership" component={OwnershipScreen} options={{ title: t("ownershipCosts") }} />
+            <RootStack.Screen name="Trips" component={TripsScreen} options={{ title: t("tripLog") }} />
+            <RootStack.Screen name="TripForm" component={TripFormScreen} options={({ navigation, route }) => ({ title: route.params?.tripId ? t("editTrip") : t("addTrip"), presentation: "fullScreenModal", animation: "slide_from_bottom", headerRight: () => <ModalCloseButton label={t("close")} onPress={navigation.goBack} /> })} />
+            <RootStack.Screen name="ScheduledReports" component={ScheduledReportsScreen} options={{ title: t("scheduledReports") }} />
+            <RootStack.Screen name="Checklists" component={ChecklistsScreen} options={{ title: t("fleetChecklists") }} />
+            <RootStack.Screen name="ChecklistRun" component={ChecklistRunScreen} options={{ title: t("inspectionTitle") }} />
         </RootStack.Navigator>
     );
 }

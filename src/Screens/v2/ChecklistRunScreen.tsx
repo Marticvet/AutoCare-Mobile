@@ -8,10 +8,12 @@ import { completeChecklistRun, deleteChecklistRun, fetchChecklistRunFromServer, 
 import { RootStackParamList } from "../../navigation/types";
 import { useGarage } from "../../providers/GarageProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { usePreferences } from "../../i18n/PreferencesProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ChecklistRun">;
 
 export default function ChecklistRunScreen({ route, navigation }: Props) {
+    const { t } = usePreferences();
     const { dataOwnerId, canWrite } = useGarage();
     const initialRun = route.params.initialRun;
     const initialItems = useMemo(() => route.params.initialItems ?? [], [route.params.initialItems]);
@@ -85,13 +87,13 @@ export default function ChecklistRunScreen({ route, navigation }: Props) {
             <Screen>
                 <EmptyState
                     icon="clipboard-outline"
-                    title={!run ? "Inspection not found" : "This inspection has no items"}
+                    title={!run ? t("inspectionNotFound") : t("inspectionHasNoItems")}
                     body={scopedServerResult?.error
-                        ? "The inspection could not be refreshed. Check your connection and try again."
+                        ? t("inspectionRefreshError")
                         : !run
-                            ? "This inspection may have already been deleted."
-                            : "Choose a checklist containing at least one item and start a new inspection."}
-                    action="Back to checklists"
+                            ? t("inspectionDeletedBody")
+                            : t("checklistNoItemsBody")}
+                    action={t("backToChecklists")}
                     onAction={navigation.goBack}
                 />
             </Screen>
@@ -108,14 +110,14 @@ export default function ChecklistRunScreen({ route, navigation }: Props) {
             await write;
         } catch (error) {
             setResultOverrides((current) => ({ ...current, [item.id!]: previous }));
-            Alert.alert("Checklist", (error as Error).message);
+            Alert.alert(t("checklist"), (error as Error).message);
         } finally {
             pendingResultWrites.current.delete(write);
         }
     };
     const finish = async () => {
         if (!signatureName.trim()) {
-            Alert.alert("Driver sign-off", "Enter the driver’s name before completing the inspection.");
+            Alert.alert(t("driverSignOff"), t("driverNameRequired"));
             return;
         }
         setBusy(true);
@@ -129,15 +131,18 @@ export default function ChecklistRunScreen({ route, navigation }: Props) {
                     resultOverrides[item.id] as "pass" | "fail" | "not_applicable"
                 )];
             }));
-            await completeChecklistRun(route.params.runId, dataOwnerId, signatureName, damageNotes);
+            await completeChecklistRun(route.params.runId, dataOwnerId, signatureName, damageNotes, {
+                noItems: t("inspectionNoItemsError"),
+                incomplete: t("completeEveryChecklistItem"),
+            });
             const hasFailure = items.some((item) => (item.id ? resultOverrides[item.id] : undefined) === "fail" || (!resultOverrides[item.id ?? ""] && item.result === "fail"));
             Alert.alert(
-                completed ? "Inspection updated" : "Inspection completed",
-                hasFailure ? "The inspection now requires attention." : "The inspection passed."
+                completed ? t("inspectionUpdatedTitle") : t("inspectionCompletedTitle"),
+                hasFailure ? t("inspectionRequiresAttention") : t("inspectionPassed")
             );
             navigation.goBack();
         } catch (error) {
-            Alert.alert("Checklist", (error as Error).message);
+            Alert.alert(t("checklist"), (error as Error).message);
         } finally {
             setBusy(false);
         }
@@ -145,12 +150,12 @@ export default function ChecklistRunScreen({ route, navigation }: Props) {
     const remove = () => {
         if (!canWrite || busy || deleting) return;
         Alert.alert(
-            "Delete inspection?",
-            "This permanently deletes this inspection and all of its recorded checklist results.",
+            t("deleteInspectionQuestion"),
+            t("deleteInspectionBody"),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t("cancel"), style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t("delete"),
                     style: "destructive",
                     onPress: () => void (async () => {
                         setDeleting(true);
@@ -158,7 +163,7 @@ export default function ChecklistRunScreen({ route, navigation }: Props) {
                             await deleteChecklistRun(route.params.runId, dataOwnerId);
                             navigation.goBack();
                         } catch (error) {
-                            Alert.alert("Delete inspection", (error as Error).message);
+                            Alert.alert(t("deleteInspection"), (error as Error).message);
                         } finally {
                             setDeleting(false);
                         }
@@ -169,30 +174,36 @@ export default function ChecklistRunScreen({ route, navigation }: Props) {
     };
     return (
         <Screen>
-            <SectionHeader title={completed ? "Inspection result" : "Complete inspection"} />
+            <SectionHeader title={completed ? t("inspectionResult") : t("completeInspection")} />
             {items.map((item, index) => (
                 <Card key={item.id ?? index} style={styles.item}>
-                    <Text style={styles.itemTitle}>{index + 1}. {item.label}</Text>
+                    <Text style={styles.itemTitle}>{index + 1}. {{
+                        "Tyres and visible damage": t("tyresAndDamage"),
+                        "Lights and indicators": t("lightsAndIndicators"),
+                        "Safety equipment": t("safetyEquipment"),
+                        "Fluid leaks": t("fluidLeaks"),
+                        "Brakes and steering": t("brakesAndSteering"),
+                    }[item.label ?? ""] ?? item.label}</Text>
                     <ChoiceChips
                         value={(item.id ? resultOverrides[item.id] : undefined) ?? item.result ?? "unchecked"}
                         onChange={(result) => void updateItemResult(item, result as "pass" | "fail" | "not_applicable")}
-                        options={[{ value: "pass", label: "Pass", icon: "checkmark" }, { value: "fail", label: "Fail", icon: "warning-outline" }, { value: "not_applicable", label: "N/A" }]}
+                        options={[{ value: "pass", label: t("pass"), icon: "checkmark" }, { value: "fail", label: t("fail"), icon: "warning-outline" }, { value: "not_applicable", label: t("notApplicable") }]}
                         disabled={!canWrite || busy || deleting}
                     />
                 </Card>
             ))}
             <Card style={styles.form}>
-                <FormField label="Damage / action notes" value={damageNotes} onChangeText={setDamageNotes} multiline />
-                <FormField label="Driver signature (full name)" value={signatureName} onChangeText={setSignatureName} required hint="Typing the full name records the driver’s sign-off and completion time." />
+                <FormField label={t("damageActionNotes")} value={damageNotes} onChangeText={setDamageNotes} multiline />
+                <FormField label={t("driverSignature")} value={signatureName} onChangeText={setSignatureName} required hint={t("driverSignatureHint")} />
             </Card>
             <Button
-                label={completed ? "Update inspection" : "Complete inspection"}
+                label={completed ? t("updateInspection") : t("completeInspection")}
                 icon="checkmark-circle-outline"
                 onPress={() => void finish()}
                 loading={busy}
                 disabled={!canWrite || deleting}
             />
-            {canWrite ? <Button label="Delete inspection" icon="trash-outline" variant="danger" onPress={remove} loading={deleting} disabled={busy} /> : null}
+            {canWrite ? <Button label={t("deleteInspection")} icon="trash-outline" variant="danger" onPress={remove} loading={deleting} disabled={busy} /> : null}
         </Screen>
     );
 }

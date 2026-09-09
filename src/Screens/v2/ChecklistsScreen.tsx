@@ -6,15 +6,17 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Card, FormField, Row, Screen, SectionHeader, SelectField } from "../../components/ui";
 import { useChecklistRuns, useChecklistTemplates, useGarageMemberships } from "../../data/liveQueries";
 import { ChecklistRunRecord, ChecklistTemplateRecord } from "../../data/models";
-import { deleteChecklistRun, deleteChecklistTemplate, ensureDefaultChecklist, fetchChecklistRunsFromServer, fetchChecklistTemplatesFromServer, saveChecklistTemplate, startChecklistRun } from "../../data/repository";
+import { CUSTOM_CHECKLIST_DESCRIPTION, DEFAULT_CHECKLIST_DESCRIPTION, deleteChecklistRun, deleteChecklistTemplate, ensureDefaultChecklist, fetchChecklistRunsFromServer, fetchChecklistTemplatesFromServer, saveChecklistTemplate, startChecklistRun } from "../../data/repository";
 import { RootStackParamList } from "../../navigation/types";
 import { useAuth } from "../../providers/AuthProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { usePreferences } from "../../i18n/PreferencesProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Checklists">;
 
 export default function ChecklistsScreen({ navigation }: Props) {
+    const { t, locale } = usePreferences();
     const { vehicles, selectedVehicleId, dataOwnerId, activeGarageId, canWrite } = useGarage();
     const { profile, userId } = useAuth();
     const [vehicleId, setVehicleId] = useState(selectedVehicleId || vehicles[0]?.id || "");
@@ -124,19 +126,36 @@ export default function ChecklistsScreen({ navigation }: Props) {
         const options = [
             {
                 value: dataOwnerId,
-                label: dataOwnerId === userId ? (profile?.full_name || profile?.email || "You") : "Garage owner",
+                label: dataOwnerId === userId ? (profile?.full_name || profile?.email || t("you")) : t("garageOwner"),
             },
             ...memberships
                 .filter((membership) => membership.status === "active" && Boolean(membership.user_id))
                 .map((membership) => ({
                     value: membership.user_id ?? "",
                     label: membership.user_id === userId
-                        ? (profile?.full_name || membership.display_name || membership.email || "You")
-                        : (membership.display_name || membership.email || "Garage member"),
+                        ? (profile?.full_name || membership.display_name || membership.email || t("you"))
+                        : (membership.display_name || membership.email || t("garageMember")),
                 })),
         ];
         return options.filter((option, index) => option.value && options.findIndex((candidate) => candidate.value === option.value) === index);
-    }, [dataOwnerId, memberships, profile?.email, profile?.full_name, userId]);
+    }, [dataOwnerId, memberships, profile?.email, profile?.full_name, t, userId]);
+
+    const localizedChecklistText = useCallback((value?: string | null) => {
+        const known: Record<string, string> = {
+            "Pre-trip inspection": t("preTripInspection"),
+            [DEFAULT_CHECKLIST_DESCRIPTION]: t("preTripDescription"),
+            "Tyres and visible damage": t("tyresAndDamage"),
+            "Lights and indicators": t("lightsAndIndicators"),
+            "Windows and mirrors": t("windowsAndMirrors"),
+            "Safety equipment": t("safetyEquipment"),
+            "Fluid leaks": t("fluidLeaks"),
+            "Brakes and steering": t("brakesAndSteering"),
+            "Seat belts and safety equipment": t("seatBeltsAndSafetyEquipment"),
+            "Fuel or charge level": t("fuelOrChargeLevel"),
+            "Documents present": t("documentsPresent"),
+        };
+        return value ? known[value] ?? value : t("checklist");
+    }, [t]);
 
     const prepareDefaultChecklist = async () => {
         if (!dataOwnerId || !canWrite) return;
@@ -152,7 +171,7 @@ export default function ChecklistsScreen({ navigation }: Props) {
                     id,
                     user_id: dataOwnerId,
                     name: "Pre-trip inspection",
-                    description: "A quick safety check before driving.",
+                    description: DEFAULT_CHECKLIST_DESCRIPTION,
                     vehicle_type: null,
                     is_default: 1,
                     active: 1,
@@ -162,7 +181,7 @@ export default function ChecklistsScreen({ navigation }: Props) {
             ]);
             setTemplateId(id);
         } catch (error) {
-            setInitializationError((error as Error).message || "The starter checklist could not be created.");
+            setInitializationError((error as Error).message || t("starterChecklistCreateError"));
         } finally {
             setInitializing(false);
         }
@@ -184,14 +203,14 @@ export default function ChecklistsScreen({ navigation }: Props) {
         const spinnerTimer = setTimeout(() => setShowStartingSpinner(true), 350);
         try {
             const driverName = driverOptions.find((option) => option.value === assignedUserId)?.label ?? profile?.full_name ?? "";
-            const created = await startChecklistRun(dataOwnerId, vehicleId, selectedTemplate.id, assignedUserId, driverName);
+            const created = await startChecklistRun(dataOwnerId, vehicleId, selectedTemplate.id, assignedUserId, driverName, t("checklistStartNoItems"));
             navigation.navigate("ChecklistRun", {
                 runId: created.runId,
                 initialRun: created.run,
                 initialItems: created.items,
             });
         } catch (error) {
-            Alert.alert("Checklist", (error as Error).message);
+            Alert.alert(t("checklist"), (error as Error).message);
         } finally {
             clearTimeout(spinnerTimer);
             setShowStartingSpinner(false);
@@ -201,13 +220,13 @@ export default function ChecklistsScreen({ navigation }: Props) {
     const addTemplate = async () => {
         const items = customItems.replace(/\\n/g, "\n").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
         if (!customName.trim() || !items.length) {
-            Alert.alert("Custom checklist", "Enter a name and at least one checklist item, one per line.");
+            Alert.alert(t("customChecklist"), t("customChecklistValidation"));
             return;
         }
         setBusy(true);
         try {
             const name = customName.trim();
-            const id = await saveChecklistTemplate({ userId: dataOwnerId, name, description: "Custom fleet checklist", vehicleType: "", items: items.map((label, sortOrder) => ({ label, sortOrder, required: true })) });
+            const id = await saveChecklistTemplate({ userId: dataOwnerId, name, description: CUSTOM_CHECKLIST_DESCRIPTION, vehicleType: "", items: items.map((label, sortOrder) => ({ label, sortOrder, required: true })) });
             const now = new Date().toISOString();
             setOptimisticTemplates((current) => [
                 ...current.filter((template) => template.id !== id),
@@ -215,7 +234,7 @@ export default function ChecklistsScreen({ navigation }: Props) {
                     id,
                     user_id: dataOwnerId,
                     name,
-                    description: "Custom fleet checklist",
+                    description: CUSTOM_CHECKLIST_DESCRIPTION,
                     vehicle_type: null,
                     is_default: 0,
                     active: 1,
@@ -226,9 +245,9 @@ export default function ChecklistsScreen({ navigation }: Props) {
             setTemplateId(id);
             setCustomName("");
             setCustomItems("");
-            Alert.alert("Checklist template saved successfully");
+            Alert.alert(t("checklistTemplateSaved"));
         } catch (error) {
-            Alert.alert("Custom checklist", (error as Error).message);
+            Alert.alert(t("customChecklist"), (error as Error).message);
         } finally {
             setBusy(false);
         }
@@ -237,12 +256,12 @@ export default function ChecklistsScreen({ navigation }: Props) {
         if (!selectedTemplate?.id || !canWrite) return;
 
         Alert.alert(
-            "Delete checklist template?",
-            `“${selectedTemplate.name || "Checklist"}” will no longer be available for new inspections. Existing inspection history will be kept.`,
+            t("deleteChecklistQuestion", { name: localizedChecklistText(selectedTemplate.name) }),
+            t("deleteChecklistBody"),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t("cancel"), style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t("delete"),
                     style: "destructive",
                     onPress: () => void (async () => {
                         setDeleting(true);
@@ -251,9 +270,9 @@ export default function ChecklistsScreen({ navigation }: Props) {
                             setHiddenTemplateIds((current) => [...new Set([...current, selectedTemplate.id!])]);
                             setOptimisticTemplates((current) => current.filter((template) => template.id !== selectedTemplate.id));
                             setTemplateId(templates.find((template) => template.id !== selectedTemplate.id)?.id ?? "");
-                            Alert.alert("Checklist template deleted", "Existing inspection history was kept.");
+                            Alert.alert(t("checklistTemplateDeleted"), t("inspectionHistoryKept"));
                         } catch (error) {
-                            Alert.alert("Delete checklist", (error as Error).message);
+                            Alert.alert(t("deleteChecklist"), (error as Error).message);
                         } finally {
                             setDeleting(false);
                         }
@@ -266,12 +285,12 @@ export default function ChecklistsScreen({ navigation }: Props) {
         if (!run.id || !canWrite || deletingRunId) return;
 
         Alert.alert(
-            "Delete inspection?",
-            "This permanently deletes this inspection and all of its recorded checklist results.",
+            t("deleteInspectionQuestion"),
+            t("deleteInspectionBody"),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t("cancel"), style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t("delete"),
                     style: "destructive",
                     onPress: () => void (async () => {
                         setDeletingRunId(run.id!);
@@ -279,7 +298,7 @@ export default function ChecklistsScreen({ navigation }: Props) {
                             await deleteChecklistRun(run.id!, dataOwnerId);
                             setHiddenRunIds((current) => [...new Set([...current, run.id!])]);
                         } catch (error) {
-                            Alert.alert("Delete inspection", (error as Error).message);
+                            Alert.alert(t("deleteInspection"), (error as Error).message);
                         } finally {
                             setDeletingRunId(null);
                         }
@@ -294,54 +313,54 @@ export default function ChecklistsScreen({ navigation }: Props) {
 
     return (
         <Screen>
-            <SectionHeader title="Fleet checklists" />
+            <SectionHeader title={t("fleetChecklists")} />
             <Card style={styles.intro}>
-                <Text style={styles.title}>Consistent inspections, even offline</Text>
-                <Text style={styles.body}>Run a pre-trip check, record damage, and collect the driver’s sign-off. Completed runs synchronize with the garage.</Text>
+                <Text style={styles.title}>{t("consistentInspections")}</Text>
+                <Text style={styles.body}>{t("consistentInspectionsBody")}</Text>
             </Card>
             <Card style={styles.form}>
                 {!templates.length && templatesResolved ? (
                     <View style={styles.emptyTemplates}>
-                        <Text style={styles.title}>No checklist is available</Text>
-                        <Text style={styles.body}>{initializationError || templatesError?.message || (scopedServerResult?.error ? "The checklist service could not be refreshed. Check your connection and retry." : "Create the standard pre-trip checklist, or add your own template below.")}</Text>
-                        <Button label="Create starter checklist" icon="add-circle-outline" variant="secondary" onPress={() => void prepareDefaultChecklist()} loading={initializing} disabled={!canWrite} />
+                        <Text style={styles.title}>{t("noChecklistAvailable")}</Text>
+                        <Text style={styles.body}>{initializationError || templatesError?.message || (scopedServerResult?.error ? t("checklistServiceRefreshError") : t("noChecklistBody"))}</Text>
+                        <Button label={t("createStarterChecklist")} icon="add-circle-outline" variant="secondary" onPress={() => void prepareDefaultChecklist()} loading={initializing} disabled={!canWrite} />
                     </View>
                 ) : null}
-                <SelectField label="Vehicle" value={vehicleId} onChange={setVehicleId} options={vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))} />
-                <SelectField label="Checklist" value={templateId} onChange={setTemplateId} options={templates.map((template) => ({ value: template.id ?? "", label: template.name ?? "Checklist" }))} />
-                <SelectField label="Assigned driver" value={assignedUserId} onChange={setAssignedUserId} options={driverOptions} />
-                <Button label="Start inspection" icon="clipboard-outline" onPress={() => void start()} loading={showStartingSpinner} disabled={!vehicleId || !selectedTemplate || !canWrite || starting} />
-                {selectedTemplate ? <Button label="Delete selected template" icon="trash-outline" variant="danger" onPress={removeTemplate} loading={deleting} disabled={!canWrite || busy || starting} /> : null}
+                <SelectField label={t("vehicle")} value={vehicleId} onChange={setVehicleId} options={vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))} />
+                <SelectField label={t("checklist")} value={templateId} onChange={setTemplateId} options={templates.map((template) => ({ value: template.id ?? "", label: localizedChecklistText(template.name) }))} />
+                <SelectField label={t("assignedDriver")} value={assignedUserId} onChange={setAssignedUserId} options={driverOptions} />
+                <Button label={t("startInspection")} icon="clipboard-outline" onPress={() => void start()} loading={showStartingSpinner} disabled={!vehicleId || !selectedTemplate || !canWrite || starting} />
+                {selectedTemplate ? <Button label={t("deleteSelectedTemplate")} icon="trash-outline" variant="danger" onPress={removeTemplate} loading={deleting} disabled={!canWrite || busy || starting} /> : null}
             </Card>
-            <SectionHeader title="Custom template" />
+            <SectionHeader title={t("customTemplate")} />
             <Card style={styles.form}>
-                <FormField label="Template name" value={customName} onChangeText={setCustomName} />
+                <FormField label={t("templateName")} value={customName} onChangeText={setCustomName} />
                 <FormField
-                    label="Checklist items"
+                    label={t("checklistItems")}
                     value={customItems}
                     onChangeText={setCustomItems}
                     multiline
-                    placeholder={"Example:\nTyres and visible damage\nLights and indicators\nSafety equipment"}
-                    hint="Enter one item per line."
+                    placeholder={t("checklistItemsPlaceholder")}
+                    hint={t("oneItemPerLine")}
                 />
-                <Button label="Save template" icon="add" variant="secondary" onPress={() => void addTemplate()} loading={busy} disabled={!canWrite} />
+                <Button label={t("saveTemplate")} icon="add" variant="secondary" onPress={() => void addTemplate()} loading={busy} disabled={!canWrite} />
             </Card>
             {runs.length ? (
                 <>
-                    <SectionHeader title="Inspection history" />
+                    <SectionHeader title={t("inspectionHistory")} />
                     <Card style={styles.list}>
                         {runs.map((run, index) => (
                             <View key={run.id ?? index}>
                                 <Row
                                     icon={run.status === "passed" ? "checkmark-circle-outline" : run.status === "attention_required" ? "warning-outline" : "time-outline"}
-                                    title={run.status === "passed" ? "Passed" : run.status === "attention_required" ? "Attention required" : "In progress"}
-                                    subtitle={`${new Date(run.started_at ?? Date.now()).toLocaleString()}${run.driver_name ? ` · ${run.driver_name}` : ""}`}
+                                    title={run.status === "passed" ? t("passed") : run.status === "attention_required" ? t("attentionRequired") : t("inProgress")}
+                                    subtitle={`${new Date(run.started_at ?? Date.now()).toLocaleString(locale)}${run.driver_name ? ` · ${run.driver_name}` : ""}`}
                                     tone={run.status === "passed" ? "green" : run.status === "attention_required" ? "red" : "amber"}
                                     onPress={() => run.id && navigation.navigate("ChecklistRun", { runId: run.id })}
                                     trailing={run.id && canWrite ? (
                                         <Pressable
                                             accessibilityRole="button"
-                                            accessibilityLabel="Delete inspection"
+                                            accessibilityLabel={t("deleteInspection")}
                                             disabled={Boolean(deletingRunId)}
                                             hitSlop={10}
                                             onPress={(event) => {

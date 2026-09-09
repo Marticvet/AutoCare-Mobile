@@ -19,14 +19,14 @@ type Props = NativeStackScreenProps<RootStackParamList, "ScheduledReports">;
 export default function ScheduledReportsScreen({ navigation }: Props) {
     const { vehicles, dataOwnerId } = useGarage();
     const { session } = useAuth();
-    const { currency } = usePreferences();
+    const { currency, locale, t } = usePreferences();
     const { canExportReports } = useSubscription();
     const { data: schedules } = useReportSchedules(dataOwnerId);
     const { data: expenses } = useExpenses(dataOwnerId);
     const [draft, setDraft] = useState<ReportScheduleDraft>({
         userId: dataOwnerId,
         vehicleId: "",
-        name: "Monthly vehicle cost report",
+        name: t("monthlyVehicleCostReport"),
         frequency: "monthly",
         format: "pdf",
         deliveryEmail: session?.user.email ?? "",
@@ -45,64 +45,75 @@ export default function ScheduledReportsScreen({ navigation }: Props) {
             return;
         }
         if (!draft.name.trim() || !/^\S+@\S+\.\S+$/.test(draft.deliveryEmail)) {
-            Alert.alert("Scheduled report", "Enter a report name and valid delivery email.");
+            Alert.alert(t("scheduledReport"), t("reportValidation"));
             return;
         }
         setBusy(true);
         try {
             await saveReportSchedule(draft);
-            Alert.alert("Report scheduled", `The next ${draft.format.toUpperCase()} report is queued for ${draft.deliveryTime} in ${draft.timezone}.`);
+            Alert.alert(t("reportScheduled"), t("reportScheduledBody", { format: draft.format.toUpperCase(), time: draft.deliveryTime, timezone: draft.timezone }));
         } catch (error) {
-            Alert.alert("Scheduled report", (error as Error).message);
+            Alert.alert(t("scheduledReport"), (error as Error).message);
         } finally {
             setBusy(false);
         }
     };
 
-    const remove = (id: string) => Alert.alert("Delete report schedule?", undefined, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => void deleteReportSchedule(id, dataOwnerId) },
+    const remove = (id: string) => Alert.alert(t("deleteReportSchedule"), undefined, [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("delete"), style: "destructive", onPress: () => void deleteReportSchedule(id, dataOwnerId) },
     ]);
+    const shareCurrent = async () => {
+        if (!canExportReports) {
+            navigation.navigate("Paywall", { source: "export" });
+            return;
+        }
+        try {
+            await exportExpensesCsv(expenses, currency, t("sharingUnavailable"), t("expenseReportDialog"));
+        } catch (error) {
+            Alert.alert(t("exportCsv"), (error as Error).message);
+        }
+    };
 
     return (
         <Screen>
-            <SectionHeader title="Reports" />
+            <SectionHeader title={t("scheduledReports")} />
             <Card style={styles.intro}>
-                <Text style={styles.title}>Share now</Text>
+                <Text style={styles.title}>{t("shareNow")}</Text>
                 <Text style={styles.body}>
                     {releaseFeatures.scheduledReportDelivery
-                        ? "Export the currently stored history immediately, or configure automatic weekly and monthly delivery."
-                        : "Export the currently stored expense history and share the CSV with any compatible app."}
+                        ? t("reportShareScheduledBody")
+                        : t("reportShareBody")}
                 </Text>
-                <Button label="Share current CSV" icon="share-outline" variant="secondary" onPress={() => canExportReports ? void exportExpensesCsv(expenses, currency) : navigation.navigate("Paywall", { source: "export" })} />
+                <Button label={t("shareCurrentCsv")} icon="share-outline" variant="secondary" onPress={() => void shareCurrent()} />
             </Card>
-            {releaseFeatures.scheduledReportDelivery ? <SectionHeader title="Automatic delivery" /> : null}
+            {releaseFeatures.scheduledReportDelivery ? <SectionHeader title={t("automaticDelivery")} /> : null}
             {releaseFeatures.scheduledReportDelivery && !canExportReports ? (
                 <Card style={styles.intro}>
-                    <Text style={styles.title}>Scheduled reports are included with Plus</Text>
-                    <Text style={styles.body}>Free accounts keep all expense tracking. Plus adds automatic PDF or CSV delivery.</Text>
-                    <Button label="Explore AutoCare Plus" icon="sparkles-outline" onPress={() => navigation.navigate("Paywall", { source: "export" })} />
+                    <Text style={styles.title}>{t("scheduledReportsPlus")}</Text>
+                    <Text style={styles.body}>{t("scheduledReportsPlusBody")}</Text>
+                    <Button label={t("explorePlus")} icon="sparkles-outline" onPress={() => navigation.navigate("Paywall", { source: "export" })} />
                 </Card>
             ) : releaseFeatures.scheduledReportDelivery ? (
                 <Card style={styles.form}>
-                    <FormField label="Report name" value={draft.name} onChangeText={(value) => update("name", value)} required />
-                    <SelectField label="Vehicle" value={draft.vehicleId || "__all__"} onChange={(value) => update("vehicleId", value === "__all__" ? "" : value)} placeholder="All vehicles" options={[{ value: "__all__", label: "All vehicles" }, ...vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))]} />
-                    <SelectField label="Frequency" value={draft.frequency} onChange={(value) => update("frequency", value)} options={[{ value: "weekly", label: "Weekly" }, { value: "monthly", label: "Monthly" }]} />
-                    <SelectField label="Format" value={draft.format} onChange={(value) => update("format", value)} options={[{ value: "pdf", label: "PDF" }, { value: "csv", label: "CSV" }]} />
-                    {draft.frequency === "weekly" ? <SelectField label="Delivery day" value={draft.dayOfWeek} onChange={(value) => update("dayOfWeek", value)} options={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((label, value) => ({ value: String(value), label }))} /> : <SelectField label="Day of month" value={draft.dayOfMonth} onChange={(value) => update("dayOfMonth", value)} options={["1", "5", "10", "15", "20", "25", "28"].map((value) => ({ value, label: value }))} />}
-                    <TimeField label="Delivery time" value={draft.deliveryTime} onChange={(value) => update("deliveryTime", value)} required />
-                    <FormField label="Delivery email" value={draft.deliveryEmail} onChangeText={(value) => update("deliveryEmail", value)} keyboardType="email-address" autoCapitalize="none" required />
-                    <Text style={styles.hint}>Timezone: {draft.timezone}</Text>
-                    <Button label="Schedule report" icon="calendar-outline" onPress={() => void save()} loading={busy} />
+                    <FormField label={t("reportName")} value={draft.name} onChangeText={(value) => update("name", value)} required />
+                    <SelectField label={t("vehicle")} value={draft.vehicleId || "__all__"} onChange={(value) => update("vehicleId", value === "__all__" ? "" : value)} placeholder={t("allVehicles")} options={[{ value: "__all__", label: t("allVehicles") }, ...vehicles.map((vehicle) => ({ value: vehicle.id ?? "", label: [vehicle.vehicle_brand, vehicle.vehicle_model, vehicle.vehicle_license_plate].filter(Boolean).join(" · ") }))]} />
+                    <SelectField label={t("frequency")} value={draft.frequency} onChange={(value) => update("frequency", value)} options={[{ value: "weekly", label: t("weekly") }, { value: "monthly", label: t("monthly") }]} />
+                    <SelectField label={t("format")} value={draft.format} onChange={(value) => update("format", value)} options={[{ value: "pdf", label: "PDF" }, { value: "csv", label: "CSV" }]} />
+                    {draft.frequency === "weekly" ? <SelectField label={t("deliveryDay")} value={draft.dayOfWeek} onChange={(value) => update("dayOfWeek", value)} options={Array.from({ length: 7 }, (_, value) => ({ value: String(value), label: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(new Date(2021, 7, 1 + value, 12)) }))} /> : <SelectField label={t("dayOfMonth")} value={draft.dayOfMonth} onChange={(value) => update("dayOfMonth", value)} options={["1", "5", "10", "15", "20", "25", "28"].map((value) => ({ value, label: value }))} />}
+                    <TimeField label={t("deliveryTime")} value={draft.deliveryTime} onChange={(value) => update("deliveryTime", value)} required />
+                    <FormField label={t("deliveryEmail")} value={draft.deliveryEmail} onChangeText={(value) => update("deliveryEmail", value)} keyboardType="email-address" autoCapitalize="none" required />
+                    <Text style={styles.hint}>{t("timezone", { timezone: draft.timezone })}</Text>
+                    <Button label={t("scheduleReport")} icon="calendar-outline" onPress={() => void save()} loading={busy} />
                 </Card>
             ) : null}
             {releaseFeatures.scheduledReportDelivery && schedules.length ? (
                 <>
-                    <SectionHeader title="Active schedules" />
+                    <SectionHeader title={t("activeSchedules")} />
                     <Card style={styles.list}>
                         {schedules.map((schedule, index) => (
                             <View key={schedule.id ?? index}>
-                                <Row icon={schedule.format === "pdf" ? "document-text-outline" : "grid-outline"} title={schedule.name ?? "Report"} subtitle={`${schedule.frequency} · ${String(schedule.format).toUpperCase()} · next ${schedule.next_run_at ? new Date(schedule.next_run_at).toLocaleString() : "not queued"}`} onPress={() => schedule.id && remove(schedule.id)} />
+                                <Row icon={schedule.format === "pdf" ? "document-text-outline" : "grid-outline"} title={schedule.name ?? t("report")} subtitle={t("nextRun", { frequency: schedule.frequency === "weekly" ? t("weekly") : t("monthly"), format: String(schedule.format).toUpperCase(), date: schedule.next_run_at ? new Date(schedule.next_run_at).toLocaleString(locale) : t("notQueued") })} onPress={() => schedule.id && remove(schedule.id)} />
                                 {index < schedules.length - 1 ? <View style={styles.divider} /> : null}
                             </View>
                         ))}

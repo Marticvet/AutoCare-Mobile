@@ -1,5 +1,5 @@
 import * as Linking from "expo-linking";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Button, Card, ChoiceChips, EmptyState, LoadingState, Row, Screen, SectionHeader } from "../../components/ui";
 import { usePreferences } from "../../i18n/PreferencesProvider";
@@ -16,19 +16,30 @@ export default function NearbyScreen() {
     const [type, setType] = useState<PlaceType>("gas_station");
     const [places, setPlaces] = useState<NearbyPlace[]>([]);
     const [loading, setLoading] = useState(false);
+    const permissionMessages = useMemo(() => ({
+        disabled: t("locationAccessDisabled"),
+        denied: t("locationPermissionDenied"),
+    }), [t]);
+    const placesMessages = useMemo(() => ({
+        unavailable: t("placesUnavailable"),
+        sessionExpired: t("sessionExpired"),
+        notDeployed: t("placesNotDeployed"),
+        busy: t("placesBusy"),
+        notConfigured: t("placesNotConfigured"),
+    }), [t]);
 
     const fetchNearby = useCallback(async () => {
         if (!isOnline) return;
         setLoading(true);
         try {
-            const origin = await captureDeviceCoordinates();
-            setPlaces(await searchNearbyPlaces(type, origin));
+            const origin = await captureDeviceCoordinates({ permissionMessages });
+            setPlaces(await searchNearbyPlaces(type, origin, placesMessages));
         } catch (error) {
             Alert.alert(t("nearby"), (error as Error).message);
         } finally {
             setLoading(false);
         }
-    }, [isOnline, t, type]);
+    }, [isOnline, permissionMessages, placesMessages, t, type]);
 
     useEffect(() => { void fetchNearby(); }, [fetchNearby]);
 

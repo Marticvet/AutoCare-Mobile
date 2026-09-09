@@ -77,11 +77,11 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     const submit = async () => {
         const formTitle = vehicleId ? t("editVehicle") : t("addVehicle");
         if (!canWrite) {
-            Alert.alert(formTitle, "Your garage role is view-only.");
+            Alert.alert(formTitle, t("viewOnlyGarage"));
             return;
         }
         if (!vehicleId && (subscriptionLoading || !canAddVehicle(vehicles.length))) {
-            if (subscriptionLoading) Alert.alert("AutoCare Plus", "Your subscription status is still loading. Please try again.");
+            if (subscriptionLoading) Alert.alert("AutoCare Plus", t("subscriptionStillLoading"));
             else navigation.navigate("Paywall", { source: "vehicle" });
             return;
         }

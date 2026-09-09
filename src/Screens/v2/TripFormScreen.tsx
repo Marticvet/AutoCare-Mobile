@@ -7,6 +7,7 @@ import { useTrips } from "../../data/liveQueries";
 import { TripDraft, TripRecord } from "../../data/models";
 import { deleteTrip, fetchTripFromServer, saveTrip } from "../../data/repository";
 import { RootStackParamList } from "../../navigation/types";
+import { usePreferences } from "../../i18n/PreferencesProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { spacing } from "../../theme/tokens";
 import { isoDate, isoTime, toNumber } from "../../utils/tracking";
@@ -14,6 +15,7 @@ import { isoDate, isoTime, toNumber } from "../../utils/tracking";
 type Props = NativeStackScreenProps<RootStackParamList, "TripForm">;
 
 export default function TripFormScreen({ route, navigation }: Props) {
+    const { t } = usePreferences();
     const tripId = route.params?.tripId;
     const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
     const { data: trips, loading } = useTrips(dataOwnerId);
@@ -108,23 +110,23 @@ export default function TripFormScreen({ route, navigation }: Props) {
         const end = new Date(`${draft.endDate}T${draft.endTime}:00`);
         const calculated = toNumber(draft.endOdometer) - toNumber(draft.startOdometer);
         if (!canWrite || !draft.vehicleId || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start || (toNumber(draft.distanceKm) <= 0 && calculated <= 0)) {
-            Alert.alert(tripId ? "Edit trip" : "Add trip", "Choose a vehicle, valid times, and a positive distance or odometer range.");
+            Alert.alert(tripId ? t("editTrip") : t("addTrip"), t("tripValidation"));
             return;
         }
         setBusy(true);
         try {
             await saveTrip(draft);
-            Alert.alert(tripId ? "Trip updated successfully" : "Trip saved successfully");
+            Alert.alert(tripId ? t("tripUpdated") : t("tripSaved"));
             navigation.goBack();
         } catch (error) {
-            Alert.alert("Trip", (error as Error).message);
+            Alert.alert(t("tripLog"), (error as Error).message);
         } finally {
             setBusy(false);
         }
     };
-    const remove = () => tripId && Alert.alert("Delete trip?", undefined, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => void deleteTrip(tripId, dataOwnerId).then(() => navigation.goBack()) },
+    const remove = () => tripId && Alert.alert(t("deleteTripQuestion"), undefined, [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("delete"), style: "destructive", onPress: () => void deleteTrip(tripId, dataOwnerId).then(() => navigation.goBack()) },
     ]);
 
     const sourceLoading = Boolean(tripId) && (
@@ -138,11 +140,11 @@ export default function TripFormScreen({ route, navigation }: Props) {
             <Screen>
                 <EmptyState
                     icon="navigate-outline"
-                    title={scopedServerResult?.error ? "Trip could not be loaded" : "Trip not found"}
+                    title={t("tripUnavailable")}
                     body={scopedServerResult?.error
-                        ? "Check your connection and open the trip again."
-                        : "This trip may have already been deleted."}
-                    action="Back to trips"
+                        ? t("tripUnavailableBody")
+                        : t("tripUnavailableBody")}
+                    action={t("backToTrips")}
                     onAction={navigation.goBack}
                 />
             </Screen>
@@ -151,24 +153,24 @@ export default function TripFormScreen({ route, navigation }: Props) {
 
     return (
         <Screen>
-            <SectionHeader title={tripId ? "Edit trip" : "Add trip"} />
+            <SectionHeader title={tripId ? t("editTrip") : t("addTrip")} />
             <Card style={styles.form}>
                 <VehicleSelectField vehicles={vehicles} value={draft.vehicleId} onChange={(value) => update("vehicleId", value)} />
-                <SelectField label="Purpose" value={draft.purpose} onChange={(value) => update("purpose", value)} options={[
-                    { value: "personal", label: "Personal" }, { value: "business", label: "Business" }, { value: "commute", label: "Commute" }, { value: "other", label: "Other" },
+                <SelectField label={t("tripPurpose")} value={draft.purpose} onChange={(value) => update("purpose", value)} options={[
+                    { value: "personal", label: t("personal") }, { value: "business", label: t("business") }, { value: "commute", label: t("commute") }, { value: "other", label: t("other") },
                 ]} />
-                <FormField label="Trip title" value={draft.title} onChangeText={(value) => update("title", value)} />
-                <View style={styles.columns}><View style={styles.column}><DateField label="Start date" value={draft.startDate} onChange={(value) => update("startDate", value)} required /></View><View style={styles.column}><TimeField label="Start time" value={draft.startTime} onChange={(value) => update("startTime", value)} required /></View></View>
-                <View style={styles.columns}><View style={styles.column}><DateField label="End date" value={draft.endDate} onChange={(value) => update("endDate", value)} required /></View><View style={styles.column}><TimeField label="End time" value={draft.endTime} onChange={(value) => update("endTime", value)} required /></View></View>
-                <View style={styles.columns}><View style={styles.column}><FormField label="Start odometer (km)" value={draft.startOdometer} onChangeText={(value) => update("startOdometer", value)} keyboardType="decimal-pad" /></View><View style={styles.column}><FormField label="End odometer (km)" value={draft.endOdometer} onChangeText={(value) => update("endOdometer", value)} keyboardType="decimal-pad" /></View></View>
-                <FormField label="Distance (km)" value={draft.distanceKm} onChangeText={(value) => update("distanceKm", value)} keyboardType="decimal-pad" hint="Optional when both odometer values are supplied." />
-                <FormField label="Origin" value={draft.origin} onChangeText={(value) => update("origin", value)} />
-                <FormField label="Destination" value={draft.destination} onChangeText={(value) => update("destination", value)} />
-                {draft.purpose === "business" ? <FormField label="Reimbursement rate per km" value={draft.reimbursableRate} onChangeText={(value) => update("reimbursableRate", value)} keyboardType="decimal-pad" /> : null}
-                <FormField label="Notes" value={draft.notes} onChangeText={(value) => update("notes", value)} multiline />
+                <FormField label={t("tripTitle")} value={draft.title} onChangeText={(value) => update("title", value)} />
+                <View style={styles.columns}><View style={styles.column}><DateField label={t("startDate")} value={draft.startDate} onChange={(value) => update("startDate", value)} required /></View><View style={styles.column}><TimeField label={t("startTime")} value={draft.startTime} onChange={(value) => update("startTime", value)} required /></View></View>
+                <View style={styles.columns}><View style={styles.column}><DateField label={t("endDate")} value={draft.endDate} onChange={(value) => update("endDate", value)} required /></View><View style={styles.column}><TimeField label={t("endTime")} value={draft.endTime} onChange={(value) => update("endTime", value)} required /></View></View>
+                <View style={styles.columns}><View style={styles.column}><FormField label={t("startOdometerKm")} value={draft.startOdometer} onChangeText={(value) => update("startOdometer", value)} keyboardType="decimal-pad" /></View><View style={styles.column}><FormField label={t("endOdometerKm")} value={draft.endOdometer} onChangeText={(value) => update("endOdometer", value)} keyboardType="decimal-pad" /></View></View>
+                <FormField label={t("distanceKm")} value={draft.distanceKm} onChangeText={(value) => update("distanceKm", value)} keyboardType="decimal-pad" hint={t("distanceOdometerHint")} />
+                <FormField label={t("origin")} value={draft.origin} onChangeText={(value) => update("origin", value)} />
+                <FormField label={t("destination")} value={draft.destination} onChangeText={(value) => update("destination", value)} />
+                {draft.purpose === "business" ? <FormField label={t("reimbursementRate")} value={draft.reimbursableRate} onChangeText={(value) => update("reimbursableRate", value)} keyboardType="decimal-pad" /> : null}
+                <FormField label={t("notes")} value={draft.notes} onChangeText={(value) => update("notes", value)} multiline />
             </Card>
-            <Button label="Save trip" icon="checkmark" onPress={() => void submit()} loading={busy} />
-            {tripId ? <Button label="Delete trip" icon="trash-outline" variant="danger" onPress={remove} /> : null}
+            <Button label={t("saveTrip")} icon="checkmark" onPress={() => void submit()} loading={busy} />
+            {tripId ? <Button label={t("deleteTrip")} icon="trash-outline" variant="danger" onPress={remove} /> : null}
         </Screen>
     );
 }

@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { Button, Card, ChoiceChips, DateField, FormField, LoadingState, PresetOrCustomField, Screen, SectionHeader, SelectField, TimeField } from "../../components/ui";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
@@ -28,6 +28,12 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
     const { vehicles, selectedVehicleId, dataOwnerId, canWrite } = useGarage();
     const { t, distanceUnit } = usePreferences();
     const { canCreateRecurringReminder } = useSubscription();
+    const systemLabels = useMemo(() => ({
+        channelName: t("vehicleRemindersChannel"),
+        channelDescription: t("vehicleRemindersChannelBody"),
+        open: t("openReminder"),
+        markComplete: t("markComplete"),
+    }), [t]);
     const { data: reminders, loading } = useReminders(dataOwnerId);
     const source = reminders.find((reminder) => reminder.id === reminderId);
     const [draft, setDraft] = useState<ReminderDraft>({
@@ -51,12 +57,12 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
     const [testingNotification, setTestingNotification] = useState(false);
     const [template, setTemplate] = useState("");
     const maintenanceTemplates = [
-        { value: "oil", label: "Oil & filter change", title: "Oil & filter change", category: "maintenance", months: "12", km: "15000" },
-        { value: "tyres", label: "Tyre rotation / check", title: "Tyre rotation / check", category: "maintenance", months: "6", km: "10000" },
-        { value: "inspection", label: "Vehicle inspection", title: "Vehicle inspection", category: "inspection", months: "12", km: "" },
-        { value: "insurance", label: "Insurance renewal", title: "Insurance renewal", category: "insurance", months: "12", km: "" },
-        { value: "brake-fluid", label: "Brake fluid", title: "Brake fluid replacement", category: "maintenance", months: "24", km: "" },
-        { value: "battery", label: "Battery health check", title: "Battery health check", category: "maintenance", months: "12", km: "" },
+        { value: "oil", label: t("oilFilterChange"), title: t("oilFilterChange"), category: "maintenance", months: "12", km: "15000" },
+        { value: "tyres", label: t("tyreRotationCheck"), title: t("tyreRotationCheck"), category: "maintenance", months: "6", km: "10000" },
+        { value: "inspection", label: t("vehicleInspection"), title: t("vehicleInspection"), category: "inspection", months: "12", km: "" },
+        { value: "insurance", label: t("insuranceRenewal"), title: t("insuranceRenewal"), category: "insurance", months: "12", km: "" },
+        { value: "brake-fluid", label: t("brakeFluid"), title: t("brakeFluidReplacement"), category: "maintenance", months: "24", km: "" },
+        { value: "battery", label: t("batteryHealthCheck"), title: t("batteryHealthCheck"), category: "maintenance", months: "12", km: "" },
     ];
 
     useEffect(() => {
@@ -102,12 +108,12 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
         if (!draft.title.trim() || !draft.dueDate) return;
         setTestingNotification(true);
         try {
-            const granted = await requestReminderNotificationPermission();
+            const granted = await requestReminderNotificationPermission(systemLabels);
             if (!granted) {
                 Alert.alert(t("notificationsDisabled"), t("notificationPermissionDenied"));
                 return;
             }
-            await sendReminderTestNotification(notificationContent.title, notificationContent.body);
+            await sendReminderTestNotification(notificationContent.title, notificationContent.body, systemLabels);
             Alert.alert(t("notifications"), t("notificationTestSent"));
         } catch (error) {
             Alert.alert(t("notifications"), (error as Error).message);
@@ -118,7 +124,7 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
 
     const submit = async () => {
         if (!canWrite) {
-            Alert.alert(t("reminder"), "Your garage role is view-only.");
+            Alert.alert(t("reminder"), t("viewOnlyGarage"));
             return;
         }
         if (!canCreateRecurringReminder && (toNumber(draft.repeatMonths) > 0 || toNumber(draft.repeatKm) > 0)) {
@@ -137,10 +143,10 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
             let notificationWarning: string | undefined;
             try {
                 if (draft.dueDate) {
-                    const granted = await requestReminderNotificationPermission();
+                    const granted = await requestReminderNotificationPermission(systemLabels);
                     if (!granted) notificationWarning = t("notificationPermissionDenied");
                     else {
-                        await scheduleReminderNotification({ reminderId: savedId, title: draft.title.trim(), dueDate: draft.dueDate, dueTime: draft.dueTime, vehicleLabel, dueLabel: t("dueDate"), notifyBeforeMinutes: toNumber(draft.notifyBeforeMinutes), notificationTitle: draft.notificationTitle, notificationBody: draft.notificationBody });
+                        await scheduleReminderNotification({ reminderId: savedId, title: draft.title.trim(), dueDate: draft.dueDate, dueTime: draft.dueTime, vehicleLabel, dueLabel: t("dueDate"), notifyBeforeMinutes: toNumber(draft.notifyBeforeMinutes), notificationTitle: draft.notificationTitle, notificationBody: draft.notificationBody, systemLabels });
                     }
                 } else {
                     await cancelReminderNotification(savedId);
@@ -171,11 +177,11 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
             <SectionHeader title={reminderId ? t("editReminder") : t("addReminder")} />
             <Card style={styles.form}>
                 <VehicleSelectField vehicles={vehicles} value={draft.vehicleId} onChange={(value) => update("vehicleId", value)} />
-                {!reminderId ? <SelectField label="Maintenance template" value={template} onChange={(value) => {
+                {!reminderId ? <SelectField label={t("maintenanceTemplate")} value={template} onChange={(value) => {
                     setTemplate(value);
                     const preset = maintenanceTemplates.find((entry) => entry.value === value);
                     if (preset) setDraft((current) => ({ ...current, title: preset.title, category: preset.category, repeatMonths: preset.months, repeatKm: preset.km }));
-                }} placeholder="Start from a preset (optional)" options={maintenanceTemplates.map(({ value, label }) => ({ value, label }))} /> : null}
+                }} placeholder={t("startFromPreset")} options={maintenanceTemplates.map(({ value, label }) => ({ value, label }))} /> : null}
                 <FormField label={t("reminderTitle")} value={draft.title} onChangeText={(value) => update("title", value)} required />
                 <Text style={styles.label}>{t("reminderCategory")}</Text>
                 <ChoiceChips
@@ -192,18 +198,18 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
                 <DateField label={t("dueDate")} value={draft.dueDate} onChange={(value) => update("dueDate", value)} hint={t("optional")} />
                 <TimeField label={t("reminderTime")} value={draft.dueTime} onChange={(value) => update("dueTime", value)} required={Boolean(draft.dueDate)} />
                 <PresetOrCustomField
-                    label="Notify me before"
+                    label={t("notifyBefore")}
                     value={draft.notifyBeforeMinutes}
                     onChange={(value) => update("notifyBeforeMinutes", value)}
                     keyboardType="number-pad"
                     options={[
-                        { value: "0", label: "At the due time" },
-                        { value: "60", label: "1 hour before" },
-                        { value: "1440", label: "1 day before" },
-                        { value: "10080", label: "1 week before" },
-                        { value: "43200", label: "30 days before" },
+                        { value: "0", label: t("atDueTime") },
+                        { value: "60", label: t("oneHourBefore") },
+                        { value: "1440", label: t("oneDayBefore") },
+                        { value: "10080", label: t("oneWeekBefore") },
+                        { value: "43200", label: t("thirtyDaysBefore") },
                     ]}
-                    customLabel="Minutes before"
+                    customLabel={t("minutesBefore")}
                 />
                 <Text style={styles.fieldHint}>{draft.dueDate ? t("notificationTimeHint") : t("notificationRequiresDate")}</Text>
                 <View style={styles.notificationPreview}>
@@ -212,8 +218,8 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
                     <Text style={styles.previewValue}>{notificationContent.title}</Text>
                     <Text style={styles.previewLabel}>{t("notificationMessage")}</Text>
                     <Text style={styles.previewValue}>{notificationContent.body}</Text>
-                    <FormField label="Custom notification title" value={draft.notificationTitle} onChangeText={(value) => update("notificationTitle", value)} hint="Optional — the reminder title is used by default." />
-                    <FormField label="Custom notification message" value={draft.notificationBody} onChangeText={(value) => update("notificationBody", value)} hint="Optional — vehicle, due date and time are used by default." multiline />
+                    <FormField label={t("customNotificationTitle")} value={draft.notificationTitle} onChangeText={(value) => update("notificationTitle", value)} hint={t("notificationTitleHint")} />
+                    <FormField label={t("customNotificationMessage")} value={draft.notificationBody} onChangeText={(value) => update("notificationBody", value)} hint={t("notificationMessageHint")} multiline />
                     <Button
                         label={t("sendPreviewNotification")}
                         icon="notifications-outline"
@@ -245,9 +251,9 @@ export default function ReminderFormScreen({ route, navigation }: Props) {
                     </>
                 ) : (
                     <View style={styles.plusGate}>
-                        <Text style={styles.plusGateTitle}>Recurring reminders with Plus</Text>
-                        <Text style={styles.plusGateBody}>One-time reminders stay free. Plus can repeat them by time or mileage.</Text>
-                        <Button label="Explore AutoCare Plus" icon="repeat-outline" variant="secondary" onPress={() => navigation.navigate("Paywall", { source: "reminder" })} />
+                        <Text style={styles.plusGateTitle}>{t("recurringRemindersPlus")}</Text>
+                        <Text style={styles.plusGateBody}>{t("recurringRemindersBody")}</Text>
+                        <Button label={t("explorePlus")} icon="repeat-outline" variant="secondary" onPress={() => navigation.navigate("Paywall", { source: "reminder" })} />
                     </View>
                 )}
                 <Text style={styles.label}>{t("priority")}</Text>

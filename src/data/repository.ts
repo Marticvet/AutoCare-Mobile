@@ -704,6 +704,9 @@ export async function saveChecklistTemplate(draft: ChecklistTemplateDraft) {
     return id;
 }
 
+export const DEFAULT_CHECKLIST_DESCRIPTION = "A quick safety check before driving.";
+export const CUSTOM_CHECKLIST_DESCRIPTION = "Custom fleet checklist";
+
 export async function ensureDefaultChecklist(userId: string) {
     const existing = await system.db.selectFrom("checklist_templates").select("id").where("user_id", "=", userId).where("active", "=", 1).executeTakeFirst();
     if (existing) return existing.id;
@@ -724,7 +727,7 @@ export async function ensureDefaultChecklist(userId: string) {
         id: inactiveStarter?.id,
         userId,
         name: "Pre-trip inspection",
-        description: "A quick safety check before driving.",
+        description: DEFAULT_CHECKLIST_DESCRIPTION,
         vehicleType: "",
         isDefault: true,
         items: [
@@ -769,7 +772,14 @@ export async function deleteChecklistTemplate(templateId: string, userId: string
     if (error && !existing) throw error;
 }
 
-export async function startChecklistRun(userId: string, vehicleId: string, templateId: string, assignedUserId: string, driverName: string) {
+export async function startChecklistRun(
+    userId: string,
+    vehicleId: string,
+    templateId: string,
+    assignedUserId: string,
+    driverName: string,
+    noItemsMessage: string
+) {
     const id = uuid();
     const now = nowIso();
     let templateItems = await system.db.selectFrom("checklist_template_items").selectAll().where("user_id", "=", userId).where("template_id", "=", templateId).orderBy("sort_order").execute();
@@ -777,7 +787,7 @@ export async function startChecklistRun(userId: string, vehicleId: string, templ
         templateItems = await fetchChecklistTemplateItemsFromServer(userId, templateId);
     }
     if (!templateItems.length) {
-        throw new Error("This checklist has no items. Refresh the templates or add at least one item before starting.");
+        throw new Error(noItemsMessage);
     }
     const run = {
         id,
@@ -831,13 +841,19 @@ export async function setChecklistItemResult(itemId: string, userId: string, res
     if (error) throw error;
 }
 
-export async function completeChecklistRun(runId: string, userId: string, signatureName: string, damageNotes: string) {
+export async function completeChecklistRun(
+    runId: string,
+    userId: string,
+    signatureName: string,
+    damageNotes: string,
+    validationMessages: { noItems: string; incomplete: string }
+) {
     let items: Array<Pick<ChecklistRunItemRecord, "result">> = await system.db.selectFrom("checklist_run_items").select("result").where("run_id", "=", runId).where("user_id", "=", userId).execute();
     if (!items.length) {
         items = await fetchChecklistRunItemsFromServer(runId, userId);
     }
-    if (!items.length) throw new Error("This inspection has no checklist items.");
-    if (items.some((item) => item.result === "unchecked")) throw new Error("Complete every checklist item first.");
+    if (!items.length) throw new Error(validationMessages.noItems);
+    if (items.some((item) => item.result === "unchecked")) throw new Error(validationMessages.incomplete);
     const attentionRequired = items.some((item) => item.result === "fail");
     const updates = {
         status: attentionRequired ? "attention_required" : "passed",

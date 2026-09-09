@@ -99,7 +99,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
     const scan = async () => {
         if (!requireFileUploadAccess()) return;
         try {
-            const file = await captureDocument(documentId);
+            const file = await captureDocument(documentId, t("cameraPermissionDenied"));
             if (!file) return;
             setHasLocalFile(true);
             setDraft((current) => ({
@@ -117,7 +117,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
     };
     const submit = async () => {
         if (!canWrite) {
-            Alert.alert(t("documents"), "Your garage role is view-only.");
+            Alert.alert(t("documents"), t("viewOnlyGarage"));
             return;
         }
         if (!requireNewDocumentAccess()) return;

@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { system } from "../powersync/PowerSync";
 
-export async function exportAccountData(userId: string) {
+export async function exportAccountData(userId: string, sharingUnavailableMessage: string, dialogTitle: string) {
     const [profile, vehicles, fuel, charging, insurance, service, general, reminders, documents, parts, budgets, trips, schedules, templates, templateItems, runs, runItems] = await Promise.all([
         system.db.selectFrom("profiles").selectAll().where("id", "=", userId).execute(),
         system.db.selectFrom("vehicles").selectAll().where("user_id", "=", userId).execute(),
@@ -37,8 +37,8 @@ export async function exportAccountData(userId: string) {
     };
     const path = `${FileSystem.cacheDirectory}autocare-account-export-${new Date().toISOString().slice(0, 10)}.json`;
     await FileSystem.writeAsStringAsync(path, JSON.stringify(payload, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
-    if (!(await Sharing.isAvailableAsync())) throw new Error("Sharing is not available on this device.");
-    await Sharing.shareAsync(path, { mimeType: "application/json", dialogTitle: "AutoCare account export" });
+    if (!(await Sharing.isAvailableAsync())) throw new Error(sharingUnavailableMessage);
+    await Sharing.shareAsync(path, { mimeType: "application/json", dialogTitle });
     return path;
 }
 

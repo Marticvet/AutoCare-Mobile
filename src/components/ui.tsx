@@ -197,6 +197,7 @@ export function FormField({
     hint?: string;
     required?: boolean;
 }) {
+    const { t } = usePreferences();
     const canClear = editable !== false && Boolean(onChangeText) && String(value ?? "").length > 0;
     return (
         <View style={styles.field}>
@@ -222,7 +223,7 @@ export function FormField({
                         onPress={() => onChangeText?.("")}
                         hitSlop={10}
                         accessibilityRole="button"
-                        accessibilityLabel={`Clear ${label}`}
+                        accessibilityLabel={t("clearField", { label })}
                         style={styles.clearInputButton}
                     >
                         <Ionicons name="close-circle" size={21} color={colors.borderStrong} />
@@ -363,7 +364,7 @@ export function TimeField({
                 accessibilityLabel={label}
                 style={({ pressed }) => [styles.input, styles.dateInput, pressed && styles.dateInputPressed]}
             >
-                <Text style={[styles.dateValue, !valid && styles.datePlaceholder]}>{valid ? value : "HH:mm"}</Text>
+                <Text style={[styles.dateValue, !valid && styles.datePlaceholder]}>{valid ? value : t("timePlaceholder")}</Text>
                 <Ionicons name="time-outline" size={20} color={colors.primary} />
             </Pressable>
 
@@ -482,19 +483,19 @@ export function DateField({
     const [visibleMonth, setVisibleMonth] = useState(() => calendarMonth(value));
     const [calendarView, setCalendarView] = useState<"days" | "years" | "months">("days");
     const [yearPageStart, setYearPageStart] = useState(() => Math.floor(calendarMonth(value).year / yearsPerPage) * yearsPerPage);
-    const { t, language } = usePreferences();
+    const { t, locale } = usePreferences();
     const monthName = useMemo(
-        () => new Intl.DateTimeFormat(language, { month: "long" })
+        () => new Intl.DateTimeFormat(locale, { month: "long" })
             .format(new Date(visibleMonth.year, visibleMonth.month, 1, 12)),
-        [language, visibleMonth]
+        [locale, visibleMonth]
     );
     const monthOptions = useMemo(() => {
-        const formatter = new Intl.DateTimeFormat(language, { month: "short" });
+        const formatter = new Intl.DateTimeFormat(locale, { month: "short" });
         return Array.from({ length: 12 }, (_, month) => ({
             month,
             label: formatter.format(new Date(2020, month, 1, 12)),
         }));
-    }, [language]);
+    }, [locale]);
     const currentYear = new Date().getFullYear();
     const constrainedMinYear = Number(minDate?.slice(0, 4));
     const constrainedMaxYear = Number(maxDate?.slice(0, 4));
@@ -505,10 +506,10 @@ export function DateField({
         [yearPageStart]
     );
     const weekdayLabels = useMemo(() => {
-        const formatter = new Intl.DateTimeFormat(language, { weekday: "narrow" });
+        const formatter = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
         // 2 August 2021 was a Monday. Keep Monday as the first column.
         return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2021, 7, 2 + index, 12)));
-    }, [language]);
+    }, [locale]);
     const monthCells = useMemo(() => {
         const firstWeekday = (new Date(visibleMonth.year, visibleMonth.month, 1, 12).getDay() + 6) % 7;
         const dayCount = new Date(visibleMonth.year, visibleMonth.month + 1, 0, 12).getDate();
@@ -575,7 +576,7 @@ export function DateField({
                 accessibilityLabel={label}
                 style={({ pressed }) => [styles.input, styles.dateInput, pressed && styles.dateInputPressed]}
             >
-                <Text style={[styles.dateValue, !value && styles.datePlaceholder]}>{value || "YYYY-MM-DD"}</Text>
+                <Text style={[styles.dateValue, !value && styles.datePlaceholder]}>{value || t("datePlaceholder")}</Text>
                 <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             </Pressable>
             {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
@@ -586,7 +587,7 @@ export function DateField({
                     <View style={styles.dateModalCard}>
                         <View style={styles.dateModalHeader}>
                             <Text style={styles.dateModalTitle}>
-                                {calendarView === "years" ? "Choose year" : calendarView === "months" ? "Choose month" : label}
+                                {calendarView === "years" ? t("chooseYear") : calendarView === "months" ? t("chooseMonth") : label}
                             </Text>
                             <Pressable onPress={() => setVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("close")}>
                                 <Ionicons name="close" size={24} color={colors.ink} />
@@ -595,11 +596,11 @@ export function DateField({
                         {calendarView === "days" ? (
                             <>
                                 <View style={styles.calendarNavigation}>
-                                    <Pressable onPress={() => moveCalendar(-1)} accessibilityRole="button" accessibilityLabel="Previous month" hitSlop={6} style={styles.calendarNavigationButton}>
+                                    <Pressable onPress={() => moveCalendar(-1)} accessibilityRole="button" accessibilityLabel={t("previousMonth")} hitSlop={6} style={styles.calendarNavigationButton}>
                                         <Ionicons name="chevron-back" size={22} color={colors.primary} />
                                     </Pressable>
                                     <View style={styles.calendarCurrentPeriod}>
-                                        <Pressable onPress={() => setCalendarView("months")} accessibilityRole="button" accessibilityLabel="Choose month" style={styles.calendarPeriodButton}>
+                                        <Pressable onPress={() => setCalendarView("months")} accessibilityRole="button" accessibilityLabel={t("chooseMonth")} style={styles.calendarPeriodButton}>
                                             <Text style={styles.calendarMonthLabel}>{monthName}</Text>
                                         </Pressable>
                                         <Pressable
@@ -608,14 +609,14 @@ export function DateField({
                                                 setCalendarView("years");
                                             }}
                                             accessibilityRole="button"
-                                            accessibilityLabel="Choose year"
+                                            accessibilityLabel={t("chooseYear")}
                                             style={styles.calendarPeriodButton}
                                         >
                                             <Text style={styles.calendarYearLabel}>{visibleMonth.year}</Text>
                                             <Ionicons name="chevron-down" size={15} color={colors.primary} />
                                         </Pressable>
                                     </View>
-                                    <Pressable onPress={() => moveCalendar(1)} accessibilityRole="button" accessibilityLabel="Next month" hitSlop={6} style={styles.calendarNavigationButton}>
+                                    <Pressable onPress={() => moveCalendar(1)} accessibilityRole="button" accessibilityLabel={t("nextMonth")} hitSlop={6} style={styles.calendarNavigationButton}>
                                         <Ionicons name="chevron-forward" size={22} color={colors.primary} />
                                     </Pressable>
                                 </View>
@@ -661,7 +662,7 @@ export function DateField({
                                         onPress={() => setYearPageStart((current) => current - yearsPerPage)}
                                         disabled={yearPageStart <= minCalendarYear}
                                         accessibilityRole="button"
-                                        accessibilityLabel="Earlier years"
+                                        accessibilityLabel={t("earlierYears")}
                                         style={[styles.calendarNavigationButton, yearPageStart <= minCalendarYear && styles.calendarDisabled]}
                                     >
                                         <Ionicons name="chevron-back" size={22} color={colors.primary} />
@@ -671,7 +672,7 @@ export function DateField({
                                         onPress={() => setYearPageStart((current) => current + yearsPerPage)}
                                         disabled={yearPageStart + yearsPerPage - 1 >= maxCalendarYear}
                                         accessibilityRole="button"
-                                        accessibilityLabel="Later years"
+                                        accessibilityLabel={t("laterYears")}
                                         style={[styles.calendarNavigationButton, yearPageStart + yearsPerPage - 1 >= maxCalendarYear && styles.calendarDisabled]}
                                     >
                                         <Ionicons name="chevron-forward" size={22} color={colors.primary} />
@@ -710,7 +711,7 @@ export function DateField({
                                         setCalendarView("years");
                                     }}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Choose a different year"
+                                    accessibilityLabel={t("chooseDifferentYear")}
                                     style={styles.calendarSelectedYear}
                                 >
                                     <Text style={styles.calendarYearLabel}>{visibleMonth.year}</Text>

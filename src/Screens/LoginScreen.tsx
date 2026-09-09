@@ -22,8 +22,8 @@ export default function LoginScreen({ navigation }: any) {
         setBusy(true);
         try {
             await signIn(email, password);
-        } catch (error) {
-            Alert.alert(t("signIn"), (error as Error).message);
+        } catch {
+            Alert.alert(t("signIn"), t("signInFailed"));
         } finally {
             setBusy(false);
         }

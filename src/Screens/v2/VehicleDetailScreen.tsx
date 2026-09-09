@@ -1,11 +1,12 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { Button, Card, LoadingState, MetricCard, Row, Screen, SectionHeader } from "../../components/ui";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { useDocuments, useExpenses, useReminders, useTrips, useVehicle } from "../../data/liveQueries";
 import { deleteVehicle } from "../../data/repository";
 import { usePreferences } from "../../i18n/PreferencesProvider";
+import { TranslationKey } from "../../i18n/translations";
 import { RootStackParamList } from "../../navigation/types";
 import { useConnectivity } from "../../providers/ConnectivityProvider";
 import { useGarage } from "../../providers/GarageProvider";
@@ -14,6 +15,26 @@ import { colors, spacing, typography } from "../../theme/tokens";
 import { getReminderState, totalExpenses } from "../../utils/tracking";
 
 type Props = NativeStackScreenProps<RootStackParamList, "VehicleDetail">;
+
+const HISTORY_LABEL_KEYS: Record<string, TranslationKey> = {
+    fuel: "fuel",
+    charging: "charging",
+    service: "service",
+    insurance: "insurance",
+    parking: "parking",
+    toll: "toll",
+    tax: "tax",
+    wash: "wash",
+    repair: "repair",
+    other: "other",
+    business: "business",
+    commute: "commute",
+    personal: "personal",
+    registration: "registration",
+    inspection: "inspection",
+    receipt: "receipt",
+    warranty: "warranty",
+};
 
 export default function VehicleDetailScreen({ route, navigation }: Props) {
     const { vehicleId } = route.params;
@@ -26,13 +47,18 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     const { data: reminders } = useReminders(dataOwnerId, vehicleId);
     const { data: documents } = useDocuments(dataOwnerId, vehicleId);
     const { data: trips } = useTrips(dataOwnerId, vehicleId);
+    const historyLabel = useCallback((value: string | null | undefined) => {
+        if (!value) return t("other");
+        const key = HISTORY_LABEL_KEYS[value];
+        return key ? t(key) : value;
+    }, [t]);
     const due = useMemo(() => reminders.filter((reminder) => getReminderState(reminder, vehicle?.current_mileage ?? 0) !== "completed"), [reminders, vehicle]);
     const history = useMemo(() => [
-        ...expenses.map((entry) => ({ id: `expense-${entry.source}-${entry.id}`, date: entry.date, icon: entry.category === "charging" ? "flash-outline" : "receipt-outline", title: entry.title, subtitle: `${formatCurrency(entry.amount)} · ${entry.category}`, tone: "blue" as const })),
-        ...trips.map((entry) => ({ id: `trip-${entry.id}`, date: String(entry.start_at).slice(0, 10), icon: "navigate-outline", title: entry.title || `${entry.origin || "Start"} → ${entry.destination || "Destination"}`, subtitle: `${formatDistance(Number(entry.distance_km ?? 0))} · ${entry.purpose}`, tone: "green" as const })),
+        ...expenses.map((entry) => ({ id: `expense-${entry.source}-${entry.id}`, date: entry.date, icon: entry.category === "charging" ? "flash-outline" : "receipt-outline", title: entry.title, subtitle: `${formatCurrency(entry.amount)} · ${historyLabel(entry.category)}`, tone: "blue" as const })),
+        ...trips.map((entry) => ({ id: `trip-${entry.id}`, date: String(entry.start_at).slice(0, 10), icon: "navigate-outline", title: entry.title || `${entry.origin || t("tripStart")} → ${entry.destination || t("destination")}`, subtitle: `${formatDistance(Number(entry.distance_km ?? 0))} · ${historyLabel(entry.purpose)}`, tone: "green" as const })),
         ...reminders.map((entry) => ({ id: `reminder-${entry.id}`, date: entry.completed_at?.slice(0, 10) || entry.due_date || entry.created_at?.slice(0, 10) || "", icon: entry.status === "completed" ? "checkmark-circle-outline" : "notifications-outline", title: entry.title || t("reminder"), subtitle: entry.status === "completed" ? t("completed") : `${t("dueDate")} ${entry.due_date || "—"}`, tone: entry.status === "completed" ? "green" as const : "amber" as const })),
-        ...documents.map((entry) => ({ id: `document-${entry.id}`, date: entry.created_at?.slice(0, 10) || "", icon: "document-outline", title: entry.title || t("documents"), subtitle: entry.category || t("documents"), tone: "blue" as const })),
-    ].filter((entry) => entry.date).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [documents, expenses, formatCurrency, formatDistance, reminders, t, trips]);
+        ...documents.map((entry) => ({ id: `document-${entry.id}`, date: entry.created_at?.slice(0, 10) || "", icon: "document-outline", title: entry.title || t("documents"), subtitle: entry.category ? historyLabel(entry.category) : t("documents"), tone: "blue" as const })),
+    ].filter((entry) => entry.date).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [documents, expenses, formatCurrency, formatDistance, historyLabel, reminders, t, trips]);
     const addDocument = () => {
         if (!canCreateDocument) {
             navigation.navigate("Paywall", { source: "document" });
@@ -109,7 +135,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
             </View>
             {history.length ? (
                 <View style={styles.section}>
-                    <SectionHeader title="Vehicle history" />
+                    <SectionHeader title={t("vehicleHistory")} />
                     <Card style={styles.list}>
                         {history.map((entry, index) => (
                             <View key={entry.id}>

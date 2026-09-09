@@ -36,6 +36,9 @@ yarn-error.*
 # Supabase CLI local project state
 supabase/.temp/
 
+# Machine-translation generation cache
+.translation-cache*/
+
 # typescript
 *.tsbuildinfo
 

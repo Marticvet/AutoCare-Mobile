@@ -31,8 +31,8 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
         try {
             await resetPassword(email);
             setSent(true);
-        } catch (requestError) {
-            setError((requestError as Error).message);
+        } catch {
+            setError(t("resetRequestFailed"));
         } finally {
             setBusy(false);
         }

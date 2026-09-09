@@ -15,6 +15,7 @@ import type {
 import { useSystem } from "../powersync/PowerSync";
 import { useAuth } from "../providers/AuthProvider";
 import { useGarage } from "../providers/GarageProvider";
+import { usePreferences } from "../i18n/PreferencesProvider";
 import { deriveFeatureAccess } from "./featureAccess";
 import { ENTITLEMENTS, type EntitlementId } from "./entitlements";
 import {
@@ -50,12 +51,13 @@ const SubscriptionContext = createContext<SubscriptionContextValue>({
 
 function errorMessage(error: unknown, fallback: string) {
     if (typeof error === "object" && error && "userCancelled" in error && error.userCancelled) return "";
-    return error instanceof Error ? error.message : fallback;
+    return fallback;
 }
 
 export function SubscriptionProvider({ children }: PropsWithChildren) {
     const { userId } = useAuth();
     const { activeGarage, canWrite, currentRole } = useGarage();
+    const { t } = usePreferences();
     const { supabaseConnector } = useSystem();
     const [configured, setConfigured] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -111,10 +113,10 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             setCurrentOffering(state.currentOffering);
             await syncTrustedMirror();
         } catch (caught) {
-            const message = errorMessage(caught, "Subscription status could not be refreshed.");
+            const message = errorMessage(caught, t("subscriptionRefreshFailed"));
             if (message) setError(message);
         }
-    }, [configured, loadBackendStatus, syncTrustedMirror, userId]);
+    }, [configured, loadBackendStatus, syncTrustedMirror, t, userId]);
 
     useEffect(() => {
         let mounted = true;
@@ -146,7 +148,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
                 if (!mounted) return;
                 setConfigured(isConfigured);
                 if (!isConfigured) {
-                    setError("RevenueCat public API keys are not configured for this build.");
+                    setError(t("billingSetupBody"));
                     return;
                 }
                 listener = (updated) => {
@@ -161,7 +163,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
                 setCurrentOffering(state.currentOffering);
                 void syncTrustedMirror().catch(() => undefined);
             } catch (caught) {
-                if (mounted) setError(errorMessage(caught, "Subscriptions are temporarily unavailable."));
+                if (mounted) setError(errorMessage(caught, t("subscriptionsUnavailable")));
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -171,7 +173,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             mounted = false;
             if (listener) Purchases.removeCustomerInfoUpdateListener(listener);
         };
-    }, [loadBackendStatus, syncTrustedMirror, userId]);
+    }, [loadBackendStatus, syncTrustedMirror, t, userId]);
 
     const purchase = useCallback(async (selectedPackage: PurchasesPackage, requiredEntitlement?: EntitlementId) => {
         setPurchasing(true);
@@ -184,13 +186,13 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             return Boolean(result.customerInfo.entitlements.active[ENTITLEMENTS.plusFeatures]
                 || result.customerInfo.entitlements.active[ENTITLEMENTS.sharedGarage]);
         } catch (caught) {
-            const message = errorMessage(caught, "The purchase could not be completed.");
+            const message = errorMessage(caught, t("purchaseFailed"));
             if (message) setError(message);
             return false;
         } finally {
             setPurchasing(false);
         }
-    }, [syncTrustedMirror]);
+    }, [syncTrustedMirror, t]);
 
     const restorePurchases = useCallback(async (requiredEntitlement?: EntitlementId) => {
         setPurchasing(true);
@@ -203,23 +205,23 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             return Boolean(updated.entitlements.active[ENTITLEMENTS.plusFeatures]
                 || updated.entitlements.active[ENTITLEMENTS.sharedGarage]);
         } catch (caught) {
-            const message = errorMessage(caught, "Purchases could not be restored.");
+            const message = errorMessage(caught, t("restorePurchasesFailed"));
             if (message) setError(message);
             return false;
         } finally {
             setPurchasing(false);
         }
-    }, [syncTrustedMirror]);
+    }, [syncTrustedMirror, t]);
 
     const manageSubscription = useCallback(async () => {
         setError(null);
         try {
             await openRevenueCatSubscriptionManagement();
         } catch (caught) {
-            const message = errorMessage(caught, "Subscription management is unavailable for this store.");
+            const message = errorMessage(caught, t("subscriptionManagementUnavailable"));
             if (message) setError(message);
         }
-    }, []);
+    }, [t]);
 
     const access = useMemo(() => {
         const ownAccess = deriveFeatureAccess(customerInfo, backendStatus);
