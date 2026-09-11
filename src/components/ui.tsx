@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useConnectivity } from "../providers/ConnectivityProvider";
 import { usePreferences } from "../i18n/PreferencesProvider";
+import { APP_CONTENT_MAX_WIDTH, responsiveLayoutFor } from "../theme/responsive";
 import { colors, radius, shadow, spacing, typography } from "../theme/tokens";
 
 type ScreenProps = PropsWithChildren<{
@@ -28,7 +29,12 @@ type ScreenProps = PropsWithChildren<{
 }>;
 
 export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
-    const content = <View style={[styles.screenContent, contentStyle]}>{children}</View>;
+    const layout = useResponsiveLayout();
+    const content = (
+        <View style={[styles.screenContent, { paddingHorizontal: layout.gutter }, contentStyle]}>
+            {children}
+        </View>
+    );
 
     return (
         <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
@@ -59,6 +65,7 @@ export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
 export function SyncBanner() {
     const { syncState } = useConnectivity();
     const { t } = usePreferences();
+    const layout = useResponsiveLayout();
     if (syncState !== "offline" && syncState !== "error") return null;
 
     const config = {
@@ -67,10 +74,26 @@ export function SyncBanner() {
     }[syncState];
 
     return (
-        <View pointerEvents="none" style={[styles.banner, config.style]} accessibilityRole="alert">
+        <View
+            pointerEvents="none"
+            style={[
+                styles.banner,
+                { left: Math.max(spacing.md, (layout.width - APP_CONTENT_MAX_WIDTH) / 2 + spacing.md), right: Math.max(spacing.md, (layout.width - APP_CONTENT_MAX_WIDTH) / 2 + spacing.md) },
+                config.style,
+            ]}
+            accessibilityRole="alert"
+        >
             <Ionicons name={config.icon as never} color={colors.ink} size={16} />
             <Text style={styles.bannerText}>{config.text}</Text>
         </View>
+    );
+}
+
+export function useResponsiveLayout() {
+    const { width, height, fontScale } = useWindowDimensions();
+    return useMemo(
+        () => responsiveLayoutFor(width, height, fontScale),
+        [fontScale, height, width]
     );
 }
 
@@ -266,7 +289,7 @@ export function SelectField<T extends string>({
                 accessibilityLabel={label}
                 style={({ pressed }) => [styles.input, styles.dateInput, pressed && styles.dateInputPressed]}
             >
-                <Text numberOfLines={1} style={[styles.dateValue, !selectedLabel && styles.datePlaceholder]}>
+                <Text numberOfLines={2} style={[styles.dateValue, !selectedLabel && styles.datePlaceholder]}>
                     {selectedLabel ?? emptyLabel}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={colors.primary} />
@@ -585,6 +608,11 @@ export function DateField({
                 <View style={styles.dateModalOverlay}>
                     <Pressable style={StyleSheet.absoluteFill} onPress={() => setVisible(false)} />
                     <View style={styles.dateModalCard}>
+                        <ScrollView
+                            contentContainerStyle={styles.dateModalContent}
+                            bounces={false}
+                            showsVerticalScrollIndicator={false}
+                        >
                         <View style={styles.dateModalHeader}>
                             <Text style={styles.dateModalTitle}>
                                 {calendarView === "years" ? t("chooseYear") : calendarView === "months" ? t("chooseMonth") : label}
@@ -746,6 +774,7 @@ export function DateField({
                         {!required && value ? (
                             <Button label={t("clearDate")} variant="ghost" compact onPress={() => { onChange(""); setVisible(false); }} />
                         ) : null}
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -906,8 +935,8 @@ export function LoadingState() {
 const styles = StyleSheet.create({
     flex: { flex: 1 },
     safeArea: { flex: 1, position: "relative", backgroundColor: colors.canvas },
-    scrollContent: { flexGrow: 1, paddingBottom: spacing.xxxl },
-    screenContent: { flex: 1, padding: spacing.lg, gap: spacing.lg },
+    scrollContent: { flexGrow: 1, width: "100%", paddingBottom: spacing.xxxl },
+    screenContent: { flex: 1, width: "100%", maxWidth: APP_CONTENT_MAX_WIDTH, alignSelf: "center", paddingVertical: spacing.lg, gap: spacing.lg },
     banner: { position: "absolute", zIndex: 100, top: spacing.sm, left: spacing.md, right: spacing.md, minHeight: 34, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, ...shadow },
     bannerOffline: { backgroundColor: colors.warningSoft },
     bannerSyncing: { backgroundColor: colors.primarySoft },
@@ -920,7 +949,7 @@ const styles = StyleSheet.create({
     pageHeaderTitle: { ...typography.heading, color: colors.ink, flex: 1 },
     pageHeaderIconButton: { width: 44, height: 44, flexShrink: 0, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary },
     card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, padding: spacing.lg, ...shadow },
-    button: { minHeight: 52, borderRadius: radius.md, paddingHorizontal: spacing.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+    button: { minHeight: 52, borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
     buttonCompact: { minHeight: 44, alignSelf: "flex-start", flexShrink: 0, paddingHorizontal: spacing.md },
     button_primary: { backgroundColor: colors.primary },
     button_secondary: { backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primary },
@@ -950,7 +979,8 @@ const styles = StyleSheet.create({
     dateValue: { ...typography.body, color: colors.ink },
     datePlaceholder: { color: colors.inkMuted },
     dateModalOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(15, 23, 42, 0.14)" },
-    dateModalCard: { width: "100%", maxWidth: 430, borderRadius: radius.xl, padding: spacing.lg, gap: spacing.md, backgroundColor: colors.surface, ...shadow },
+    dateModalCard: { width: "100%", maxWidth: 430, maxHeight: "94%", borderRadius: radius.xl, backgroundColor: colors.surface, overflow: "hidden", ...shadow },
+    dateModalContent: { padding: spacing.lg, gap: spacing.md },
     dateModalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
     dateModalTitle: { ...typography.heading, color: colors.ink, flex: 1 },
     calendarNavigation: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -978,14 +1008,14 @@ const styles = StyleSheet.create({
     calendarDayText: { ...typography.body, color: colors.ink },
     calendarSelectedText: { color: colors.white, fontWeight: "700" },
     sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.14)" },
-    pickerSheet: { width: "100%", maxHeight: "62%", borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md, backgroundColor: colors.surface, ...shadow },
+    pickerSheet: { width: "100%", maxWidth: 620, maxHeight: "90%", alignSelf: "center", borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md, backgroundColor: colors.surface, ...shadow },
     picker: { width: "100%", color: colors.ink },
     timePickers: { minHeight: 220, flexDirection: "row", alignItems: "center", justifyContent: "center" },
     timePicker: { flex: 1, color: colors.ink },
     timeSeparator: { ...typography.title, color: colors.ink },
     compositeField: { gap: spacing.md },
     chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-    chip: { minHeight: 40, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderStrong, paddingHorizontal: spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.surface },
+    chip: { minHeight: 44, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderStrong, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.surface },
     chipSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
     chipText: { ...typography.label, color: colors.ink },
     chipTextSelected: { color: colors.white },
@@ -1000,7 +1030,7 @@ const styles = StyleSheet.create({
     row: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm },
     rowPressed: { opacity: 0.7 },
     rowIcon: { width: 42, height: 42, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
-    rowText: { flex: 1, gap: 2 },
+    rowText: { flex: 1, minWidth: 0, gap: 2 },
     rowTitle: { ...typography.bodyStrong, color: colors.ink },
     rowSubtitle: { ...typography.caption, color: colors.inkMuted },
     loadingState: { flex: 1, minHeight: 240, alignItems: "center", justifyContent: "center", gap: spacing.md },

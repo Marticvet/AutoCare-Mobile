@@ -72,9 +72,14 @@ export default function LoginScreen({ navigation }: any) {
                             </Pressable>
                             <Button label={t("signIn")} onPress={submit} loading={busy} />
                             <View style={styles.inline}>
-                                <Text style={styles.muted}>{t("noAccount")}</Text>
-                                <Pressable onPress={() => navigation.navigate("Register")}>
-                                    <Text style={styles.link}>{t("signUp")}</Text>
+                                <Text style={styles.footerText}>{t("noAccount")}</Text>
+                                <Pressable
+                                    accessibilityRole="button"
+                                    hitSlop={8}
+                                    onPress={() => navigation.navigate("Register")}
+                                    style={styles.inlineAction}
+                                >
+                                    <Text style={styles.footerLink}>{t("signUp")}</Text>
                                 </Pressable>
                             </View>
                         </View>
@@ -93,10 +98,12 @@ const styles = StyleSheet.create({
     logo: { width: 72, height: 72, resizeMode: "contain" },
     appName: { ...typography.hero, color: colors.white },
     tagline: { ...typography.body, color: "rgba(255,255,255,0.82)", textAlign: "center", maxWidth: 340 },
-    panel: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
+    panel: { width: "100%", maxWidth: 520, alignSelf: "center", backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
     title: { ...typography.title, color: colors.ink },
     link: { ...typography.label, color: colors.primary },
-    muted: { ...typography.caption, color: colors.inkMuted },
-    inline: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: spacing.sm },
+    footerText: { ...typography.body, color: colors.inkMuted },
+    footerLink: { ...typography.bodyStrong, color: colors.primary },
+    inline: { flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", columnGap: spacing.sm },
+    inlineAction: { justifyContent: "center" },
     error: { ...typography.caption, color: colors.danger },
 });

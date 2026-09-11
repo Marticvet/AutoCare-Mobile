@@ -242,6 +242,8 @@ function MainTabs() {
                 headerStyle: { backgroundColor: colors.surface },
                 headerShadowVisible: false,
                 headerTitleStyle: { color: colors.ink, fontWeight: "800" },
+                tabBarPosition: "bottom",
+                tabBarLabelPosition: "below-icon",
                 tabBarStyle: styles.tabBar,
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.inkMuted,

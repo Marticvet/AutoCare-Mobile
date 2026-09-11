@@ -177,6 +177,6 @@ export default function TripFormScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
     form: { gap: spacing.lg },
-    columns: { flexDirection: "row", gap: spacing.md },
-    column: { flex: 1 },
+    columns: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+    column: { flexGrow: 1, flexBasis: 210, minWidth: 0 },
 });

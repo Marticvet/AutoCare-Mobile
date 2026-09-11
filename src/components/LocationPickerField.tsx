@@ -14,6 +14,7 @@ import {
     Text,
     TextInput,
     View,
+    useWindowDimensions,
 } from "react-native";
 import MapView, { MapPressEvent, Marker, MarkerDragStartEndEvent, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import { StatusBar } from "expo-status-bar";
@@ -27,6 +28,7 @@ import {
     searchClosestPlace,
 } from "../services/googlePlaces";
 import { colors, radius, shadow, spacing, typography } from "../theme/tokens";
+import { SHEET_CONTENT_MAX_WIDTH } from "../theme/responsive";
 import { usePreferences } from "../i18n/PreferencesProvider";
 
 export type PickedLocation = {
@@ -128,8 +130,15 @@ function LocationPickerModal({
         notConfigured: t("placesNotConfigured"),
     }), [t]);
     const insets = useSafeAreaInsets();
+    const { width, height } = useWindowDimensions();
     const safeTop = insets.top || (Platform.OS === "ios" ? 44 : NativeStatusBar.currentHeight ?? 24);
     const safeBottom = insets.bottom || (Platform.OS === "ios" ? 20 : 0);
+    const horizontalInset = Math.max(spacing.md, (width - SHEET_CONTENT_MAX_WIDTH) / 2);
+    const selectionInset = Math.max(0, (width - 720) / 2);
+    const compactLandscape = width > height && height < 600;
+    const selectionPanelHeight = compactLandscape ? 176 : 202;
+    const mapControlBottom = safeBottom + selectionPanelHeight + spacing.lg;
+    const predictionHeight = Math.max(90, Math.min(280, height - safeTop - selectionPanelHeight - 150));
     const mapRef = useRef<MapView>(null);
     const mapReadyRef = useRef(false);
     const pendingCenterRef = useRef<PlaceOrigin | null>(null);
@@ -325,7 +334,7 @@ function LocationPickerModal({
                         provider={Platform.OS === "ios" ? PROVIDER_GOOGLE : undefined}
                         style={StyleSheet.absoluteFill}
                         initialRegion={initialMapRegion}
-                        mapPadding={{ top: safeTop + 142, right: spacing.md, bottom: safeBottom + 214, left: spacing.md }}
+                        mapPadding={{ top: safeTop + 142, right: horizontalInset, bottom: mapControlBottom, left: horizontalInset }}
                         onPress={selectFromMap}
                         showsUserLocation
                         showsMyLocationButton={false}
@@ -352,7 +361,7 @@ function LocationPickerModal({
                     </View>
                 )}
 
-                <View style={[styles.topControls, { top: safeTop + spacing.sm }]} pointerEvents="box-none">
+                <View style={[styles.topControls, { top: safeTop + spacing.sm, left: horizontalInset, right: horizontalInset }]} pointerEvents="box-none">
                     <Pressable
                         onPress={onCancel}
                         style={({ pressed }) => [styles.roundControl, pressed && styles.controlPressed]}
@@ -368,7 +377,7 @@ function LocationPickerModal({
                     <View style={styles.controlSpacer} />
                 </View>
 
-                <View style={[styles.searchPanel, { top: safeTop + 66 }]}>
+                <View style={[styles.searchPanel, { top: safeTop + 66, left: horizontalInset, right: horizontalInset }]}>
                     <View style={styles.searchRow}>
                         <Ionicons name="search" size={20} color={colors.inkMuted} />
                         <TextInput
@@ -407,7 +416,7 @@ function LocationPickerModal({
                             data={predictions.slice(0, 5)}
                             keyExtractor={(item) => item.placeId}
                             keyboardShouldPersistTaps="handled"
-                            style={styles.predictions}
+                            style={[styles.predictions, { maxHeight: predictionHeight }]}
                             renderItem={({ item }) => (
                                 <Pressable style={({ pressed }) => [styles.prediction, pressed && styles.predictionPressed]} onPress={() => void choosePrediction(item)}>
                                     <View style={styles.predictionIcon}><Ionicons name="location-outline" size={17} color={colors.primary} /></View>
@@ -427,7 +436,7 @@ function LocationPickerModal({
                 </View>
 
                 <Pressable
-                    style={({ pressed }) => [styles.locateButton, { bottom: safeBottom + 220 }, pressed && styles.locatePressed]}
+                    style={({ pressed }) => [styles.locateButton, { right: horizontalInset, bottom: mapControlBottom }, pressed && styles.locatePressed]}
                     onPress={() => void chooseCurrentLocation()}
                     accessibilityRole="button"
                     accessibilityLabel={t("useCurrentLocation")}
@@ -435,14 +444,22 @@ function LocationPickerModal({
                     {locating ? <ActivityIndicator color={colors.white} /> : <Ionicons name="locate" size={25} color={colors.white} />}
                 </Pressable>
 
-                {showInstructions ? (
-                    <View style={[styles.instructions, { bottom: safeBottom + 222 }]} pointerEvents="none">
+                {showInstructions && !compactLandscape ? (
+                    <View style={[styles.instructions, { left: horizontalInset, bottom: mapControlBottom + 2 }]} pointerEvents="none">
                         <Ionicons name="hand-left-outline" size={15} color={colors.inkMuted} />
                         <Text style={styles.instructionsText}>{t("mapPinInstruction")}</Text>
                     </View>
                 ) : null}
 
-                <View style={[styles.selectionPanel, { paddingBottom: Math.max(safeBottom, spacing.md) }]}>
+                <View style={[
+                    styles.selectionPanel,
+                    {
+                        left: selectionInset,
+                        right: selectionInset,
+                        minHeight: selectionPanelHeight,
+                        paddingBottom: Math.max(safeBottom, spacing.md),
+                    },
+                ]}>
                     <View style={styles.grabber} />
                     <View style={styles.selectionHeader}>
                         <Text style={styles.selectionLabel}>{t("selectedLocationHeading")}</Text>

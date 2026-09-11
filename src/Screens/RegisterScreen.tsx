@@ -54,9 +54,14 @@ export default function RegisterScreen({ navigation }: any) {
                             <FormField label={t("confirmPassword")} value={confirmation} onChangeText={setConfirmation} secureTextEntry autoComplete="new-password" required />
                             <Button label={t("signUp")} onPress={submit} loading={busy} />
                             <View style={styles.inline}>
-                                <Text style={styles.subtitle}>{t("haveAccount")}</Text>
-                                <Pressable onPress={() => navigation.navigate("Login")}>
-                                    <Text style={styles.link}>{t("signIn")}</Text>
+                                <Text style={styles.footerText}>{t("haveAccount")}</Text>
+                                <Pressable
+                                    accessibilityRole="button"
+                                    hitSlop={8}
+                                    onPress={() => navigation.navigate("Login")}
+                                    style={styles.inlineAction}
+                                >
+                                    <Text style={styles.footerLink}>{t("signIn")}</Text>
                                 </Pressable>
                             </View>
                         </View>
@@ -70,9 +75,11 @@ export default function RegisterScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     flex: { flex: 1 },
     content: { flexGrow: 1, justifyContent: "center", padding: spacing.xl },
-    panel: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
+    panel: { width: "100%", maxWidth: 520, alignSelf: "center", backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
     title: { ...typography.title, color: colors.ink },
     subtitle: { ...typography.body, color: colors.inkMuted },
-    link: { ...typography.label, color: colors.primary },
-    inline: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: spacing.sm },
+    footerText: { ...typography.body, color: colors.inkMuted },
+    footerLink: { ...typography.bodyStrong, color: colors.primary },
+    inline: { flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", columnGap: spacing.sm },
+    inlineAction: { justifyContent: "center" },
 });

@@ -59,7 +59,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
                             size={25}
                         />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={styles.planCopy}>
                         <Text
                             style={[
                                 styles.planName,
@@ -234,7 +234,8 @@ const styles = StyleSheet.create({
         padding: spacing.xl,
     },
     planPlus: { backgroundColor: colors.primary, borderColor: colors.primary },
-    planTop: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    planTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.md },
+    planCopy: { flexGrow: 1, flexBasis: 190, minWidth: 0 },
     icon: {
         width: 50,
         height: 50,
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: spacing.sm,
     },
-    successText: { ...typography.caption, color: colors.success },
+    successText: { ...typography.caption, color: colors.success, flex: 1, minWidth: 0 },
     list: { paddingVertical: spacing.sm },
     feature: {
         minHeight: 44,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
         gap: spacing.md,
         paddingHorizontal: spacing.sm,
     },
-    featureText: { ...typography.body, color: colors.ink },
+    featureText: { ...typography.body, color: colors.ink, flex: 1, minWidth: 0 },
     divider: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: colors.border,

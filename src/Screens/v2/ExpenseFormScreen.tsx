@@ -409,8 +409,8 @@ function updatePart<K extends keyof PartDraft>(draft: ExpenseDraft, setDraft: Re
 const styles = StyleSheet.create({
     form: { gap: spacing.lg },
     section: { gap: spacing.md },
-    columns: { flexDirection: "row", gap: spacing.md },
-    column: { flex: 1 },
+    columns: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+    column: { flexGrow: 1, flexBasis: 210, minWidth: 0 },
     label: { ...typography.label, color: colors.ink, marginBottom: -spacing.sm },
     switchRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     switchLabel: { ...typography.bodyStrong, color: colors.ink },

@@ -157,10 +157,10 @@ function Detail({ label, value }: { label: string; value: string | null }) {
 
 const styles = StyleSheet.create({
     hero: { gap: spacing.lg },
-    heroTop: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
+    heroTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.lg },
     vehicleIcon: { width: 68, height: 68, borderRadius: 22, backgroundColor: colors.primarySoft, alignItems: "center", justifyContent: "center" },
     vehicleEmoji: { fontSize: 34 },
-    heroText: { flex: 1, gap: 3 },
+    heroText: { flexGrow: 1, flexBasis: 190, minWidth: 0, gap: 3 },
     name: { ...typography.title, color: colors.ink },
     meta: { ...typography.body, color: colors.inkMuted },
     actions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm, flexWrap: "wrap" },
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     list: { paddingVertical: spacing.sm },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 54 },
     details: { gap: spacing.md },
-    detail: { flexDirection: "row", justifyContent: "space-between", gap: spacing.lg },
-    detailLabel: { ...typography.body, color: colors.inkMuted },
-    detailValue: { ...typography.bodyStrong, color: colors.ink, flex: 1, textAlign: "right" },
+    detail: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: spacing.sm },
+    detailLabel: { ...typography.body, color: colors.inkMuted, flexGrow: 1, flexBasis: 120 },
+    detailValue: { ...typography.bodyStrong, color: colors.ink, flexGrow: 1, flexBasis: 160, minWidth: 0, textAlign: "right" },
 });

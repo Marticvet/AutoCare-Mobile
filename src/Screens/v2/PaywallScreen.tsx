@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    benefitCopy: { flex: 1 },
+    benefitCopy: { flex: 1, minWidth: 0 },
     benefitTitle: { ...typography.bodyStrong, color: colors.ink },
     benefitBody: { ...typography.caption, color: colors.inkMuted },
     error: {
@@ -311,6 +311,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.dangerSoft,
         padding: spacing.md,
         flexDirection: "row",
+        flexWrap: "wrap",
         alignItems: "center",
         gap: spacing.sm,
         marginBottom: spacing.md,
@@ -355,14 +356,14 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         backgroundColor: colors.primary,
     },
-    packageCopy: { flex: 1 },
+    packageCopy: { flexGrow: 1, flexBasis: 160, minWidth: 0 },
     packageTitle: { ...typography.bodyStrong, color: colors.ink },
     packageDescription: {
         ...typography.caption,
         color: colors.inkMuted,
         marginTop: 2,
     },
-    price: { alignItems: "flex-end" },
+    price: { alignItems: "flex-end", flexShrink: 0 },
     priceValue: { ...typography.bodyStrong, color: colors.ink },
     pricePeriod: { ...typography.caption, color: colors.inkMuted },
     finePrint: {

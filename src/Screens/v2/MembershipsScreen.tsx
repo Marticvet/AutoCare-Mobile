@@ -723,10 +723,11 @@ const styles = StyleSheet.create({
     },
     actions: {
         flexDirection: "row",
+        flexWrap: "wrap",
         justifyContent: "flex-end",
         gap: spacing.sm,
     },
-    planCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    planCard: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.md },
     planIcon: {
         width: 52,
         height: 52,
@@ -736,7 +737,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     planNamePlaceholder: { width: "58%", height: 20, borderRadius: 10, backgroundColor: colors.border },
-    grow: { flex: 1, minWidth: 0 },
+    grow: { flexGrow: 1, flexBasis: 190, minWidth: 0 },
     planName: { ...typography.heading, color: colors.ink },
     planMeta: { ...typography.caption, color: colors.inkMuted, marginTop: 3 },
     form: { gap: spacing.md },
@@ -754,6 +755,7 @@ const styles = StyleSheet.create({
     list: { paddingVertical: spacing.sm },
     memberActions: {
         flexDirection: "row",
+        flexWrap: "wrap",
         justifyContent: "flex-end",
         gap: spacing.sm,
         paddingHorizontal: spacing.md,

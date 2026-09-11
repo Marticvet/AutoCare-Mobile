@@ -80,7 +80,7 @@ export default function DocumentsScreen() {
 const styles = StyleSheet.create({
     cards: { gap: spacing.md },
     documentCard: { gap: spacing.sm },
-    actions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    actions: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
     status: { ...typography.caption, color: colors.inkMuted },
     statusExpired: { color: colors.danger, fontWeight: "700" },
 });
