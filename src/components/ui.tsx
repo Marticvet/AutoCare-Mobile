@@ -305,18 +305,39 @@ export function SelectField<T extends string>({
                                 <Ionicons name="close" size={26} color={colors.ink} />
                             </Pressable>
                         </View>
-                        <Picker
-                            selectedValue={value}
-                            onValueChange={(nextValue) => {
-                                if (nextValue) onChange(nextValue as T);
-                            }}
-                            style={styles.picker}
+                        <ScrollView
+                            style={styles.selectOptions}
+                            contentContainerStyle={styles.selectOptionsContent}
+                            keyboardShouldPersistTaps="handled"
+                            nestedScrollEnabled
+                            showsVerticalScrollIndicator={options.length > 6}
                         >
-                            <Picker.Item label={emptyLabel} value="" color={colors.inkMuted} />
-                            {options.map((option) => (
-                                <Picker.Item key={option.value} label={option.label} value={option.value} />
-                            ))}
-                        </Picker>
+                            {options.length === 0 ? (
+                                <View style={styles.selectOptionsEmpty}>
+                                    <Text style={styles.datePlaceholder}>{emptyLabel}</Text>
+                                </View>
+                            ) : options.map((option) => {
+                                const selected = option.value === value;
+                                return (
+                                    <Pressable
+                                        key={option.value}
+                                        accessibilityRole="radio"
+                                        accessibilityState={{ checked: selected }}
+                                        onPress={() => onChange(option.value)}
+                                        style={({ pressed }) => [
+                                            styles.selectOption,
+                                            selected && styles.selectOptionSelected,
+                                            pressed && styles.selectOptionPressed,
+                                        ]}
+                                    >
+                                        <Text style={[styles.selectOptionText, selected && styles.selectOptionTextSelected]}>
+                                            {option.label}
+                                        </Text>
+                                        {selected ? <Ionicons name="checkmark-circle" size={21} color={colors.primary} /> : null}
+                                    </Pressable>
+                                );
+                            })}
+                        </ScrollView>
                         <Button label={t("done")} onPress={() => setVisible(false)} />
                     </View>
                 </View>
@@ -1010,6 +1031,14 @@ const styles = StyleSheet.create({
     sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.14)" },
     pickerSheet: { width: "100%", maxWidth: 620, maxHeight: "90%", alignSelf: "center", borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md, backgroundColor: colors.surface, ...shadow },
     picker: { width: "100%", color: colors.ink },
+    selectOptions: { flexGrow: 0, maxHeight: 380, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface },
+    selectOptionsContent: { padding: spacing.xs },
+    selectOption: { minHeight: 50, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+    selectOptionSelected: { backgroundColor: colors.primarySoft },
+    selectOptionPressed: { opacity: 0.72 },
+    selectOptionText: { ...typography.body, color: colors.ink, flex: 1 },
+    selectOptionTextSelected: { color: colors.primary, fontWeight: "700" },
+    selectOptionsEmpty: { minHeight: 64, alignItems: "center", justifyContent: "center", padding: spacing.md },
     timePickers: { minHeight: 220, flexDirection: "row", alignItems: "center", justifyContent: "center" },
     timePicker: { flex: 1, color: colors.ink },
     timeSeparator: { ...typography.title, color: colors.ink },
