@@ -1,0 +1,35 @@
+name: RevenueCat deletion retries
+
+on:
+  workflow_dispatch:
+    inputs:
+      verify_failure_notification:
+        description: Trigger a controlled failure to verify GitHub Actions notifications.
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: revenuecat-deletion-retries
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify failure notification path
+        if: ${{ inputs.verify_failure_notification }}
+        run: exit 1
+      - name: Process deletion requests
+        if: ${{ !inputs.verify_failure_notification }}
+        env:
+          ACCOUNT_DELETION_RETRY_SECRET: ${{ secrets.ACCOUNT_DELETION_RETRY_SECRET }}
+          FUNCTION_URL: ${{ vars.SUPABASE_RETRY_FUNCTION_URL }}
+        run: |
+          curl --fail-with-body --silent --show-error --request POST \
+            --header 'content-type: application/json' \
+            --header "x-cron-secret: ${ACCOUNT_DELETION_RETRY_SECRET}" \
+            "${FUNCTION_URL}"
