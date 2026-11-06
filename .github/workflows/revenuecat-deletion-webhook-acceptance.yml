@@ -1,0 +1,24 @@
+name: RevenueCat deletion webhook acceptance
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: revenuecat-deletion-webhook-acceptance
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Submit the fixed-identity acceptance event
+        env:
+          ACCEPTANCE_URL: https://zgevytforozvlxflbsup.supabase.co/functions/v1/revenuecat-deletion-webhook-acceptance
+          ACCOUNT_DELETION_RETRY_SECRET: ${{ secrets.ACCOUNT_DELETION_RETRY_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --request POST \
+            --header "x-cron-secret: ${ACCOUNT_DELETION_RETRY_SECRET}" \
+            "${ACCEPTANCE_URL}"
