@@ -51,6 +51,7 @@ export type FeatureAccess = {
 };
 
 export type SubscriptionContextValue = FeatureAccess & {
+    billingDisabled: boolean;
     configured: boolean;
     loading: boolean;
     purchasing: boolean;
@@ -60,7 +61,7 @@ export type SubscriptionContextValue = FeatureAccess & {
     currentOffering: PurchasesOffering | null;
     refresh: () => Promise<void>;
     purchase: (selectedPackage: PurchasesPackage, requiredEntitlement?: EntitlementId) => Promise<boolean>;
-    restorePurchases: (requiredEntitlement?: EntitlementId) => Promise<boolean>;
+    restorePurchases: () => Promise<CustomerInfo | null>;
     manageSubscription: () => Promise<void>;
     clearError: () => void;
 };

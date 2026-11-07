@@ -24,6 +24,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
         refresh,
         restorePurchases,
         manageSubscription,
+        billingDisabled,
     } = useSubscription();
     const [restored, setRestored] = useState(false);
     const entitlement = customerInfo?.entitlements.active.shared_garage
@@ -37,13 +38,19 @@ export default function SubscriptionScreen({ navigation }: Props) {
         entitlement?.productIdentifier ?? backendStatus?.product_id ?? null;
 
     const restore = async () => {
-        const active = await restorePurchases();
+        const restoredCustomerInfo = await restorePurchases();
+        const restoredFamily = Boolean(restoredCustomerInfo?.entitlements.active.shared_garage);
+        const active = Boolean(
+            restoredCustomerInfo?.entitlements.active.shared_garage
+            || restoredCustomerInfo?.entitlements.active.plus_features
+        );
+        const plan = restoredFamily ? t("family") : "Plus";
         setRestored(true);
         Alert.alert(
             t("restorePurchases"),
             active
-                ? t("plusActive")
-                : t("noActivePurchase")
+                ? t("purchaseRestored", { plan })
+                : t("noActivePlanPurchase", { plan })
         );
     };
 
@@ -126,46 +133,57 @@ export default function SubscriptionScreen({ navigation }: Props) {
                 </View>
             ) : null}
 
-            <View style={styles.actions}>
-                {!hasPlus ? (
-                    <Button
-                        label={t("comparePlusPlans")}
-                        icon="sparkles-outline"
-                        onPress={() => navigation.navigate("Paywall")}
-                    />
-                ) : !isAdmin ? (
-                    <Button
-                        label={t("manageSubscription")}
-                        icon="open-outline"
-                        onPress={() => void manageSubscription()}
-                    />
-                ) : null}
-                {!isAdmin && !hasFamily && !hasFleet ? (
-                    <Button
-                        label={t("compareFamilyPlans")}
-                        icon="people-outline"
-                        variant="secondary"
-                        onPress={() => navigation.navigate("Paywall", { source: "family" })}
-                    />
-                ) : null}
-                {!isAdmin ? (
-                    <Button
-                        label={t("restorePurchases")}
-                        icon="refresh-outline"
-                        variant="secondary"
-                        loading={purchasing}
-                        onPress={() => void restore()}
-                    />
-                ) : null}
-                {error && !isAdmin ? (
-                    <Button
-                        label={t("retry")}
-                        icon="sync-outline"
-                        variant="ghost"
-                        onPress={() => void refresh()}
-                    />
-                ) : null}
-            </View>
+            {billingDisabled ? (
+                <Card style={styles.billingUnavailable}>
+                    <Text style={styles.billingUnavailableTitle}>
+                        {t("purchasesUnavailableTitle")}
+                    </Text>
+                    <Text style={styles.billingUnavailableBody}>
+                        {t("purchasesUnavailableBody")}
+                    </Text>
+                </Card>
+            ) : (
+                <View style={styles.actions}>
+                    {!hasPlus ? (
+                        <Button
+                            label={t("comparePlusPlans")}
+                            icon="sparkles-outline"
+                            onPress={() => navigation.navigate("Paywall")}
+                        />
+                    ) : !isAdmin ? (
+                        <Button
+                            label={t("manageSubscription")}
+                            icon="open-outline"
+                            onPress={() => void manageSubscription()}
+                        />
+                    ) : null}
+                    {!isAdmin && !hasFamily && !hasFleet ? (
+                        <Button
+                            label={t("compareFamilyPlans")}
+                            icon="people-outline"
+                            variant="secondary"
+                            onPress={() => navigation.navigate("Paywall", { source: "family" })}
+                        />
+                    ) : null}
+                    {!isAdmin ? (
+                        <Button
+                            label={t("restorePurchases")}
+                            icon="refresh-outline"
+                            variant="secondary"
+                            loading={purchasing}
+                            onPress={() => void restore()}
+                        />
+                    ) : null}
+                    {error && !isAdmin ? (
+                        <Button
+                            label={t("retry")}
+                            icon="sync-outline"
+                            variant="ghost"
+                            onPress={() => void refresh()}
+                        />
+                    ) : null}
+                </View>
+            )}
 
             <SectionHeader title={t("includedOnFree")} />
             <Card style={styles.list}>
@@ -260,6 +278,9 @@ const styles = StyleSheet.create({
         marginTop: spacing.xs,
     },
     actions: { gap: spacing.sm, marginTop: spacing.lg },
+    billingUnavailable: { marginTop: spacing.lg, gap: spacing.xs },
+    billingUnavailableTitle: { ...typography.bodyStrong, color: colors.ink },
+    billingUnavailableBody: { ...typography.body, color: colors.inkMuted },
     error: {
         borderRadius: radius.md,
         backgroundColor: colors.dangerSoft,

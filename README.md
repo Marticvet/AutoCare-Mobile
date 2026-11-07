@@ -26,6 +26,7 @@ This project uses native PowerSync/SQLite modules and should be tested with a de
 Create a private `.env` containing:
 
 ```text
+EXPO_PUBLIC_APP_ENV=development
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 EXPO_PUBLIC_POWERSYNC_URL=
@@ -33,7 +34,19 @@ EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 EXPO_PUBLIC_REVENUECAT_TEST_API_KEY=
 EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=
 EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=
+EXPO_PUBLIC_PRIVACY_URL=
+EXPO_PUBLIC_TERMS_URL=
+EXPO_PUBLIC_SUPPORT_URL=
 ```
+
+Start from `.env.example`. The RevenueCat Test Store key is for a development
+client only. `npm run ios:release:simulator` creates a non-distributable local
+Release simulator build with all RevenueCat keys removed; `npx expo run:ios
+--configuration Release` receives the same automatic protection when `.env`
+uses `EXPO_PUBLIC_APP_ENV=development`. EAS preview and production profiles
+clear the Test Store key and require the matching platform public key. Do not
+use a local Release artifact as a store candidate—use the guarded EAS
+production profile after its real keys and legal URLs are configured.
 
 Nearby search is the only core screen that needs the Google key and live connectivity.
 
@@ -54,6 +67,12 @@ For Free, Plus, Family, and Fleet memberships, follow `docs/SUBSCRIPTIONS_SETUP.
 npm run typecheck
 npm test -- --runInBand --watchman=false
 npm run lint
+npm run release:check
+npm run ios:release:simulator
 ```
+
+`release:check` validates release configuration, types, tests, and lint. Run
+`npm run release:doctor` in the supported Node 20/22 environment before a
+release build. See `docs/release/` for the store handoff.
 
 The calculation and importer tests cover due-state logic, fuel economy, totals, date validation, CSV escaping, quoted delimiters, localized numbers, Fuelio/Drivvo-style mapping, EV charging imports, and rejected rows. Optional Maestro smoke flows live in `.maestro`.

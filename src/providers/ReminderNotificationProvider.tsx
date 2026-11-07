@@ -24,7 +24,12 @@ export function ReminderNotificationProvider({ children }: PropsWithChildren) {
     }, [dataOwnerId, loading, reminders, systemLabels, t, vehicles]);
 
     useEffect(() => {
+        let active = true;
         const handleResponse = (response: Notifications.NotificationResponse) => {
+            // A response can be delivered while a logout/account switch is in
+            // progress. Do not apply a reminder action without the current
+            // garage owner, and ignore callbacks from a disposed listener.
+            if (!active || !dataOwnerId) return;
             const data = response.notification.request.content.data;
             if (data?.kind !== "vehicle-reminder" || typeof data.reminderId !== "string") return;
             if (response.actionIdentifier === "completeReminder") {
@@ -35,11 +40,14 @@ export function ReminderNotificationProvider({ children }: PropsWithChildren) {
         };
         const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
         void Notifications.getLastNotificationResponseAsync().then((response) => {
-            if (!response) return;
+            if (!active || !response) return;
             handleResponse(response);
-            return Notifications.clearLastNotificationResponseAsync();
+            if (active) return Notifications.clearLastNotificationResponseAsync();
         }).catch(() => undefined);
-        return () => subscription.remove();
+        return () => {
+            active = false;
+            subscription.remove();
+        };
     }, [dataOwnerId]);
 
     return <>{children}</>;

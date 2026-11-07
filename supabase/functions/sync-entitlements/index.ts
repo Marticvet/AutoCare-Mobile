@@ -19,8 +19,11 @@ Deno.serve(async (request) => {
         const { data: { user }, error: authError } = await userClient.auth.getUser();
         if (authError || !user) return json({ error: "Invalid session" }, 401);
 
-        const row = await syncRevenueCatCustomer(adminClient(), user.id);
-        return json({ billing: sanitize(row) });
+        const result = await syncRevenueCatCustomer(adminClient(), user.id);
+        if (result.kind !== "synced") {
+            return json({ error: result.kind === "deleted" ? "Account has been deleted" : "Account deletion is in progress" }, 409);
+        }
+        return json({ billing: sanitize(result.billing) });
     } catch (error) {
         console.error("sync-entitlements failed", error);
         return json({ error: error instanceof Error ? error.message : "Entitlement sync failed" }, 500);

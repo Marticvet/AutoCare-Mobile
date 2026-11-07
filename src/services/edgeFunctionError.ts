@@ -5,41 +5,53 @@ type ResponseLike = {
     text?: () => Promise<string>;
 };
 
+export type EdgeFunctionErrorDetails = {
+    status?: number;
+    code?: string;
+    message?: string;
+};
+
 const responseFrom = (error: unknown, response?: ResponseLike) => {
     if (response) return response;
     if (typeof error !== "object" || error === null) return undefined;
     return (error as { context?: ResponseLike }).context;
 };
 
-const messageFromPayload = (payload: unknown) => {
-    if (typeof payload === "string" && payload.trim()) return payload.trim();
-    if (typeof payload !== "object" || payload === null) return undefined;
-    const candidate = payload as { error?: unknown; message?: unknown };
-    if (typeof candidate.error === "string" && candidate.error.trim()) return candidate.error.trim();
-    if (typeof candidate.message === "string" && candidate.message.trim()) return candidate.message.trim();
-    return undefined;
+const detailsFromPayload = (payload: unknown): Pick<EdgeFunctionErrorDetails, "code" | "message"> => {
+    if (typeof payload === "string" && payload.trim()) return { message: payload.trim() };
+    if (typeof payload !== "object" || payload === null) return {};
+    const candidate = payload as { error?: unknown; message?: unknown; code?: unknown };
+    return {
+        code: typeof candidate.code === "string" && candidate.code.trim() ? candidate.code.trim() : undefined,
+        message: typeof candidate.error === "string" && candidate.error.trim()
+            ? candidate.error.trim()
+            : typeof candidate.message === "string" && candidate.message.trim()
+                ? candidate.message.trim()
+                : undefined,
+    };
 };
 
-async function responseMessage(response?: ResponseLike) {
-    if (!response) return undefined;
-    const jsonResponse = response.clone?.() ?? response;
+export async function edgeFunctionErrorDetails(error: unknown, response?: ResponseLike): Promise<EdgeFunctionErrorDetails> {
+    const functionResponse = responseFrom(error, response);
+    if (!functionResponse) return {};
+    const jsonResponse = functionResponse.clone?.() ?? functionResponse;
     if (typeof jsonResponse.json === "function") {
         try {
-            const message = messageFromPayload(await jsonResponse.json());
-            if (message) return message;
+            const details = detailsFromPayload(await jsonResponse.json());
+            if (details.code || details.message) return { status: functionResponse.status, ...details };
         } catch {
             // Some gateways return plain text even when a JSON body is expected.
         }
     }
-    const textResponse = response.clone?.() ?? response;
+    const textResponse = functionResponse.clone?.() ?? functionResponse;
     if (typeof textResponse.text === "function") {
         try {
-            return messageFromPayload(await textResponse.text());
+            return { status: functionResponse.status, ...detailsFromPayload(await textResponse.text()) };
         } catch {
-            return undefined;
+            return { status: functionResponse.status };
         }
     }
-    return undefined;
+    return { status: functionResponse.status };
 }
 
 export async function edgeFunctionErrorMessage(
@@ -48,11 +60,10 @@ export async function edgeFunctionErrorMessage(
     fallback = "The server request failed.",
     statusMessages: Partial<Record<number, string>> = {}
 ) {
-    const functionResponse = responseFrom(error, response);
-    const serverMessage = await responseMessage(functionResponse);
-    if (serverMessage) return serverMessage;
+    const details = await edgeFunctionErrorDetails(error, response);
+    if (details.message) return details.message;
 
-    const status = functionResponse?.status;
+    const status = details.status;
     if (status !== undefined && statusMessages[status]) return statusMessages[status];
 
     switch (status) {

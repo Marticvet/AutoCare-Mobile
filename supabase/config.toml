@@ -19,5 +19,8 @@ verify_jwt = false
 [functions.delete-account]
 verify_jwt = true
 
+[functions.process-revenuecat-deletion-retries]
+verify_jwt = false
+
 [functions.google-places]
 verify_jwt = true

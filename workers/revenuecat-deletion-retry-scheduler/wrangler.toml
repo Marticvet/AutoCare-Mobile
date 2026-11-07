@@ -1,0 +1,16 @@
+name = "autocare-revenuecat-deletion-retry"
+main = "src/index.ts"
+compatibility_date = "2026-11-06"
+
+[vars]
+SUPABASE_RETRY_FUNCTION_URL = "https://zgevytforozvlxflbsup.supabase.co/functions/v1/process-revenuecat-deletion-retries"
+
+[triggers]
+crons = []
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.issues]
+enabled = true

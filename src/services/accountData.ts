@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { system } from "../powersync/PowerSync";
+import { edgeFunctionErrorDetails } from "./edgeFunctionError";
 
 export async function exportAccountData(userId: string, sharingUnavailableMessage: string, dialogTitle: string) {
     const [profile, vehicles, fuel, charging, insurance, service, general, reminders, documents, parts, budgets, trips, schedules, templates, templateItems, runs, runItems] = await Promise.all([
@@ -42,8 +43,54 @@ export async function exportAccountData(userId: string, sharingUnavailableMessag
     return path;
 }
 
-export async function deleteCloudAccount() {
-    const { data, error } = await system.supabaseConnector.client.functions.invoke("delete-account", { body: { confirmation: "DELETE" } });
-    if (error) throw error;
+export type AccountDeletionResult = {
+    deleted: boolean;
+    revenuecat_deletion: "confirmed" | "requested" | "pending" | "needs_attention";
+};
+
+export class AccountDeletionRequestError extends Error {
+    readonly status?: number;
+    readonly code?: string;
+    readonly authDeletionMayHaveOccurred: boolean;
+    readonly shouldClearLocalSession: boolean;
+
+    constructor(input: { status?: number; code?: string; message?: string; authDeletionMayHaveOccurred: boolean; shouldClearLocalSession: boolean }) {
+        const diagnostic = [
+            input.status === undefined ? "HTTP status unavailable" : `HTTP ${input.status}`,
+            input.code ?? "UNKNOWN_ERROR",
+        ].join(" · ");
+        super(`${input.message ?? "Account deletion could not be completed."} (${diagnostic})`);
+        this.name = "AccountDeletionRequestError";
+        this.status = input.status;
+        this.code = input.code;
+        this.authDeletionMayHaveOccurred = input.authDeletionMayHaveOccurred;
+        this.shouldClearLocalSession = input.shouldClearLocalSession;
+    }
+}
+
+function authDeletionMayHaveOccurred(code?: string) {
+    return code === "ACCOUNT_DELETION_STATE_UNKNOWN";
+}
+
+function shouldClearLocalSession(code: string | undefined, authDeletionMayHaveOccurred: boolean) {
+    return authDeletionMayHaveOccurred || code === "AUTH_REQUIRED" || code === "INVALID_SESSION";
+}
+
+export async function accountDeletionRequestError(error: unknown, response?: Parameters<typeof edgeFunctionErrorDetails>[1]) {
+    const details = await edgeFunctionErrorDetails(error, response);
+    const mayHaveDeletedAuthUser = authDeletionMayHaveOccurred(details.code);
+    return new AccountDeletionRequestError({
+        ...details,
+        authDeletionMayHaveOccurred: mayHaveDeletedAuthUser,
+        shouldClearLocalSession: shouldClearLocalSession(details.code, mayHaveDeletedAuthUser),
+    });
+}
+
+export async function deleteCloudAccount(): Promise<AccountDeletionResult> {
+    const { data, error, response } = await system.supabaseConnector.client.functions.invoke("delete-account", { body: { confirmation: "DELETE" } });
+    if (error) {
+        throw await accountDeletionRequestError(error, response);
+    }
     if (data?.error) throw new Error(data.error);
+    return data as AccountDeletionResult;
 }

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, FormField } from "../components/ui";
+import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { usePreferences } from "../i18n/PreferencesProvider";
 import { useAuth } from "../providers/AuthProvider";
 import { colors, radius, spacing, typography } from "../theme/tokens";
@@ -53,6 +54,7 @@ export default function RegisterScreen({ navigation }: any) {
                             <FormField label={t("password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" hint={t("eightCharactersMinimum")} required />
                             <FormField label={t("confirmPassword")} value={confirmation} onChangeText={setConfirmation} secureTextEntry autoComplete="new-password" required />
                             <Button label={t("signUp")} onPress={submit} loading={busy} />
+                            <SocialAuthButtons />
                             <View style={styles.inline}>
                                 <Text style={styles.footerText}>{t("haveAccount")}</Text>
                                 <Pressable

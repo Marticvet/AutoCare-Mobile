@@ -53,6 +53,9 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        // Native OAuth redirects are handled by AuthProvider. PKCE keeps
+        // access and refresh tokens out of the autocare:// callback URL.
+        flowType: "pkce",
       },
     });
   }

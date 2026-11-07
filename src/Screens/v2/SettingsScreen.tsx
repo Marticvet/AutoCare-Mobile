@@ -13,7 +13,10 @@ import { useConnectivity } from "../../providers/ConnectivityProvider";
 import { useGarage } from "../../providers/GarageProvider";
 import { getReminderNotificationPermission, reconcileReminderNotifications, requestReminderNotificationPermission, sendReminderTestNotification } from "../../services/reminderNotifications";
 import { colors, spacing, typography } from "../../theme/tokens";
-import { deleteCloudAccount, exportAccountData } from "../../services/accountData";
+import { AccountDeletionRequestError, deleteCloudAccount, exportAccountData } from "../../services/accountData";
+import { releaseFeatures } from "../../config/releaseFeatures";
+import { deleteAccountWithRevenueCatCleanup } from "../../billing/accountDeletion";
+import { clearRevenueCatUser, configureRevenueCat } from "../../billing/revenueCat";
 
 export default function SettingsScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -107,7 +110,7 @@ export default function SettingsScreen() {
             setAccountBusy(false);
         }
     };
-    const deleteAccount = () => Alert.alert(t("deleteAccountQuestion"), t("deleteAccountBody"), [
+    const deleteAccount = () => Alert.alert(t("deleteAccountQuestion"), `${t("deleteAccountBody")}\n\n${t("deleteAccountBillingNotice")}`, [
         { text: t("cancel"), style: "cancel" },
         { text: t("continue"), style: "destructive", onPress: () => Alert.alert(t("finalConfirmation"), t("cannotUndo"), [
             { text: t("cancel"), style: "cancel" },
@@ -122,9 +125,19 @@ export default function SettingsScreen() {
                 }
                 setAccountBusy(true);
                 try {
-                    await deleteCloudAccount();
+                    const result = await deleteAccountWithRevenueCatCleanup({
+                        clearRevenueCatUser,
+                        deleteAccount: deleteCloudAccount,
+                        restoreRevenueCatUser: () => configureRevenueCat(userId),
+                        shouldRestoreRevenueCatUser: (error) => !(error instanceof AccountDeletionRequestError && error.shouldClearLocalSession),
+                    });
                     await logout();
+                    if (result.revenuecat_deletion === "needs_attention") Alert.alert(t("deleteAccount"), t("revenueCatDeletionNeedsSupport"));
+                    else if (result.revenuecat_deletion !== "confirmed") Alert.alert(t("deleteAccount"), t("revenueCatDeletionPending"));
                 } catch (error) {
+                    if (error instanceof AccountDeletionRequestError && error.shouldClearLocalSession) {
+                        await logout();
+                    }
                     Alert.alert(t("deleteAccount"), (error as Error).message);
                 } finally {
                     setAccountBusy(false);
@@ -145,8 +158,12 @@ export default function SettingsScreen() {
                         onPress={() => navigation.navigate("ProfileEdit")}
                     />
                 </Card>
-                <Text style={styles.label}>{t("accountType")}</Text>
-                <ChoiceChips value={accountType} onChange={(value) => void setAccountType(value)} options={[{ value: "individual", label: t("individual") }, { value: "fleet", label: t("fleetManager") }]} />
+                {releaseFeatures.fleetBilling ? (
+                    <>
+                        <Text style={styles.label}>{t("accountType")}</Text>
+                        <ChoiceChips value={accountType} onChange={(value) => void setAccountType(value)} options={[{ value: "individual", label: t("individual") }, { value: "fleet", label: t("fleetManager") }]} />
+                    </>
+                ) : null}
             </View>
 
             <View style={styles.section}>

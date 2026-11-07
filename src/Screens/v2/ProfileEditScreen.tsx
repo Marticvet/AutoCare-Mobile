@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
 import { Alert, StyleSheet } from "react-native";
 import { Button, Card, FormField, Screen, SectionHeader, SelectField } from "../../components/ui";
+import { SocialAuthButtons } from "../../components/SocialAuthButtons";
 import { COUNTRY_CALLING_CODES, splitStoredPhone } from "../../data/countryCallingCodes";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
@@ -120,6 +121,11 @@ export default function ProfileEditScreen({ navigation }: Props) {
                 <FormField label={t("confirmNewPassword")} value={confirmNewPassword} onChangeText={setConfirmNewPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} textContentType="newPassword" />
             </Card>
             <Button label={t("changePassword")} icon="lock-closed-outline" variant="secondary" onPress={submitPassword} loading={passwordBusy} />
+
+            <SectionHeader title={t("signInMethods")} />
+            <Card style={styles.form}>
+                <SocialAuthButtons mode="link" />
+            </Card>
         </Screen>
     );
 }

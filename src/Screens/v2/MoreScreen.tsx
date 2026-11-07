@@ -53,8 +53,12 @@ export default function MoreScreen() {
                     subtitle={releaseFeatures.scheduledReportDelivery ? t("scheduledReportsBody") : t("currentReportsBody")}
                     onPress={() => navigation.navigate("ScheduledReports")}
                 />
-                <View style={styles.divider} />
-                <Row icon="clipboard-outline" title={t("fleetChecklists")} subtitle={t("fleetChecklistsBody")} tone="amber" onPress={() => navigation.navigate("Checklists")} />
+                {releaseFeatures.fleetBilling ? (
+                    <>
+                        <View style={styles.divider} />
+                        <Row icon="clipboard-outline" title={t("fleetChecklists")} subtitle={t("fleetChecklistsBody")} tone="amber" onPress={() => navigation.navigate("Checklists")} />
+                    </>
+                ) : null}
                 <View style={styles.divider} />
                 <Row icon="location-outline" title={t("nearby")} subtitle={`${t("nearbyFuel")} · ${t("nearbyService")}`} tone="green" onPress={() => navigation.navigate("Nearby")} />
                 <View style={styles.divider} />

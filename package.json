@@ -14,7 +14,13 @@
     "web": "expo start --web",
     "test": "jest",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release:config": "node ./scripts/verify-release-configuration.cjs && node ./scripts/verify-local-release-config.cjs",
+    "release:validate:billing": "node ./scripts/validate-release-config.cjs",
+    "release:doctor": "npx --yes expo-doctor",
+    "release:check": "npm run release:config && npm run typecheck && npm test -- --runInBand --watchman=false && npm run lint",
+    "ios:release:simulator": "EXPO_PUBLIC_APP_ENV=local-release npx expo run:ios --configuration Release",
+    "eas-build-pre-install": "node ./scripts/validate-release-config.cjs"
   },
   "jest": {
     "preset": "jest-expo"
@@ -40,6 +46,7 @@
     "axios": "^1.8.4",
     "dotenv": "^16.4.7",
     "expo": "~54.0.0",
+    "expo-apple-authentication": "~8.0.8",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.14",
     "expo-crypto": "~15.0.9",

@@ -6,14 +6,29 @@ import React, {
     useContext,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
 import { AppState, Linking } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { Profile } from "../powersync/AppSchema";
 import { useSystem } from "../powersync/PowerSync";
+import { signOutAndClearOfflineData } from "../utils/offlineSession";
+import {
+    EMPTY_PROFILE_NAME_FILTER,
+    appleFirstLoginProfileNamePatch,
+} from "../utils/appleProfile";
 import { parsePasswordRecoveryLink } from "../utils/passwordRecoveryLink";
+import {
+    SOCIAL_AUTH_REDIRECT_URL,
+    SocialProvider,
+    exchangeSocialAuthCode,
+    parseSocialAuthCallback,
+    socialOAuthAuthorizationOptions,
+} from "../utils/socialAuth";
 
 type RegistrationInput = { email: string; password: string; fullName: string };
+type SocialIdentityToken = { token: string; nonce?: string; accessToken?: string; fullName?: string };
 
 type AuthData = {
     session: Session | null;
@@ -27,6 +42,10 @@ type AuthData = {
     isAuthenticated: boolean;
     signIn: (email: string, password: string) => Promise<void>;
     signUp: (input: RegistrationInput) => Promise<{ needsVerification: boolean }>;
+    signInWithSocialProvider: (provider: SocialProvider) => Promise<{ cancelled: boolean }>;
+    signInWithAppleIdentity: (identity: SocialIdentityToken) => Promise<void>;
+    linkSocialIdentity: (provider: SocialProvider) => Promise<{ cancelled: boolean }>;
+    linkAppleIdentity: (identity: SocialIdentityToken) => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     completePasswordRecovery: (newPassword: string) => Promise<void>;
     cancelPasswordRecovery: () => Promise<void>;
@@ -47,6 +66,10 @@ const AuthContext = createContext<AuthData>({
     isAuthenticated: false,
     signIn: async () => undefined,
     signUp: async () => ({ needsVerification: false }),
+    signInWithSocialProvider: async () => ({ cancelled: false }),
+    signInWithAppleIdentity: async () => undefined,
+    linkSocialIdentity: async () => ({ cancelled: false }),
+    linkAppleIdentity: async () => undefined,
     resetPassword: async () => undefined,
     completePasswordRecovery: async () => undefined,
     cancelPasswordRecovery: async () => undefined,
@@ -65,7 +88,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
     const [passwordRecoveryLoading, setPasswordRecoveryLoading] = useState(false);
     const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
+    const consumedAuthCodes = useRef(new Set<string>());
+    const processingAuthCodes = useRef(new Set<string>());
     const userId = session?.user.id ?? "";
+
+    const clearUnauthenticatedLocalState = useCallback(async () => {
+        try {
+            await signOutAndClearOfflineData(
+                () => supabaseConnector.client.auth.signOut({ scope: "local" }),
+                () => powersync.disconnectAndClear()
+            );
+        } finally {
+            setSession(null);
+            setProfile(null);
+        }
+    }, [powersync, supabaseConnector]);
 
     const consumePasswordRecoveryUrl = useCallback(
         async (url: string) => {
@@ -108,6 +145,44 @@ export function AuthProvider({ children }: PropsWithChildren) {
         [supabaseConnector]
     );
 
+    const completeSocialAuthCode = useCallback(async (code: string) => {
+        if (consumedAuthCodes.current.has(code) || processingAuthCodes.current.has(code)) return null;
+
+        processingAuthCodes.current.add(code);
+        try {
+            const exchange = await exchangeSocialAuthCode(
+                code,
+                (authorizationCode) => supabaseConnector.client.auth.exchangeCodeForSession(authorizationCode)
+            );
+            if (exchange.kind === "failure") {
+                setAuthError("social_auth_callback_failed");
+                return null;
+            }
+
+            consumedAuthCodes.current.add(code);
+            setSession(exchange.session);
+            void system.connect().catch(() => undefined);
+            return exchange.session;
+        } finally {
+            processingAuthCodes.current.delete(code);
+        }
+    }, [supabaseConnector, system]);
+
+    const consumeAuthCallbackUrl = useCallback(async (url: string) => {
+        const callback = parseSocialAuthCallback(url);
+        if (callback.kind === "ignore") return false;
+        if (callback.kind === "cancelled") return true;
+        if (callback.kind === "error") {
+            // Provider errors can contain implementation-specific details. Keep
+            // the app in its current state and present one localized retry path.
+            setAuthError("social_auth_callback_failed");
+            return true;
+        }
+
+        await completeSocialAuthCode(callback.code);
+        return true;
+    }, [completeSocialAuthCode]);
+
     const refreshProfile = useCallback(async () => {
         if (!userId) {
             setProfile(null);
@@ -127,10 +202,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     useEffect(() => {
         const subscription = Linking.addEventListener("url", ({ url }) => {
-            void consumePasswordRecoveryUrl(url);
+            void consumePasswordRecoveryUrl(url).then((handled) => {
+                if (!handled) void consumeAuthCallbackUrl(url);
+            });
         });
         return () => subscription.remove();
-    }, [consumePasswordRecoveryUrl]);
+    }, [consumeAuthCallbackUrl, consumePasswordRecoveryUrl]);
 
     useEffect(() => {
         let mounted = true;
@@ -139,7 +216,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
             try {
                 await system.initDatabase();
                 const initialUrl = await Linking.getInitialURL();
-                if (initialUrl) await consumePasswordRecoveryUrl(initialUrl);
+                if (initialUrl) {
+                    const handled = await consumePasswordRecoveryUrl(initialUrl);
+                    if (!handled) await consumeAuthCallbackUrl(initialUrl);
+                }
                 const { data, error } = await supabaseConnector.client.auth.getSession();
                 if (error) throw error;
                 if (mounted) setSession(data.session);
@@ -159,15 +239,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
             }
             setSession(nextSession);
             setAuthError(null);
-            if (nextSession) void system.connect().catch(() => undefined);
-            else setProfile(null);
+            if (nextSession) {
+                void system.connect().catch(() => undefined);
+            } else {
+                setProfile(null);
+                // A remote/expired session reaches this listener without going
+                // through the explicit logout callback. Clear the local store
+                // here as well so another account cannot see stale rows.
+                void powersync.disconnectAndClear().catch(() => undefined);
+            }
         });
 
         return () => {
             mounted = false;
             listener.subscription.unsubscribe();
         };
-    }, [consumePasswordRecoveryUrl, system, supabaseConnector]);
+    }, [consumeAuthCallbackUrl, consumePasswordRecoveryUrl, powersync, system, supabaseConnector]);
 
     useEffect(() => {
         if (!userId) return;
@@ -202,10 +289,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 setAuthError(error.message);
                 throw error;
             }
+            if (!data.session) {
+                await clearUnauthenticatedLocalState();
+                const missingSession = new Error("Email confirmation is required before you can sign in.");
+                setAuthError(missingSession.message);
+                throw missingSession;
+            }
             setSession(data.session);
             void system.connect().catch(() => undefined);
         },
-        [system, supabaseConnector]
+        [clearUnauthenticatedLocalState, system, supabaseConnector]
     );
 
     const signUp = useCallback(
@@ -214,7 +307,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
             const { data, error } = await supabaseConnector.client.auth.signUp({
                 email: email.trim().toLowerCase(),
                 password,
-                options: { data: { full_name: fullName.trim() } },
+                options: {
+                    data: { full_name: fullName.trim() },
+                    emailRedirectTo: SOCIAL_AUTH_REDIRECT_URL,
+                },
             });
             if (error) {
                 setAuthError(error.message);
@@ -253,9 +349,104 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 }
             }
 
+            if (!data.session) await clearUnauthenticatedLocalState();
+
             return { needsVerification: !data.session };
         },
-        [db, system, supabaseConnector]
+        [clearUnauthenticatedLocalState, db, system, supabaseConnector]
+    );
+
+    const completeOAuthBrowserFlow = useCallback(async (provider: SocialProvider, linking: boolean) => {
+        setAuthError(null);
+        try {
+            const auth = supabaseConnector.client.auth;
+            const result = linking
+                ? await auth.linkIdentity({ provider, options: socialOAuthAuthorizationOptions(provider) })
+                : await auth.signInWithOAuth({ provider, options: socialOAuthAuthorizationOptions(provider) });
+            if (result.error) throw result.error;
+            if (!result.data.url) throw new Error("social_auth_start_missing_url");
+
+            const browserResult = await WebBrowser.openAuthSessionAsync(result.data.url, SOCIAL_AUTH_REDIRECT_URL);
+            if (browserResult.type !== "success") return { cancelled: true };
+
+            const callback = parseSocialAuthCallback(browserResult.url);
+            if (callback.kind === "cancelled") return { cancelled: true };
+            if (callback.kind !== "code") throw new Error("social_auth_callback_invalid");
+
+            const nextSession = await completeSocialAuthCode(callback.code);
+            if (!nextSession) throw new Error("social_auth_callback_failed");
+            return { cancelled: false };
+        } catch (error) {
+            setAuthError("social_auth_callback_failed");
+            throw error;
+        }
+    }, [completeSocialAuthCode, supabaseConnector]);
+
+    const signInWithSocialProvider = useCallback(
+        (provider: SocialProvider) => completeOAuthBrowserFlow(provider, false),
+        [completeOAuthBrowserFlow]
+    );
+
+    const linkSocialIdentity = useCallback(
+        (provider: SocialProvider) => {
+            if (!session) throw new Error("social_identity_link_requires_session");
+            return completeOAuthBrowserFlow(provider, true);
+        },
+        [completeOAuthBrowserFlow, session]
+    );
+
+    const completeAppleIdentity = useCallback(async (identity: SocialIdentityToken, linking: boolean) => {
+        setAuthError(null);
+        const credentials = {
+            provider: "apple" as const,
+            token: identity.token,
+            nonce: identity.nonce,
+            access_token: identity.accessToken,
+        };
+        const result = linking
+            ? await supabaseConnector.client.auth.linkIdentity(credentials)
+            : await supabaseConnector.client.auth.signInWithIdToken(credentials);
+        if (result.error) {
+            setAuthError(result.error.message);
+            throw result.error;
+        }
+        if (!("session" in result.data) || !result.data.session) throw new Error("apple_auth_session_missing");
+        // Apple returns a name only on the first authorization. Persist it at
+        // that point, without using a relay email as an account-merge key.
+        const profileNamePatch = appleFirstLoginProfileNamePatch(identity.fullName);
+        if (!linking && profileNamePatch) {
+            const { error: metadataError } = await supabaseConnector.client.auth.updateUser({
+                data: { full_name: profileNamePatch.full_name },
+            });
+            if (metadataError) throw metadataError;
+
+            const { error: profileError } = await supabaseConnector.client
+                .from("profiles")
+                .update({
+                    ...profileNamePatch,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", result.data.session.user.id)
+                // This makes a delayed Apple first-login update safe: a name
+                // the user already supplied in AutoCare always wins.
+                .or(EMPTY_PROFILE_NAME_FILTER);
+            if (profileError) throw profileError;
+        }
+        setSession(result.data.session);
+        void system.connect().catch(() => undefined);
+    }, [system, supabaseConnector]);
+
+    const signInWithAppleIdentity = useCallback(
+        (identity: SocialIdentityToken) => completeAppleIdentity(identity, false),
+        [completeAppleIdentity]
+    );
+
+    const linkAppleIdentity = useCallback(
+        (identity: SocialIdentityToken) => {
+            if (!session) throw new Error("social_identity_link_requires_session");
+            return completeAppleIdentity(identity, true);
+        },
+        [completeAppleIdentity, session]
     );
 
     const resetPassword = useCallback(
@@ -285,7 +476,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const cancelPasswordRecovery = useCallback(async () => {
         try {
-            await supabaseConnector.client.auth.signOut({ scope: "local" });
+            await signOutAndClearOfflineData(
+                () => supabaseConnector.client.auth.signOut({ scope: "local" }),
+                () => powersync.disconnectAndClear()
+            );
         } finally {
             setSession(null);
             setProfile(null);
@@ -293,7 +487,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             setPasswordRecoveryLoading(false);
             setPasswordRecoveryError(null);
         }
-    }, [supabaseConnector]);
+    }, [powersync, supabaseConnector]);
 
     const changePassword = useCallback(
         async (currentPassword: string, newPassword: string) => {
@@ -315,8 +509,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const logout = useCallback(async () => {
         setSession(null);
         setProfile(null);
-        await supabaseConnector.client.auth.signOut({ scope: "local" });
-        await powersync.disconnectAndClear();
+        await signOutAndClearOfflineData(
+            () => supabaseConnector.client.auth.signOut({ scope: "local" }),
+            () => powersync.disconnectAndClear()
+        );
     }, [powersync, supabaseConnector]);
 
     const value = useMemo<AuthData>(
@@ -332,6 +528,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
             isAuthenticated: Boolean(session),
             signIn,
             signUp,
+            signInWithSocialProvider,
+            signInWithAppleIdentity,
+            linkSocialIdentity,
+            linkAppleIdentity,
             resetPassword,
             completePasswordRecovery,
             cancelPasswordRecovery,
@@ -339,7 +539,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             logout,
             refreshProfile,
         }),
-        [session, profile, userId, loading, authError, isPasswordRecovery, passwordRecoveryLoading, passwordRecoveryError, signIn, signUp, resetPassword, completePasswordRecovery, cancelPasswordRecovery, changePassword, logout, refreshProfile]
+        [session, profile, userId, loading, authError, isPasswordRecovery, passwordRecoveryLoading, passwordRecoveryError, signIn, signUp, signInWithSocialProvider, signInWithAppleIdentity, linkSocialIdentity, linkAppleIdentity, resetPassword, completePasswordRecovery, cancelPasswordRecovery, changePassword, logout, refreshProfile]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

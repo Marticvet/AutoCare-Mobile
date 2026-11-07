@@ -45,15 +45,16 @@ export default function TripsScreen() {
         return () => { mounted = false; };
     }, [dataOwnerId, filteredVehicleId, localLoading, localTrips.length, serverScope]));
 
-    const scopedServerTrips = serverResult.scope === serverScope ? serverResult.trips : [];
     const trips = useMemo(() => {
         const merged = new Map<string, TripRecord>();
-        scopedServerTrips.forEach((trip) => trip.id && merged.set(trip.id, trip));
+        if (serverResult.scope === serverScope) {
+            serverResult.trips.forEach((trip) => trip.id && merged.set(trip.id, trip));
+        }
         localTrips.forEach((trip) => trip.id && merged.set(trip.id, trip));
         return [...merged.values()].sort((left, right) =>
             String(right.start_at ?? "").localeCompare(String(left.start_at ?? ""))
         );
-    }, [localTrips, scopedServerTrips]);
+    }, [localTrips, serverResult.scope, serverResult.trips, serverScope]);
     const waitingForServer = !localLoading
         && !localTrips.length
         && (serverResult.scope !== serverScope || serverResult.loading);

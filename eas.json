@@ -5,8 +5,12 @@
   },
   "build": {
     "development": {
+      "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development"
+      },
       "ios": {
         "simulator": false
       },
@@ -14,9 +18,26 @@
         "buildType": "apk"
       }
     },
+    "testflight": {
+      "distribution": "store",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "testflight",
+        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "",
+        "EXPO_PUBLIC_ENABLE_SOCIAL_AUTH": "true",
+        "EXPO_PUBLIC_ENABLE_GOOGLE_AUTH": "true",
+        "EXPO_PUBLIC_ENABLE_APPLE_AUTH": "true"
+      },
+      "autoIncrement": true,
+      "credentialsSource": "remote"
+    },
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": ""
+      },
       "android": {
         "buildType": "apk"
       }
@@ -24,6 +45,10 @@
     "production": {
       "distribution": "store",
       "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": ""
+      },
       "autoIncrement": true,
       "credentialsSource": "remote"
     }

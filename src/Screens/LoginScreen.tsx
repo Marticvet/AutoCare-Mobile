@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, FormField } from "../components/ui";
+import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { usePreferences } from "../i18n/PreferencesProvider";
 import { useAuth } from "../providers/AuthProvider";
 import { colors, radius, spacing, typography } from "../theme/tokens";
@@ -62,7 +63,7 @@ export default function LoginScreen({ navigation }: any) {
                                 returnKeyType="done"
                                 onSubmitEditing={submit}
                             />
-                            {authError ? <Text style={styles.error}>{authError}</Text> : null}
+                            {authError ? <Text style={styles.error}>{authError === "social_auth_callback_failed" ? t("socialAuthFailed") : authError}</Text> : null}
                             <Pressable
                                 onPress={() => navigation.navigate("ForgotPassword", { email: email.trim() })}
                                 hitSlop={8}
@@ -71,6 +72,7 @@ export default function LoginScreen({ navigation }: any) {
                                 <Text style={styles.link}>{t("forgotPassword")}</Text>
                             </Pressable>
                             <Button label={t("signIn")} onPress={submit} loading={busy} />
+                            <SocialAuthButtons />
                             <View style={styles.inline}>
                                 <Text style={styles.footerText}>{t("noAccount")}</Text>
                                 <Pressable

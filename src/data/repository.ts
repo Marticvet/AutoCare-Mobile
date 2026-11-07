@@ -848,7 +848,7 @@ export async function completeChecklistRun(
     damageNotes: string,
     validationMessages: { noItems: string; incomplete: string }
 ) {
-    let items: Array<Pick<ChecklistRunItemRecord, "result">> = await system.db.selectFrom("checklist_run_items").select("result").where("run_id", "=", runId).where("user_id", "=", userId).execute();
+    let items: Pick<ChecklistRunItemRecord, "result">[] = await system.db.selectFrom("checklist_run_items").select("result").where("run_id", "=", runId).where("user_id", "=", userId).execute();
     if (!items.length) {
         items = await fetchChecklistRunItemsFromServer(runId, userId);
     }

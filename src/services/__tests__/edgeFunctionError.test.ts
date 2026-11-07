@@ -1,4 +1,4 @@
-import { edgeFunctionErrorMessage } from "../edgeFunctionError";
+import { edgeFunctionErrorDetails, edgeFunctionErrorMessage } from "../edgeFunctionError";
 
 const response = (status: number, payload?: unknown) => ({
     status,
@@ -36,5 +36,19 @@ describe("edge function errors", () => {
             "Places are unavailable.",
             { 404: "Google Places search has not been deployed yet." }
         )).resolves.toBe("Google Places search has not been deployed yet.");
+    });
+
+    test("preserves a safe server error code with its HTTP status", async () => {
+        const context = response(409, {
+            error: "We could not confirm the account deletion state.",
+            code: "ACCOUNT_DELETION_STATE_UNKNOWN",
+        });
+        await expect(edgeFunctionErrorDetails(
+            { message: "Edge Function returned a non-2xx status code", context }
+        )).resolves.toEqual({
+            status: 409,
+            code: "ACCOUNT_DELETION_STATE_UNKNOWN",
+            message: "We could not confirm the account deletion state.",
+        });
     });
 });

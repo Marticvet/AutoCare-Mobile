@@ -311,6 +311,18 @@ const en = {
     neverSynced: "Not synced on this launch",
     dangerZone: "Account",
     version: "Version",
+    orContinueWith: "or continue with",
+    continueWithApple: "Continue with Apple",
+    continueWithGoogle: "Continue with Google",
+    socialAuthUnavailable: "Apple and Google sign-in will be available after secure account setup is complete.",
+    socialAuthErrorTitle: "Sign-in unavailable",
+    socialAuthFailed: "We could not complete that sign-in. Check your connection and try again.",
+    applePrivateRelayNotice: "If you choose Hide My Email, Apple may provide a private relay address. We do not use it to merge accounts.",
+    signInMethods: "Sign-in methods",
+    linkIdentityIntro: "Link another sign-in method only while you are signed in to this account. We never merge accounts in the app based only on an email address.",
+    linkApple: "Link Apple",
+    linkGoogle: "Link Google",
+    identityLinked: "The sign-in method is linked to this account.",
 } as const;
 
 type CoreTranslationKey = keyof typeof en;
@@ -331,6 +343,7 @@ const de: Record<CoreTranslationKey, string> = {
     reminder: "Erinnerung", reminderTitle: "Titel der Erinnerung", reminderCategory: "Erinnerungsart", dueDate: "Fälligkeitsdatum", reminderTime: "Benachrichtigungszeit", dueMileage: "Fällig bei km", repeatMonths: "Wiederholen alle (Monate)", repeatKm: "Wiederholen alle (km)", doesNotRepeat: "Keine Wiederholung", priority: "Priorität", low: "Niedrig", medium: "Mittel", high: "Hoch", maintenance: "Wartung", inspection: "TÜV / HU", documentExpiry: "Dokumentablauf", custom: "Benutzerdefiniert", customValue: "Eigener Wert", markComplete: "Als erledigt markieren", reopen: "Wieder öffnen", dueSoon: "Bald fällig", dueNow: "Jetzt fällig", completed: "Erledigt", reminderSaved: "Erinnerung erfolgreich gespeichert", reminderUpdated: "Erinnerung erfolgreich aktualisiert",
     documents: "Dokumente", documentTitle: "Dokumenttitel", documentType: "Dokumentart", expirationDate: "Ablaufdatum", chooseFile: "Datei wählen", scanDocument: "Mit Kamera scannen", replaceFile: "Datei ersetzen", fileSelected: "Datei ausgewählt", documentSaved: "Dokument erfolgreich gespeichert", documentUpdated: "Dokument erfolgreich aktualisiert", documentUnavailableOffline: "Die Datei ist auf diesem Gerät nicht verfügbar. Stelle eine Verbindung her.", registration: "Zulassung", receipt: "Beleg", warranty: "Garantie",
     settings: "Einstellungen", language: "Sprache", currency: "Währung", english: "English", german: "Deutsch", bulgarian: "Български", spanish: "Español", french: "Français", kilometers: "Kilometer", miles: "Meilen", profile: "Profil", toolsAndServices: "Tools & Services", nearby: "Services in der Nähe", nearbyFuel: "Tankstellen", nearbyService: "Werkstätten", nearbyOffline: "Die Umgebungssuche benötigt Internet. Deine Fahrzeugdaten bleiben verfügbar.", locationPermission: "Standortzugriff ist nötig, um Services in der Nähe zu finden.", mapsKeyMissing: "Hinterlege einen eingeschränkten Google-Maps-Schlüssel.", storageAndSync: "Speicher & Sync", privacy: "Datenschutz", accountType: "Kontotyp", individual: "Privat", fleetManager: "Flottenmanager", localFirst: "Lokale Daten zuerst", localFirstBody: "Einträge werden zuerst auf diesem Gerät gespeichert und später synchronisiert.", lastSynced: "Zuletzt synchronisiert", neverSynced: "Seit dem Start nicht synchronisiert", dangerZone: "Konto", version: "Version",
+    orContinueWith: "oder fortfahren mit", continueWithApple: "Mit Apple fortfahren", continueWithGoogle: "Mit Google fortfahren", socialAuthUnavailable: "Apple- und Google-Anmeldung werden verfügbar, sobald die sichere Kontoeinrichtung abgeschlossen ist.", socialAuthErrorTitle: "Anmeldung nicht verfügbar", socialAuthFailed: "Die Anmeldung konnte nicht abgeschlossen werden. Prüfe deine Verbindung und versuche es erneut.", applePrivateRelayNotice: "Wenn du „E-Mail-Adresse verbergen“ wählst, kann Apple eine private Relay-Adresse bereitstellen. Wir verwenden sie nicht, um Konten zusammenzuführen.", signInMethods: "Anmeldemethoden", linkIdentityIntro: "Verknüpfe eine weitere Anmeldemethode nur, während du in diesem Konto angemeldet bist. Die App führt Konten niemals allein anhand einer E-Mail-Adresse zusammen.", linkApple: "Apple verknüpfen", linkGoogle: "Google verknüpfen", identityLinked: "Die Anmeldemethode ist mit diesem Konto verknüpft.",
 };
 
 const bg: Record<CoreTranslationKey, string> = {
@@ -349,11 +362,13 @@ const bg: Record<CoreTranslationKey, string> = {
     reminder: "Напомняне", reminderTitle: "Заглавие", reminderCategory: "Тип напомняне", dueDate: "Краен срок", reminderTime: "Час на известието", dueMileage: "На километраж", repeatMonths: "Повтаряй през (месеци)", repeatKm: "Повтаряй през (км)", doesNotRepeat: "Без повторение", priority: "Приоритет", low: "Нисък", medium: "Среден", high: "Висок", maintenance: "Поддръжка", inspection: "ГТП / TÜV / MOT", documentExpiry: "Изтичане на документ", custom: "Персонално", customValue: "Друга стойност", markComplete: "Маркирай завършено", reopen: "Отвори отново", dueSoon: "Наближава", dueNow: "Просрочено", completed: "Завършено", reminderSaved: "Напомнянето е запазено",
     documents: "Документи", documentTitle: "Заглавие на документа", documentType: "Тип документ", expirationDate: "Дата на изтичане", chooseFile: "Избери файл", scanDocument: "Сканирай с камера", replaceFile: "Смени файла", fileSelected: "Файлът е избран", documentSaved: "Документът е запазен", documentUnavailableOffline: "Файлът не е свален на това устройство. Свържи се с интернет.", registration: "Регистрация", receipt: "Касова бележка", warranty: "Гаранция",
     settings: "Настройки", language: "Език", currency: "Валута", english: "English", german: "Deutsch", bulgarian: "Български", spanish: "Español", french: "Français", kilometers: "Километри", miles: "Мили", profile: "Профил", toolsAndServices: "Инструменти и услуги", nearby: "Сервизи наблизо", nearbyFuel: "Бензиностанции", nearbyService: "Автосервизи", nearbyOffline: "Търсенето наблизо изисква интернет. Данните за автомобила остават достъпни.", locationPermission: "Необходим е достъп до местоположението.", mapsKeyMissing: "Добави ограничен Google Maps ключ.", storageAndSync: "Данни и синхронизация", privacy: "Поверителност", accountType: "Тип акаунт", individual: "Личен", fleetManager: "Автопарк", localFirst: "Първо локално", localFirstBody: "Записите се пазят първо на устройството и се синхронизират при връзка.", lastSynced: "Последна синхронизация", neverSynced: "Не е синхронизирано след старта", dangerZone: "Акаунт", version: "Версия",
+    orContinueWith: "или продължи с", continueWithApple: "Продължи с Apple", continueWithGoogle: "Продължи с Google", socialAuthUnavailable: "Входът с Apple и Google ще е наличен след завършване на защитената настройка на акаунта.", socialAuthErrorTitle: "Входът не е наличен", socialAuthFailed: "Не успяхме да завършим входа. Провери връзката си и опитай отново.", applePrivateRelayNotice: "Ако избереш „Скриване на имейла“, Apple може да предостави частен relay адрес. Не го използваме за сливане на акаунти.", signInMethods: "Методи за вход", linkIdentityIntro: "Свържи друг метод за вход само докато си влязъл в този акаунт. Приложението никога не слива акаунти само по имейл адрес.", linkApple: "Свържи Apple", linkGoogle: "Свържи Google", identityLinked: "Методът за вход е свързан с този акаунт.",
 };
 
 type TranslationDictionary = Record<CoreTranslationKey, string>;
 
 const es: TranslationDictionary = {
+    ...en,
     initialSyncTitle: "Cargando tu garaje", initialSyncEstimate: "Normalmente tarda menos de 10 segundos.", elapsedSeconds: "Segundos transcurridos", continueOffline: "Continuar sin conexión",
     dateRange: "Intervalo de fechas", periodWeek: "Últimos 7 días", periodMonth: "Este mes", periodCustom: "Fechas personalizadas", startDate: "Fecha de inicio", endDate: "Fecha de fin", spendingTrend: "Evolución del gasto", selectedPeriod: "Periodo seleccionado", averageInterval: "Promedio por intervalo", highestInterval: "Intervalo más alto",
     notifications: "Notificaciones", notificationsBody: "Recibe un aviso a la hora elegida para cada recordatorio con fecha.", notificationTimeHint: "La notificación utiliza la hora local del dispositivo.", notificationRequiresDate: "Elige una fecha límite para programar una notificación.", notificationPreview: "Vista previa de la notificación", notificationHeader: "Encabezado", notificationMessage: "Mensaje", sendPreviewNotification: "Enviar esta vista previa", notificationsEnabled: "Las notificaciones están activadas", notificationsDisabled: "Las notificaciones están desactivadas", enableNotifications: "Activar notificaciones", testNotification: "Enviar notificación de prueba", notificationTestSent: "Aparecerá una notificación de prueba en unos segundos.", notificationPermissionDenied: "Las notificaciones están desactivadas en los ajustes del sistema. Actívalas allí para recibir recordatorios.",
@@ -377,6 +392,7 @@ const es: TranslationDictionary = {
 };
 
 const fr: TranslationDictionary = {
+    ...en,
     initialSyncTitle: "Chargement de votre garage", initialSyncEstimate: "Cela prend généralement moins de 10 secondes.", elapsedSeconds: "Secondes écoulées", continueOffline: "Continuer hors ligne",
     dateRange: "Période", periodWeek: "7 derniers jours", periodMonth: "Ce mois-ci", periodCustom: "Dates personnalisées", startDate: "Date de début", endDate: "Date de fin", spendingTrend: "Évolution des dépenses", selectedPeriod: "Période sélectionnée", averageInterval: "Moyenne par intervalle", highestInterval: "Intervalle le plus élevé",
     notifications: "Notifications", notificationsBody: "Recevez une alerte à l’heure choisie pour chaque rappel daté.", notificationTimeHint: "La notification utilise l’heure locale de l’appareil.", notificationRequiresDate: "Choisissez une date d’échéance pour programmer une notification.", notificationPreview: "Aperçu de la notification", notificationHeader: "Titre", notificationMessage: "Message", sendPreviewNotification: "Envoyer cet aperçu", notificationsEnabled: "Les notifications sont activées", notificationsDisabled: "Les notifications sont désactivées", enableNotifications: "Activer les notifications", testNotification: "Envoyer une notification test", notificationTestSent: "Une notification test apparaîtra dans quelques secondes.", notificationPermissionDenied: "Les notifications sont désactivées dans les réglages système. Activez-les pour recevoir les rappels.",
@@ -405,10 +421,10 @@ export const translations = {
     bg: { ...bg, expenseSaved: "Разходът е запазен успешно", ...featureTranslations.bg },
     es: { ...es, ...featureTranslations.es },
     fr: { ...fr, ...featureTranslations.fr },
-    it: { ...generatedTranslations.it, ...europeanTranslationOverrides.it },
-    pt: { ...generatedTranslations.pt, ...europeanTranslationOverrides.pt },
-    pl: { ...generatedTranslations.pl, ...europeanTranslationOverrides.pl },
-    nl: { ...generatedTranslations.nl, ...europeanTranslationOverrides.nl },
-    ro: { ...generatedTranslations.ro, ...europeanTranslationOverrides.ro },
-    cs: { ...generatedTranslations.cs, ...europeanTranslationOverrides.cs },
+    it: { ...en, ...featureTranslations.en, ...generatedTranslations.it, ...europeanTranslationOverrides.it },
+    pt: { ...en, ...featureTranslations.en, ...generatedTranslations.pt, ...europeanTranslationOverrides.pt },
+    pl: { ...en, ...featureTranslations.en, ...generatedTranslations.pl, ...europeanTranslationOverrides.pl },
+    nl: { ...en, ...featureTranslations.en, ...generatedTranslations.nl, ...europeanTranslationOverrides.nl },
+    ro: { ...en, ...featureTranslations.en, ...generatedTranslations.ro, ...europeanTranslationOverrides.ro },
+    cs: { ...en, ...featureTranslations.en, ...generatedTranslations.cs, ...europeanTranslationOverrides.cs },
 };

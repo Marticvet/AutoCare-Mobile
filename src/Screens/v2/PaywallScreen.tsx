@@ -16,6 +16,7 @@ export default function PaywallScreen({ navigation, route }: Props) {
     const { t } = usePreferences();
     const {
         configured,
+        billingDisabled,
         currentOffering,
         error,
         hasPlus,
@@ -79,7 +80,10 @@ export default function PaywallScreen({ navigation, route }: Props) {
 
     const restore = async () => {
         clearError();
-        const restored = await restorePurchases(familyMode ? ENTITLEMENTS.sharedGarage : ENTITLEMENTS.plusFeatures);
+        const restoredCustomerInfo = await restorePurchases();
+        const restored = Boolean(restoredCustomerInfo?.entitlements.active[
+            familyMode ? ENTITLEMENTS.sharedGarage : ENTITLEMENTS.plusFeatures
+        ]);
         Alert.alert(
             t("restorePurchases"),
             restored
@@ -90,6 +94,19 @@ export default function PaywallScreen({ navigation, route }: Props) {
     };
 
     const targetActive = familyMode ? hasFamily : hasPlus;
+
+    if (billingDisabled) {
+        return (
+            <Screen contentStyle={styles.centered}>
+                <View style={styles.heroMark}>
+                    <Ionicons name="information-circle-outline" color={colors.white} size={28} />
+                </View>
+                <Text style={styles.hero}>{t("purchasesUnavailableTitle")}</Text>
+                <Text style={styles.subtitle}>{t("purchasesUnavailableBody")}</Text>
+                <Button label={t("continue")} icon="arrow-back" onPress={navigation.goBack} />
+            </Screen>
+        );
+    }
 
     if (targetActive) {
         return (

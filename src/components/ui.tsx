@@ -276,15 +276,29 @@ export function SelectField<T extends string>({
     required?: boolean;
 }) {
     const [visible, setVisible] = useState(false);
+    const [draftValue, setDraftValue] = useState<T | "">(value);
     const { t } = usePreferences();
     const emptyLabel = placeholder ?? `${t("select")} ${label.toLocaleLowerCase()}`;
     const selectedLabel = options.find((option) => option.value === value)?.label;
+
+    const open = () => {
+        setDraftValue(value);
+        setVisible(true);
+    };
+    const dismiss = () => {
+        setDraftValue(value);
+        setVisible(false);
+    };
+    const confirm = () => {
+        if (draftValue && draftValue !== value) onChange(draftValue as T);
+        setVisible(false);
+    };
 
     return (
         <View style={styles.field}>
             <Text style={styles.fieldLabel}>{label}{required ? " *" : ""}</Text>
             <Pressable
-                onPress={() => setVisible(true)}
+                onPress={open}
                 accessibilityRole="button"
                 accessibilityLabel={label}
                 style={({ pressed }) => [styles.input, styles.dateInput, pressed && styles.dateInputPressed]}
@@ -295,13 +309,13 @@ export function SelectField<T extends string>({
                 <Ionicons name="chevron-down" size={20} color={colors.primary} />
             </Pressable>
 
-            <Modal visible={visible} transparent animationType="fade" presentationStyle="overFullScreen" statusBarTranslucent hardwareAccelerated onRequestClose={() => setVisible(false)}>
+            <Modal visible={visible} transparent animationType="fade" presentationStyle="overFullScreen" statusBarTranslucent hardwareAccelerated onRequestClose={dismiss}>
                 <View style={styles.sheetOverlay}>
-                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setVisible(false)} />
+                    <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
                     <View style={styles.pickerSheet}>
                         <View style={styles.dateModalHeader}>
                             <Text style={styles.dateModalTitle}>{label}</Text>
-                            <Pressable onPress={() => setVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("close")}>
+                            <Pressable onPress={dismiss} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("close")}>
                                 <Ionicons name="close" size={26} color={colors.ink} />
                             </Pressable>
                         </View>
@@ -317,13 +331,13 @@ export function SelectField<T extends string>({
                                     <Text style={styles.datePlaceholder}>{emptyLabel}</Text>
                                 </View>
                             ) : options.map((option) => {
-                                const selected = option.value === value;
+                                const selected = option.value === draftValue;
                                 return (
                                     <Pressable
                                         key={option.value}
                                         accessibilityRole="radio"
                                         accessibilityState={{ checked: selected }}
-                                        onPress={() => onChange(option.value)}
+                                        onPress={() => setDraftValue(option.value)}
                                         style={({ pressed }) => [
                                             styles.selectOption,
                                             selected && styles.selectOptionSelected,
@@ -338,7 +352,7 @@ export function SelectField<T extends string>({
                                 );
                             })}
                         </ScrollView>
-                        <Button label={t("done")} onPress={() => setVisible(false)} />
+                        <Button label={t("done")} onPress={confirm} />
                     </View>
                 </View>
             </Modal>

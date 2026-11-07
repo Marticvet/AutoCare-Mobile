@@ -22,6 +22,7 @@ import {
     Purchases,
     clearRevenueCatUser,
     configureRevenueCat,
+    isRevenueCatBillingDisabled,
     loadRevenueCatState,
     openRevenueCatSubscriptionManagement,
     purchaseRevenueCatPackage,
@@ -35,6 +36,7 @@ import type {
 const emptyAccess = deriveFeatureAccess(null, null);
 const SubscriptionContext = createContext<SubscriptionContextValue>({
     ...emptyAccess,
+    billingDisabled: false,
     configured: false,
     loading: true,
     purchasing: false,
@@ -44,7 +46,7 @@ const SubscriptionContext = createContext<SubscriptionContextValue>({
     currentOffering: null,
     refresh: async () => undefined,
     purchase: async () => false,
-    restorePurchases: async () => false,
+    restorePurchases: async () => null,
     manageSubscription: async () => undefined,
     clearError: () => undefined,
 });
@@ -66,8 +68,13 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
     const [backendStatus, setBackendStatus] = useState<BackendBillingStatus | null>(null);
     const [currentOffering, setCurrentOffering] = useState<SubscriptionContextValue["currentOffering"]>(null);
+    const billingDisabled = isRevenueCatBillingDisabled();
 
     const loadBackendStatus = useCallback(async () => {
+        if (isRevenueCatBillingDisabled()) {
+            setBackendStatus(null);
+            return null;
+        }
         if (!userId) {
             setBackendStatus(null);
             return null;
@@ -93,6 +100,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     }, [supabaseConnector, userId]);
 
     const syncTrustedMirror = useCallback(async () => {
+        if (isRevenueCatBillingDisabled()) return;
         if (!userId) return;
         const { error: functionError } = await supabaseConnector.client.functions.invoke("sync-entitlements", {
             body: {},
@@ -129,6 +137,15 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             setConfigured(false);
             setLoading(false);
             void clearRevenueCatUser().catch(() => undefined);
+            return;
+        }
+
+        if (billingDisabled) {
+            setCustomerInfo(null);
+            setBackendStatus(null);
+            setCurrentOffering(null);
+            setConfigured(false);
+            setLoading(false);
             return;
         }
 
@@ -173,9 +190,10 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             mounted = false;
             if (listener) Purchases.removeCustomerInfoUpdateListener(listener);
         };
-    }, [loadBackendStatus, syncTrustedMirror, t, userId]);
+    }, [billingDisabled, loadBackendStatus, syncTrustedMirror, t, userId]);
 
     const purchase = useCallback(async (selectedPackage: PurchasesPackage, requiredEntitlement?: EntitlementId) => {
+        if (isRevenueCatBillingDisabled()) return false;
         setPurchasing(true);
         setError(null);
         try {
@@ -194,26 +212,26 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
         }
     }, [syncTrustedMirror, t]);
 
-    const restorePurchases = useCallback(async (requiredEntitlement?: EntitlementId) => {
+    const restorePurchases = useCallback(async () => {
+        if (isRevenueCatBillingDisabled()) return null;
         setPurchasing(true);
         setError(null);
         try {
             const updated = await restoreRevenueCatPurchases();
             setCustomerInfo(updated);
             await syncTrustedMirror();
-            if (requiredEntitlement) return Boolean(updated.entitlements.active[requiredEntitlement]);
-            return Boolean(updated.entitlements.active[ENTITLEMENTS.plusFeatures]
-                || updated.entitlements.active[ENTITLEMENTS.sharedGarage]);
+            return updated;
         } catch (caught) {
             const message = errorMessage(caught, t("restorePurchasesFailed"));
             if (message) setError(message);
-            return false;
+            return null;
         } finally {
             setPurchasing(false);
         }
     }, [syncTrustedMirror, t]);
 
     const manageSubscription = useCallback(async () => {
+        if (isRevenueCatBillingDisabled()) return;
         setError(null);
         try {
             await openRevenueCatSubscriptionManagement();
@@ -224,7 +242,10 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     }, [t]);
 
     const access = useMemo(() => {
-        const ownAccess = deriveFeatureAccess(customerInfo, backendStatus);
+        const billingDisabled = isRevenueCatBillingDisabled();
+        const ownAccess = billingDisabled
+            ? emptyAccess
+            : deriveFeatureAccess(customerInfo, backendStatus);
         const usesSharedTier = Boolean(
             activeGarage
             && activeGarage.owner_user_id !== userId
@@ -232,7 +253,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
             && activeGarage.status === "active"
             && (activeGarage.kind === "family" || activeGarage.kind === "fleet")
         );
-        if (!usesSharedTier) return ownAccess;
+        if (billingDisabled || !usesSharedTier) return ownAccess;
         const hasFleet = activeGarage?.kind === "fleet";
         return {
             ...ownAccess,
@@ -250,6 +271,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     }, [activeGarage, backendStatus, canWrite, currentRole, customerInfo, userId]);
     const value = useMemo<SubscriptionContextValue>(() => ({
         ...access,
+        billingDisabled,
         configured,
         loading,
         purchasing,
@@ -262,7 +284,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
         restorePurchases,
         manageSubscription,
         clearError: () => setError(null),
-    }), [access, backendStatus, configured, currentOffering, customerInfo, error, loading, manageSubscription, purchase, purchasing, refresh, restorePurchases]);
+    }), [access, backendStatus, billingDisabled, configured, currentOffering, customerInfo, error, loading, manageSubscription, purchase, purchasing, refresh, restorePurchases]);
 
     return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
 }

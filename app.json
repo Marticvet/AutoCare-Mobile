@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "AutoCare-Mobile",
+    "name": "AutoCare Hub",
     "slug": "AutoCare-Mobile",
     "version": "1.0.0",
     "orientation": "default",
@@ -12,9 +12,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.marticvet.autocare",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "userInterfaceStyle": "light",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "We need access to your photo library to let you upload a profile picture.",
+        "NSPhotoLibraryUsageDescription": "AutoCare Hub accesses your photos so you can store vehicle documents and receipts.",
         "NSLocationWhenInUseUsageDescription": "AutoCare Hub uses your location only when you choose to attach it to an expense or search for nearby services."
       },
       "privacyManifests": {
@@ -65,6 +66,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/withAndroidMapsKeyPlaceholder",
+      "./plugins/withGoogleMapsIosInitialization",
       [
         "expo-image-picker",
         {
@@ -79,6 +82,15 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
+      "./plugins/withForegroundLocationOnly",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "AutoCare Hub uses your location only when you choose to attach it to an expense or search for nearby services.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
       [
         "./plugins/withQuickSQLiteUseFrameworks",
         {
@@ -87,7 +99,8 @@
       ],
       "./plugins/withLocalOnlyNotifications",
       "expo-notifications",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
