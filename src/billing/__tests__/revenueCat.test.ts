@@ -45,6 +45,7 @@ import {
 
 const mockedPurchases = Purchases as unknown as {
     isConfigured: jest.Mock;
+    configure: jest.Mock;
     getAppUserID: jest.Mock;
     isAnonymous: jest.Mock;
     logIn: jest.Mock;
@@ -88,6 +89,18 @@ describe("RevenueCat configuration", () => {
         expect(isRevenueCatBillingDisabled()).toBe(true);
     });
 
+    it("does not use a leaked Test Store key in a TestFlight runtime config", async () => {
+        setExpoExtra({
+            release: { environment: "testflight" },
+            revenueCat: { testStoreApiKey: "test_leaked_key", iosApiKey: "", androidApiKey: "" },
+        });
+
+        expect(revenueCatPublicApiKey()).toBe("");
+        expect(isRevenueCatBillingDisabled()).toBe(true);
+        await expect(configureRevenueCat("test-user")).resolves.toBe(false);
+        expect(mockedPurchases.configure).not.toHaveBeenCalled();
+    });
+
     it("permits TestFlight billing only with a real iOS public SDK key", () => {
         setExpoExtra({
             release: { environment: "testflight" },
@@ -95,6 +108,16 @@ describe("RevenueCat configuration", () => {
         });
 
         expect(revenueCatPublicApiKey()).toBe("appl_testflight_public_key");
+        expect(isRevenueCatBillingDisabled()).toBe(false);
+    });
+
+    it("uses the Apple App Store public SDK key for the explicit Apple Sandbox channel", () => {
+        setExpoExtra({
+            release: { environment: "apple-sandbox" },
+            revenueCat: { testStoreApiKey: "", iosApiKey: "appl_apple_sandbox_public_key", androidApiKey: "" },
+        });
+
+        expect(revenueCatPublicApiKey()).toBe("appl_apple_sandbox_public_key");
         expect(isRevenueCatBillingDisabled()).toBe(false);
     });
 

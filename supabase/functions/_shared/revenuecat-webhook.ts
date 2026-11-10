@@ -13,6 +13,15 @@ export type RevenueCatWebhookEvent = {
 export class RevenueCatWebhookAuthenticationError extends Error {}
 export class RevenueCatWebhookConfigurationError extends Error {}
 
+/**
+ * RevenueCat dashboard connectivity tests are not subscription lifecycle
+ * events. They intentionally do not identify an AutoCare customer and must
+ * never trigger a subscriber lookup or billing-mirror write.
+ */
+export function isRevenueCatTestEvent(event: RevenueCatWebhookEvent) {
+    return event.type === "TEST";
+}
+
 export function revenueCatEventUserIds(event: RevenueCatWebhookEvent) {
     const candidates = event.type === "TRANSFER"
         ? [...(event.transferred_from ?? []), ...(event.transferred_to ?? [])]

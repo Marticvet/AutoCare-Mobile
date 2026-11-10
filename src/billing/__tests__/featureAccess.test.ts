@@ -1,4 +1,4 @@
-import { backendHasPlus, deriveFeatureAccess } from "../featureAccess";
+import { backendHasFamily, backendHasPlus, deriveFeatureAccess } from "../featureAccess";
 import type { BackendBillingStatus } from "../types";
 
 const activeStatus = (overrides: Partial<BackendBillingStatus> = {}): BackendBillingStatus => ({
@@ -81,6 +81,22 @@ describe("feature access", () => {
     it("keeps cancelled subscriptions active until their expiration", () => {
         expect(backendHasPlus(activeStatus({ status: "cancelled" }), Date.parse("2027-01-01"))).toBe(true);
         expect(backendHasPlus(activeStatus({ status: "cancelled" }), Date.parse("2100-01-01"))).toBe(false);
+    });
+
+    it("keeps Family sharing current for cancellation, grace, and billing issue states only until expiry", () => {
+        const family = {
+            entitlement_id: "shared_garage",
+            entitlement_ids: ["plus_features", "shared_garage"],
+            plan: "family_monthly" as const,
+            expires_at: "2027-06-01T00:00:00.000Z",
+        };
+
+        for (const status of ["cancelled", "grace_period", "billing_issue"] as const) {
+            expect(backendHasFamily(activeStatus({ ...family, status }), Date.parse("2027-05-01"))).toBe(true);
+            expect(backendHasFamily(activeStatus({ ...family, status }), Date.parse("2027-07-01"))).toBe(false);
+        }
+        expect(backendHasFamily(activeStatus({ ...family, status: "expired" }), Date.parse("2027-05-01"))).toBe(false);
+        expect(backendHasFamily(activeStatus({ ...family, status: "refunded" }), Date.parse("2027-05-01"))).toBe(false);
     });
 
     it("blocks expired and refunded subscriptions", () => {

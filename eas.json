@@ -1,3 +1,4 @@
+
 {
   "cli": {
     "version": ">= 23.2.0",
@@ -23,7 +24,6 @@
       "environment": "preview",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "testflight",
-        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "",
         "EXPO_PUBLIC_ENABLE_SOCIAL_AUTH": "true",
         "EXPO_PUBLIC_ENABLE_GOOGLE_AUTH": "true",
         "EXPO_PUBLIC_ENABLE_APPLE_AUTH": "true"
@@ -35,8 +35,7 @@
       "distribution": "internal",
       "environment": "preview",
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "preview",
-        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": ""
+        "EXPO_PUBLIC_APP_ENV": "preview"
       },
       "android": {
         "buildType": "apk"
@@ -46,8 +45,7 @@
       "distribution": "store",
       "environment": "production",
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": ""
+        "EXPO_PUBLIC_APP_ENV": "production"
       },
       "autoIncrement": true,
       "credentialsSource": "remote"

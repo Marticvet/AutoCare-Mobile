@@ -1,4 +1,4 @@
-import { parsePasswordRecoveryLink } from "../passwordRecoveryLink";
+import { parsePasswordRecoveryLink, passwordRecoveryCallbackKey } from "../passwordRecoveryLink";
 
 describe("parsePasswordRecoveryLink", () => {
     it("ignores unrelated links", () => {
@@ -19,5 +19,25 @@ describe("parsePasswordRecoveryLink", () => {
     it("decodes Supabase errors from the fragment", () => {
         expect(parsePasswordRecoveryLink("autocare://reset-password#error=access_denied&error_description=Email+link+is+invalid+or+has+expired"))
             .toEqual({ kind: "error", message: "Email link is invalid or has expired" });
+    });
+
+    it("rejects incomplete, malformed, and lookalike recovery callbacks", () => {
+        expect(parsePasswordRecoveryLink("autocare://reset-password"))
+            .toEqual({ kind: "error", message: "This password reset link is incomplete or has expired." });
+        expect(parsePasswordRecoveryLink("autocare://reset-password?access_token=only-one-token"))
+            .toEqual({ kind: "error", message: "This password reset link is incomplete or has expired." });
+        expect(parsePasswordRecoveryLink("autocare://reset-password.evil?code=not-a-recovery-link"))
+            .toEqual({ kind: "ignore" });
+    });
+
+    it("creates an opaque in-memory key for each single-use recovery credential", () => {
+        const code = parsePasswordRecoveryLink("autocare://reset-password?code=single-use-code");
+        const tokenHash = parsePasswordRecoveryLink("autocare://reset-password?token_hash=single-use-hash&type=recovery");
+
+        expect(passwordRecoveryCallbackKey(code)).toMatch(/^code:[a-z0-9]+$/);
+        expect(passwordRecoveryCallbackKey(tokenHash)).toMatch(/^tokenHash:[a-z0-9]+$/);
+        expect(passwordRecoveryCallbackKey(code)).not.toContain("single-use-code");
+        expect(passwordRecoveryCallbackKey(tokenHash)).not.toContain("single-use-hash");
+        expect(passwordRecoveryCallbackKey({ kind: "ignore" })).toBeNull();
     });
 });

@@ -261,18 +261,41 @@ export default function MembershipsScreen({ navigation }: Props) {
             return;
         }
         setEmailError(null);
-        const sent = await call(
-            "invite_garage_member",
-            {
-                target_garage_id: resolvedGarageId,
-                invite_email: normalizedEmail,
-                invite_role: role,
-            },
-            t("invitationCreated")
-        );
-        if (sent) {
+        setBusy(true);
+        try {
+            const { data, error: inviteError } = await supabaseConnector.client.rpc(
+                "invite_garage_member",
+                {
+                    target_garage_id: resolvedGarageId,
+                    invite_email: normalizedEmail,
+                    invite_role: role,
+                }
+            );
+            if (inviteError) throw inviteError;
+
+            await refreshGarageSnapshot().catch(() => undefined);
+            const membershipId = (data as { id?: string | null } | null)?.id;
+            const delivery = membershipId
+                ? await supabaseConnector.client.functions.invoke(
+                    "send-garage-invitation",
+                    { body: { membershipId } }
+                )
+                : { data: null, error: new Error("garage_invitation_missing") };
+            const emailDelivered = !delivery.error &&
+                (delivery.data as { delivered?: unknown } | null)?.delivered === true;
+            Alert.alert(
+                t("garage"),
+                emailDelivered ? t("invitationCreatedEmailSent") : t("invitationCreatedEmailFailed")
+            );
             setEmail("");
             setEmailError(null);
+        } catch (caught) {
+            Alert.alert(
+                t("garage"),
+                requestErrorMessage(caught, t("requestIncomplete"))
+            );
+        } finally {
+            setBusy(false);
         }
     };
 

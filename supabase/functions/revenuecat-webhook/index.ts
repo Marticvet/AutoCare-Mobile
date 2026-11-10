@@ -1,6 +1,8 @@
 import { adminClient, syncRevenueCatCustomer } from "../_shared/billing.ts";
 import {
     RevenueCatWebhookAuthenticationError,
+    RevenueCatWebhookConfigurationError,
+    isRevenueCatTestEvent,
     type RevenueCatWebhookEvent,
     revenueCatEventUserIds,
     verifyRevenueCatWebhook,
@@ -10,12 +12,24 @@ import { processRevenueCatWebhookUsers } from "../_shared/revenuecat-webhook-pro
 Deno.serve(async (request) => {
     if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
     const rawBody = await request.text();
+    let eventType: string | null = null;
 
     try {
         await verifyRequest(request, rawBody);
         const payload = JSON.parse(rawBody) as { event?: RevenueCatWebhookEvent };
         const event = payload.event;
-        if (!event?.id || !event.type) return json({ error: "Invalid RevenueCat event" }, 400);
+        if (!event?.type) return json({ error: "Invalid RevenueCat event" }, 400);
+        eventType = safeEventType(event.type);
+
+        // A RevenueCat dashboard TEST delivery has no customer lifecycle to
+        // mirror. Acknowledge it only after Authorization/HMAC validation and
+        // before reading or writing any billing state.
+        if (isRevenueCatTestEvent(event)) {
+            console.info("revenuecat-webhook acknowledged test event", { eventType });
+            return json({ received: true, test: true });
+        }
+
+        if (!event.id) return json({ error: "Invalid RevenueCat event" }, 400);
 
         const client = adminClient();
         const { data: existing } = await client.from("billing_webhook_events").select("processed_at").eq("event_id", event.id).maybeSingle();
@@ -48,12 +62,27 @@ Deno.serve(async (request) => {
         }
     } catch (error) {
         const status = error instanceof RevenueCatWebhookAuthenticationError ? 401 : 500;
-        // Do not log raw webhook payloads or return internal secret/database
-        // details to a caller. RevenueCat retries non-2xx responses.
-        console.error("revenuecat-webhook failed", { status });
+        // Do not log payloads, IDs, exception messages, credentials, or
+        // database/provider responses. The small allowlisted diagnostic makes
+        // unexpected production failures actionable without disclosing data.
+        console.error("revenuecat-webhook failed", {
+            status,
+            eventType,
+            category: error instanceof RevenueCatWebhookAuthenticationError
+                ? "authentication"
+                : error instanceof RevenueCatWebhookConfigurationError
+                    ? "configuration"
+                    : error instanceof SyntaxError
+                        ? "invalid_json"
+                        : "processing",
+        });
         return json({ error: status === 401 ? "Unauthorized webhook." : "Webhook processing failed." }, status);
     }
 });
+
+function safeEventType(value: string) {
+    return /^[A-Z_]{1,64}$/.test(value) ? value : "invalid";
+}
 
 async function verifyRequest(request: Request, rawBody: string) {
     await verifyRevenueCatWebhook({

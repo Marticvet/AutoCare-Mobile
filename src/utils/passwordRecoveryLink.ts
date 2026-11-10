@@ -61,3 +61,31 @@ export function parsePasswordRecoveryLink(url: string): PasswordRecoveryLink {
         message: "This password reset link is incomplete or has expired.",
     };
 }
+
+/**
+ * A recovery code, token hash, or implicit session is single-use. Native iOS
+ * can surface the same launch URL through both getInitialURL() and a Linking
+ * event, so AuthProvider uses this opaque in-memory key to process it once.
+ * It is never logged or persisted.
+ */
+export function passwordRecoveryCallbackKey(recovery: PasswordRecoveryLink) {
+    const fingerprint = (value: string) => {
+        let hash = 2166136261;
+        for (let index = 0; index < value.length; index += 1) {
+            hash ^= value.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36);
+    };
+
+    switch (recovery.kind) {
+        case "session":
+            return `session:${fingerprint(`${recovery.accessToken}:${recovery.refreshToken}`)}`;
+        case "code":
+            return `code:${fingerprint(recovery.code)}`;
+        case "tokenHash":
+            return `tokenHash:${fingerprint(recovery.tokenHash)}`;
+        default:
+            return null;
+    }
+}

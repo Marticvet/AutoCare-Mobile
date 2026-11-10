@@ -9,6 +9,10 @@ import {
     revenueCatDeletionRetryWorkerStatus,
 } from "../_shared/revenuecat-deletion-queue";
 import {
+    isRevenueCatTestEvent,
+    revenueCatEventUserIds,
+} from "../_shared/revenuecat-webhook";
+import {
     RevenueCatDeletionInProgressError,
     processRevenueCatWebhookUsers,
 } from "../_shared/revenuecat-webhook-processing";
@@ -58,6 +62,15 @@ describe("RevenueCat deletion guards", () => {
         await expect(syncRevenueCatCustomer(client as never, userId)).resolves.toEqual({ kind: "deleted" });
         expect(fetcher).not.toHaveBeenCalled();
         expect(billingUpsert).not.toHaveBeenCalled();
+    });
+
+    it("recognizes dashboard TEST events before they can enter customer processing", () => {
+        // RevenueCat's dashboard test uses a UUID-shaped synthetic identity,
+        // so UUID validation alone cannot distinguish it from a real customer.
+        const dashboardTestId = "bab28d4e-4ce7-48f9-a4c4-b7657d41f88f";
+        expect(isRevenueCatTestEvent({ type: "TEST", app_user_id: dashboardTestId })).toBe(true);
+        expect(revenueCatEventUserIds({ type: "TEST", app_user_id: dashboardTestId })).toEqual([dashboardTestId]);
+        expect(isRevenueCatTestEvent({ type: "RENEWAL", app_user_id: userId })).toBe(false);
     });
 
     it("defers a webhook while Auth deletion is pending and consumes only a completed deletion's late event", async () => {

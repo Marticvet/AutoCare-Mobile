@@ -16,6 +16,9 @@ verify_jwt = true
 [functions.send-scheduled-reports]
 verify_jwt = false
 
+[functions.send-garage-invitation]
+verify_jwt = true
+
 [functions.delete-account]
 verify_jwt = true
 

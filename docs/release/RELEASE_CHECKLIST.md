@@ -7,9 +7,9 @@ Use this checklist only after completing the account-dependent steps in the setu
 - [x] `package-lock.json` supports deterministic `npm ci` installation.
 - [x] `npm run release:check` exists and passes in the audited workspace.
 - [x] EAS development profile is an explicit development client.
-- [x] A distinct `testflight` App Store-distribution profile is isolated from preview/production, clears the Test Store key, and enables only the explicitly approved internal social-auth channel.
+- [x] A distinct `testflight` App Store-distribution profile is isolated from preview/production, omits the Test Store key, and enables only the explicitly approved internal social-auth channel. Expo config and the EAS pre-install hook reject any injected Test Store key.
 - [x] TestFlight has no working-purchase fallback: absent a real `appl_…` key, RevenueCat and purchase/restore controls are disabled rather than using Test Store.
-- [x] Preview/production profiles clear `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY`.
+- [x] Preview/production profiles omit `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY` because EAS rejects empty profile values.
 - [x] EAS and local native-release preflight refuse Test Store keys; the test key is omitted from release Expo config.
 - [x] Android resolves compile/target SDK 36.
 - [x] iOS project targets iOS 15.1 and is buildable with Xcode 26.3.

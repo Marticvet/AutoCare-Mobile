@@ -6,6 +6,20 @@ const CHANNEL_ID = "vehicle-reminders";
 export const REMINDER_CATEGORY_ID = "vehicleReminder";
 const identifierFor = (reminderId: string) => `autocare-reminder-${reminderId}`;
 export const DEFAULT_REMINDER_TIME = "09:00";
+let reconciliation: Promise<unknown> = Promise.resolve();
+
+// Serialize form writes and live-query reconciliation against the native queue.
+function serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const next = reconciliation.then(operation, operation);
+    reconciliation = next.catch(() => undefined);
+    return next;
+}
+
+export function reminderTriggerDate(dueDate: string, dueTime?: string | null, before = 0) {
+    const date = new Date(`${dueDate}T${normalizeReminderTime(dueTime)}:00`);
+    date.setMinutes(date.getMinutes() - Math.max(0, before));
+    return date;
+}
 
 export type ReminderSystemLabels = {
     channelName: string;
@@ -86,7 +100,7 @@ export async function requestReminderNotificationPermission(systemLabels: Remind
 }
 
 export async function cancelReminderNotification(reminderId: string) {
-    await Notifications.cancelScheduledNotificationAsync(identifierFor(reminderId));
+    return serialize(() => Notifications.cancelScheduledNotificationAsync(identifierFor(reminderId)));
 }
 
 export async function scheduleReminderNotification({
@@ -112,12 +126,12 @@ export async function scheduleReminderNotification({
     notificationBody?: string | null;
     systemLabels: ReminderSystemLabels;
 }) {
+    return serialize(async () => {
     await ensureAndroidChannel(systemLabels);
     await ensureNotificationCategory(systemLabels);
-    await cancelReminderNotification(reminderId);
     const normalizedTime = normalizeReminderTime(dueTime);
-    const triggerDate = new Date(`${dueDate}T${normalizedTime}:00`);
-    triggerDate.setMinutes(triggerDate.getMinutes() - Math.max(0, notifyBeforeMinutes ?? 0));
+    const triggerDate = reminderTriggerDate(dueDate, normalizedTime, notifyBeforeMinutes ?? 0);
+    await Notifications.cancelScheduledNotificationAsync(identifierFor(reminderId));
     if (Number.isNaN(triggerDate.getTime()) || triggerDate.getTime() <= Date.now()) return null;
 
     const content = getReminderNotificationContent({ title, dueDate, dueTime: normalizedTime, vehicleLabel, dueLabel, notificationTitle, notificationBody });
@@ -127,7 +141,7 @@ export async function scheduleReminderNotification({
         content: {
             ...content,
             sound: "default",
-            data: { kind: "vehicle-reminder", reminderId },
+            data: { kind: "vehicle-reminder", reminderId, signature: JSON.stringify([content, triggerDate.getTime()]) },
             categoryIdentifier: REMINDER_CATEGORY_ID,
         },
         trigger: {
@@ -135,6 +149,7 @@ export async function scheduleReminderNotification({
             date: triggerDate,
             channelId: CHANNEL_ID,
         },
+    });
     });
 }
 
@@ -145,35 +160,49 @@ export async function reconcileReminderNotifications(
     vehicleFallback: string,
     systemLabels: ReminderSystemLabels
 ) {
-    if ((await getReminderNotificationPermission()) !== "granted") return;
+    return serialize(async () => {
+    const granted = (await getReminderNotificationPermission()) === "granted";
+    const scheduled = (await Notifications.getAllScheduledNotificationsAsync())
+        .filter((notification) => notification.content.data?.kind === "vehicle-reminder");
+    const desired = new Set<string>();
+    if (granted) {
     await ensureAndroidChannel(systemLabels);
-
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    await Promise.all(
-        scheduled
-            .filter((notification) => notification.content.data?.kind === "vehicle-reminder")
-            .map((notification) => Notifications.cancelScheduledNotificationAsync(notification.identifier))
-    );
-
+    await ensureNotificationCategory(systemLabels);
     for (const reminder of reminders) {
         if (!reminder.id || !reminder.due_date || reminder.status === "completed") continue;
         const vehicle = vehicles.find((entry) => entry.id === reminder.vehicle_id);
         const vehicleLabel = [vehicle?.vehicle_brand, vehicle?.vehicle_model, vehicle?.vehicle_license_plate]
             .filter(Boolean)
             .join(" · ") || vehicleFallback;
-        await scheduleReminderNotification({
-            reminderId: reminder.id,
+        const date = reminderTriggerDate(reminder.due_date, reminder.due_time, reminder.notify_before_minutes ?? 0);
+        if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) continue;
+        const content = getReminderNotificationContent({
             title: reminder.title || vehicleFallback,
             dueDate: reminder.due_date,
             dueTime: reminder.due_time,
             vehicleLabel,
             dueLabel,
-            notifyBeforeMinutes: reminder.notify_before_minutes,
             notificationTitle: reminder.notification_title,
             notificationBody: reminder.notification_body,
-            systemLabels,
+        });
+        const identifier = identifierFor(reminder.id);
+        desired.add(identifier);
+        const signature = JSON.stringify([content, date.getTime()]);
+        if (scheduled.some((entry) => entry.identifier === identifier && entry.content.data?.signature === signature)) continue;
+        // Replace only changed requests. Unchanged sync snapshots never cancel
+        // a pending notification just before its delivery time.
+        await Notifications.scheduleNotificationAsync({
+            identifier,
+            content: { ...content, sound: "default", categoryIdentifier: REMINDER_CATEGORY_ID,
+                data: { kind: "vehicle-reminder", reminderId: reminder.id, signature } },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL_ID },
         });
     }
+    }
+    for (const entry of scheduled) {
+        if (!desired.has(entry.identifier)) await Notifications.cancelScheduledNotificationAsync(entry.identifier);
+    }
+    });
 }
 
 export async function sendReminderTestNotification(title: string, body: string, systemLabels: ReminderSystemLabels) {

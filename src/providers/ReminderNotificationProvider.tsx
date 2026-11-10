@@ -1,4 +1,5 @@
 import React, { PropsWithChildren, useEffect, useMemo } from "react";
+import { AppState, Alert } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useReminders } from "../data/liveQueries";
 import { usePreferences } from "../i18n/PreferencesProvider";
@@ -19,8 +20,16 @@ export function ReminderNotificationProvider({ children }: PropsWithChildren) {
     }), [t]);
 
     useEffect(() => {
-        if (!dataOwnerId || loading) return;
-        void reconcileReminderNotifications(reminders, vehicles, t("dueDate"), t("vehicle"), systemLabels).catch(() => undefined);
+        if (dataOwnerId && loading) return;
+        const reconcile = () => {
+            void reconcileReminderNotifications(dataOwnerId ? reminders : [], vehicles, t("dueDate"), t("vehicle"), systemLabels)
+                .catch(() => Alert.alert(t("notifications"), t("notificationSchedulingFailed")));
+        };
+        reconcile();
+        const subscription = AppState.addEventListener("change", (state) => {
+            if (state === "active") reconcile();
+        });
+        return () => subscription.remove();
     }, [dataOwnerId, loading, reminders, systemLabels, t, vehicles]);
 
     useEffect(() => {
@@ -32,6 +41,7 @@ export function ReminderNotificationProvider({ children }: PropsWithChildren) {
             if (!active || !dataOwnerId) return;
             const data = response.notification.request.content.data;
             if (data?.kind !== "vehicle-reminder" || typeof data.reminderId !== "string") return;
+            if (!reminders.some((reminder) => reminder.id === data.reminderId)) return;
             if (response.actionIdentifier === "completeReminder") {
                 void completeReminder(data.reminderId, dataOwnerId);
                 return;
@@ -48,7 +58,7 @@ export function ReminderNotificationProvider({ children }: PropsWithChildren) {
             active = false;
             subscription.remove();
         };
-    }, [dataOwnerId]);
+    }, [dataOwnerId, reminders]);
 
     return <>{children}</>;
 }

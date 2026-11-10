@@ -1,0 +1,468 @@
+{
+  "captureDate": "2026-11-09",
+  "account": {
+    "displayName": "Alex Morgan",
+    "email": "autocare-demo@example.invalid"
+  },
+  "vehicles": [
+    {
+      "id": "demo-kia",
+      "brand": "Kia",
+      "model": "Ceed SW",
+      "year": "2023",
+      "fuelType": "diesel",
+      "mileage": 59982,
+      "licensePlate": "DEMO-KIA-23",
+      "vin": "DEMO-KIA-2023-0001"
+    },
+    {
+      "id": "demo-toyota",
+      "brand": "Toyota",
+      "model": "Corolla Touring Sports",
+      "year": "2022",
+      "fuelType": "hybrid",
+      "mileage": 42650,
+      "licensePlate": "DEMO-TOY-22",
+      "vin": "DEMO-TOY-2022-0002"
+    },
+    {
+      "id": "demo-golf",
+      "brand": "Volkswagen",
+      "model": "Golf",
+      "year": "2021",
+      "fuelType": "petrol",
+      "mileage": 76320,
+      "licensePlate": "DEMO-GOLF-21",
+      "vin": "DEMO-GOLF-2021-0003"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "demo-expense-01",
+      "vehicleId": "demo-kia",
+      "category": "fuel",
+      "title": "Fuel",
+      "amount": 72.48,
+      "date": "2026-05-14",
+      "odometer": 58619,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-02",
+      "vehicleId": "demo-toyota",
+      "category": "maintenance",
+      "title": "Oil service",
+      "amount": 189,
+      "date": "2026-05-28",
+      "odometer": 41334,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-03",
+      "vehicleId": "demo-golf",
+      "category": "insurance",
+      "title": "Insurance",
+      "amount": 428.4,
+      "date": "2026-06-11",
+      "odometer": 75051,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-04",
+      "vehicleId": "demo-kia",
+      "category": "repair",
+      "title": "Brake inspection",
+      "amount": 154.9,
+      "date": "2026-06-26",
+      "odometer": 58760,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-05",
+      "vehicleId": "demo-toyota",
+      "category": "tyres",
+      "title": "Tyres",
+      "amount": 639,
+      "date": "2026-07-09",
+      "odometer": 41475,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-06",
+      "vehicleId": "demo-golf",
+      "category": "inspection",
+      "title": "Annual inspection",
+      "amount": 78,
+      "date": "2026-07-24",
+      "odometer": 75192,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-07",
+      "vehicleId": "demo-kia",
+      "category": "cleaning",
+      "title": "Car wash",
+      "amount": 16.5,
+      "date": "2026-08-06",
+      "odometer": 58901,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-08",
+      "vehicleId": "demo-toyota",
+      "category": "other",
+      "title": "Road toll",
+      "amount": 12,
+      "date": "2026-08-21",
+      "odometer": 41616,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-09",
+      "vehicleId": "demo-golf",
+      "category": "fuel",
+      "title": "Fuel",
+      "amount": 68.21,
+      "date": "2026-09-03",
+      "odometer": 75333,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-10",
+      "vehicleId": "demo-kia",
+      "category": "maintenance",
+      "title": "Oil service",
+      "amount": 95,
+      "date": "2026-09-18",
+      "odometer": 59042,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-11",
+      "vehicleId": "demo-toyota",
+      "category": "insurance",
+      "title": "Insurance",
+      "amount": 72.48,
+      "date": "2026-10-02",
+      "odometer": 41757,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-12",
+      "vehicleId": "demo-golf",
+      "category": "repair",
+      "title": "Brake inspection",
+      "amount": 189,
+      "date": "2026-10-17",
+      "odometer": 75474,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-13",
+      "vehicleId": "demo-kia",
+      "category": "tyres",
+      "title": "Tyres",
+      "amount": 428.4,
+      "date": "2026-10-30",
+      "odometer": 59183,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-14",
+      "vehicleId": "demo-toyota",
+      "category": "inspection",
+      "title": "Annual inspection",
+      "amount": 154.9,
+      "date": "2026-11-02",
+      "odometer": 41898,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-15",
+      "vehicleId": "demo-golf",
+      "category": "cleaning",
+      "title": "Car wash",
+      "amount": 639,
+      "date": "2026-11-07",
+      "odometer": 75615,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-16",
+      "vehicleId": "demo-kia",
+      "category": "other",
+      "title": "Road toll",
+      "amount": 78,
+      "date": "2026-05-14",
+      "odometer": 59324,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-17",
+      "vehicleId": "demo-toyota",
+      "category": "fuel",
+      "title": "Fuel",
+      "amount": 16.5,
+      "date": "2026-05-28",
+      "odometer": 42039,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-18",
+      "vehicleId": "demo-golf",
+      "category": "maintenance",
+      "title": "Oil service",
+      "amount": 12,
+      "date": "2026-06-11",
+      "odometer": 75756,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-19",
+      "vehicleId": "demo-kia",
+      "category": "insurance",
+      "title": "Insurance",
+      "amount": 68.21,
+      "date": "2026-06-26",
+      "odometer": 59465,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-20",
+      "vehicleId": "demo-toyota",
+      "category": "repair",
+      "title": "Brake inspection",
+      "amount": 95,
+      "date": "2026-07-09",
+      "odometer": 42180,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-21",
+      "vehicleId": "demo-golf",
+      "category": "tyres",
+      "title": "Tyres",
+      "amount": 72.48,
+      "date": "2026-07-24",
+      "odometer": 75897,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-22",
+      "vehicleId": "demo-kia",
+      "category": "inspection",
+      "title": "Annual inspection",
+      "amount": 189,
+      "date": "2026-08-06",
+      "odometer": 59606,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-23",
+      "vehicleId": "demo-toyota",
+      "category": "cleaning",
+      "title": "Car wash",
+      "amount": 428.4,
+      "date": "2026-08-21",
+      "odometer": 42321,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-24",
+      "vehicleId": "demo-golf",
+      "category": "other",
+      "title": "Road toll",
+      "amount": 154.9,
+      "date": "2026-09-03",
+      "odometer": 76038,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-25",
+      "vehicleId": "demo-kia",
+      "category": "fuel",
+      "title": "Fuel",
+      "amount": 639,
+      "date": "2026-09-18",
+      "odometer": 59747,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-26",
+      "vehicleId": "demo-toyota",
+      "category": "maintenance",
+      "title": "Oil service",
+      "amount": 78,
+      "date": "2026-10-02",
+      "odometer": 42462,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-27",
+      "vehicleId": "demo-golf",
+      "category": "insurance",
+      "title": "Insurance",
+      "amount": 16.5,
+      "date": "2026-10-17",
+      "odometer": 76179,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-28",
+      "vehicleId": "demo-kia",
+      "category": "repair",
+      "title": "Brake inspection",
+      "amount": 12,
+      "date": "2026-10-30",
+      "odometer": 59888,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-29",
+      "vehicleId": "demo-toyota",
+      "category": "tyres",
+      "title": "Tyres",
+      "amount": 68.21,
+      "date": "2026-11-02",
+      "odometer": 42603,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    },
+    {
+      "id": "demo-expense-30",
+      "vehicleId": "demo-golf",
+      "category": "inspection",
+      "title": "Annual inspection",
+      "amount": 95,
+      "date": "2026-11-07",
+      "odometer": 76320,
+      "paymentMethod": "Card",
+      "notes": "Demo capture data — fictional."
+    }
+  ],
+  "reminders": [
+    {
+      "id": "demo-reminder-1",
+      "title": "Oil change",
+      "category": "maintenance",
+      "dueDate": "2026-12-15",
+      "status": "upcoming",
+      "vehicleId": "demo-kia"
+    },
+    {
+      "id": "demo-reminder-2",
+      "title": "Winter tyre check",
+      "category": "tyres",
+      "dueDate": "2026-11-21",
+      "status": "upcoming",
+      "vehicleId": "demo-kia"
+    },
+    {
+      "id": "demo-reminder-3",
+      "title": "Insurance renewal",
+      "category": "insurance",
+      "dueDate": "2026-12-01",
+      "status": "upcoming",
+      "vehicleId": "demo-toyota"
+    },
+    {
+      "id": "demo-reminder-4",
+      "title": "Annual inspection",
+      "category": "inspection",
+      "dueDate": "2027-01-16",
+      "status": "upcoming",
+      "vehicleId": "demo-golf"
+    },
+    {
+      "id": "demo-reminder-5",
+      "title": "Seasonal maintenance",
+      "category": "maintenance",
+      "dueDate": "2026-12-08",
+      "status": "upcoming",
+      "vehicleId": "demo-golf"
+    },
+    {
+      "id": "demo-reminder-6",
+      "title": "Spring tyre check",
+      "category": "tyres",
+      "dueDate": "2026-04-01",
+      "status": "completed",
+      "vehicleId": "demo-toyota"
+    }
+  ],
+  "documents": [
+    {
+      "id": "demo-document-1",
+      "title": "Kia insurance certificate",
+      "category": "insurance",
+      "expirationDate": "2027-05-01",
+      "vehicleId": "demo-kia",
+      "fileName": "demo-1.pdf"
+    },
+    {
+      "id": "demo-document-2",
+      "title": "Toyota inspection record",
+      "category": "inspection",
+      "expirationDate": "2027-06-15",
+      "vehicleId": "demo-toyota",
+      "fileName": "demo-2.pdf"
+    },
+    {
+      "id": "demo-document-3",
+      "title": "Golf service invoice",
+      "category": "receipt",
+      "expirationDate": "2027-04-10",
+      "vehicleId": "demo-golf",
+      "fileName": "demo-3.pdf"
+    }
+  ],
+  "garage": {
+    "name": "Morgan Family Garage",
+    "kind": "family",
+    "members": [
+      {
+        "displayName": "Alex Morgan",
+        "role": "owner",
+        "status": "active"
+      },
+      {
+        "displayName": "Jamie Morgan",
+        "role": "member",
+        "status": "active"
+      },
+      {
+        "displayName": "Taylor Morgan",
+        "role": "member",
+        "status": "active"
+      }
+    ]
+  }
+}

@@ -18,7 +18,8 @@ import {
     EMPTY_PROFILE_NAME_FILTER,
     appleFirstLoginProfileNamePatch,
 } from "../utils/appleProfile";
-import { parsePasswordRecoveryLink } from "../utils/passwordRecoveryLink";
+import { parsePasswordRecoveryLink, passwordRecoveryCallbackKey } from "../utils/passwordRecoveryLink";
+import { logRecoveryDiagnostic, passwordRecoveryErrorCategory } from "../utils/authRecoveryDiagnostics";
 import {
     SOCIAL_AUTH_REDIRECT_URL,
     SocialProvider,
@@ -90,6 +91,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
     const consumedAuthCodes = useRef(new Set<string>());
     const processingAuthCodes = useRef(new Set<string>());
+    const consumedRecoveryCallbacks = useRef(new Set<string>());
+    const processingRecoveryCallbacks = useRef(new Set<string>());
     const userId = session?.user.id ?? "";
 
     const clearUnauthenticatedLocalState = useCallback(async () => {
@@ -105,20 +108,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, [powersync, supabaseConnector]);
 
     const consumePasswordRecoveryUrl = useCallback(
-        async (url: string) => {
+        async (url: string, source: "initial_url" | "link_event") => {
             const recovery = parsePasswordRecoveryLink(url);
             if (recovery.kind === "ignore") return false;
+
+            const callbackKey = passwordRecoveryCallbackKey(recovery);
+            logRecoveryDiagnostic("callback_received", {
+                source,
+                kind: recovery.kind,
+                hasCallbackCredential: Boolean(callbackKey),
+            });
+            if (callbackKey && (
+                consumedRecoveryCallbacks.current.has(callbackKey) ||
+                processingRecoveryCallbacks.current.has(callbackKey)
+            )) {
+                logRecoveryDiagnostic("callback_ignored_duplicate", { source, kind: recovery.kind });
+                return true;
+            }
 
             setIsPasswordRecovery(true);
             setPasswordRecoveryError(null);
 
             if (recovery.kind === "error") {
+                logRecoveryDiagnostic("callback_rejected_by_auth_server", { source });
                 setPasswordRecoveryError(recovery.message);
                 return true;
             }
 
+            if (!callbackKey) {
+                setPasswordRecoveryError("password_recovery_callback_missing");
+                return true;
+            }
+
+            processingRecoveryCallbacks.current.add(callbackKey);
             setPasswordRecoveryLoading(true);
             try {
+                logRecoveryDiagnostic("callback_exchange_started", { source, kind: recovery.kind });
                 const result = recovery.kind === "session"
                     ? await supabaseConnector.client.auth.setSession({
                         access_token: recovery.accessToken,
@@ -133,12 +158,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
                 if (result.error) throw result.error;
                 if (!result.data.session) throw new Error("password_recovery_session_missing");
+                consumedRecoveryCallbacks.current.add(callbackKey);
+                logRecoveryDiagnostic("callback_exchange_succeeded", { source, kind: recovery.kind });
                 setSession(result.data.session);
                 return true;
             } catch (error) {
+                consumedRecoveryCallbacks.current.add(callbackKey);
+                logRecoveryDiagnostic("callback_exchange_failed", {
+                    source,
+                    kind: recovery.kind,
+                    category: passwordRecoveryErrorCategory(error),
+                });
                 setPasswordRecoveryError((error as Error).message);
                 return true;
             } finally {
+                processingRecoveryCallbacks.current.delete(callbackKey);
                 setPasswordRecoveryLoading(false);
             }
         },
@@ -202,7 +236,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     useEffect(() => {
         const subscription = Linking.addEventListener("url", ({ url }) => {
-            void consumePasswordRecoveryUrl(url).then((handled) => {
+            void consumePasswordRecoveryUrl(url, "link_event").then((handled) => {
                 if (!handled) void consumeAuthCallbackUrl(url);
             });
         });
@@ -217,11 +251,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 await system.initDatabase();
                 const initialUrl = await Linking.getInitialURL();
                 if (initialUrl) {
-                    const handled = await consumePasswordRecoveryUrl(initialUrl);
+                    const handled = await consumePasswordRecoveryUrl(initialUrl, "initial_url");
                     if (!handled) await consumeAuthCallbackUrl(initialUrl);
                 }
                 const { data, error } = await supabaseConnector.client.auth.getSession();
                 if (error) throw error;
+                logRecoveryDiagnostic("initial_session_loaded", { hasSession: Boolean(data.session) });
                 if (mounted) setSession(data.session);
                 if (data.session) void system.connect().catch(() => undefined);
             } catch (error) {
@@ -233,6 +268,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         const { data: listener } = supabaseConnector.client.auth.onAuthStateChange((event, nextSession) => {
             if (!mounted) return;
+            logRecoveryDiagnostic("auth_state_changed", { event, hasSession: Boolean(nextSession) });
             if (event === "PASSWORD_RECOVERY") {
                 setIsPasswordRecovery(true);
                 setPasswordRecoveryError(null);
@@ -456,6 +492,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 { redirectTo: "autocare://reset-password" }
             );
             if (error) throw error;
+            logRecoveryDiagnostic("recovery_email_requested");
         },
         [supabaseConnector]
     );
@@ -465,9 +502,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
             setPasswordRecoveryError(null);
             const { error } = await supabaseConnector.client.auth.updateUser({ password: newPassword });
             if (error) {
+                logRecoveryDiagnostic("password_update_failed", { category: passwordRecoveryErrorCategory(error) });
                 setPasswordRecoveryError(error.message);
                 throw error;
             }
+            logRecoveryDiagnostic("password_update_succeeded");
             setIsPasswordRecovery(false);
             setPasswordRecoveryLoading(false);
         },

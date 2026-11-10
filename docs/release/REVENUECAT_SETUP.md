@@ -17,6 +17,7 @@ Do not rename these identifiers without a data migration and a product decision.
 | Build | Key allowed | Guard |
 | --- | --- | --- |
 | Development client | RevenueCat Test Store `test_…` key | `__DEV__` path; EAS development profile is `developmentClient: true` |
+| Local Apple Sandbox build | Apple App Store `appl_…` key | Explicit `apple-sandbox` channel; rejects a Test Store key and is never a distribution artifact |
 | Local iOS Release simulator | no RevenueCat key | `local-release` strips Test Store/platform keys, disables billing mirror calls, and locks premium access; never distribute |
 | Preview | matching platform `appl_…` / `goog_…` key | Test key is cleared and preflight rejects it |
 | Production | matching platform `appl_…` / `goog_…` key | Test key is cleared and preflight rejects it |
@@ -27,6 +28,14 @@ Set non-secret public SDK keys in the matching EAS environment. The pre-install 
 EXPO_PUBLIC_APP_ENV=production EAS_BUILD_PLATFORM=ios npm run release:validate:billing
 EXPO_PUBLIC_APP_ENV=production EAS_BUILD_PLATFORM=android npm run release:validate:billing
 ```
+
+For a local development-signed Apple Sandbox build, export the `appl_…` public SDK key only in the invoking shell (or inject it through the approved EAS environment), then run:
+
+```bash
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY='appl_…' npm run ios:apple-sandbox
+```
+
+This command clears the Test Store variable and fails if an `appl_…` key is not supplied. It does not create, upload, or modify a TestFlight build.
 
 The command must fail until the corresponding real public key is present. Never put `sk_…`, store shared secrets, or service-role credentials in a client environment variable.
 
@@ -49,6 +58,12 @@ The Paywall identifies Family packages by the word `family` in the package/produ
 
 RevenueCat documents that Test Store works with the installed RN SDK generation, but Test Store keys must never enter a release build: <https://www.revenuecat.com/docs/getting-started/configuring-sdk>.
 
+### Apple Sandbox simulator observation — 2026-11-10
+
+The EAS `preview` environment supplied an `appl_…` Apple App Store public SDK key to a local `apple-sandbox` Debug build, with no Test Store key. The app configured RevenueCat but `default` could not load any products: the SDK reported that none of the RevenueCat products could be fetched from App Store Connect or from a StoreKit configuration file. This repository has no `.storekit` file configured for the simulator.
+
+Do not treat the existing Test Store prices or screenshots as Apple StoreKit evidence. For real App Store Connect metadata, prices, transactions, restores, and server notifications, use a dedicated physical iPhone with a Sandbox Apple Account and a development-signed Apple Sandbox build (or a separately authorized TestFlight test). Apple’s sandbox guidance is: <https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox>.
+
 ## Supabase webhook deployment and repair
 
 The webhook source is `supabase/functions/revenuecat-webhook/index.ts`. Its canonical URL is:
@@ -64,6 +79,8 @@ It accepts **POST only**. It has `verify_jwt = false` in `supabase/config.toml` 
 ### Activation status — 2026-11-05
 
 Only `revenuecat-webhook` was deployed with `--no-verify-jwt`; `sync-entitlements` was left unchanged. One RevenueCat webhook named `AutoCare Hub Supabase Test Store` exists at the canonical URL and is scoped to **Sandbox only**, **Test Store (Test Store)**, and all event types. An unauthenticated HTTP POST returns 401 as required. Following owner-coordinated Authorization replacement and raw V1 Secret API-key correction, genuine Test Store Renewal and Expiration retries returned HTTP 200. Their existing ledger rows have non-null `processed_at` only after authoritative subscriber refresh; duplicate deliveries retain a single event row. `sync-entitlements` also returned HTTP 200 for the expired Family Monthly customer and downgraded its garage to one seat. The generic dashboard test remains intentionally unprocessable because it uses a generated non-customer UUID.
+
+To add Apple Sandbox support without disrupting Test Store, create a **separate** RevenueCat webhook for the Apple App Store app’s Sandbox events, pointed at the same canonical endpoint and using the already configured Authorization header. Keep the Test Store-only webhook unchanged. The handler identifies the Supabase UUID App User ID, deduplicates event IDs, and refreshes the subscriber from RevenueCat; no mobile or Edge Function code change is required. Do not enable production Apple events until the owner explicitly authorizes that stream.
 
 ### Required Supabase secrets
 

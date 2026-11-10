@@ -19,10 +19,18 @@ expect(/^\d+$/.test(String(app.ios?.buildNumber || "")), "iOS buildNumber must b
 expect(eas.build?.development?.developmentClient === true, "development must be an explicit development client profile.");
 expect(eas.build?.testflight?.distribution === "store", "testflight must use App Store distribution.");
 expect(eas.build?.testflight?.env?.EXPO_PUBLIC_APP_ENV === "testflight", "testflight must identify itself separately from preview and production.");
-expect(eas.build?.testflight?.env?.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY === "", "testflight must clear the Test Store key.");
+const distributionProfiles = ["testflight", "preview", "production"];
+for (const profile of distributionProfiles) {
+    const env = eas.build?.[profile]?.env ?? {};
+    // EAS CLI rejects empty strings in eas.json. Absence is the only valid
+    // profile-level value; app.config.js and the EAS pre-install hook reject a
+    // key injected by .env, an EAS environment, or account-wide variables.
+    expect(
+        !Object.hasOwn(env, "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY"),
+        `${profile} must omit the Test Store key (EAS rejects empty values).`
+    );
+}
 expect(eas.build?.testflight?.env?.EXPO_PUBLIC_ENABLE_SOCIAL_AUTH === "true", "testflight must explicitly enable verified social authentication.");
-expect(eas.build?.preview?.env?.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY === "", "preview must clear the Test Store key.");
-expect(eas.build?.production?.env?.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY === "", "production must clear the Test Store key.");
 expect(eas.build?.preview?.env?.EXPO_PUBLIC_APP_ENV === "preview", "preview must identify itself as preview.");
 expect(eas.build?.production?.env?.EXPO_PUBLIC_APP_ENV === "production", "production must identify itself as production.");
 

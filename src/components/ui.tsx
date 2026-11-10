@@ -196,7 +196,13 @@ export function Button({
                             size={19}
                         />
                     ) : null}
-                    <Text style={[styles.buttonText, styles[`buttonText_${variant}`]]}>{label}</Text>
+                    <Text
+                        style={[styles.buttonText, styles[`buttonText_${variant}`]]}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                    >
+                        {label}
+                    </Text>
                 </>
             )}
         </Pressable>
@@ -992,7 +998,7 @@ const styles = StyleSheet.create({
     button_ghost: { backgroundColor: "transparent" },
     buttonDisabled: { opacity: 0.45 },
     buttonPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
-    buttonText: { ...typography.bodyStrong, color: colors.white },
+    buttonText: { ...typography.bodyStrong, color: colors.white, flexShrink: 1, textAlign: "center" },
     buttonText_primary: { color: colors.white },
     buttonText_secondary: { color: colors.primary },
     buttonText_danger: { color: colors.white },
@@ -1003,7 +1009,7 @@ const styles = StyleSheet.create({
     inputMultiline: { minHeight: 108, paddingTop: spacing.md, textAlignVertical: "top" },
     textInputShell: { minHeight: 50, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surface, paddingLeft: spacing.md, paddingRight: spacing.sm, flexDirection: "row", alignItems: "center" },
     textInputShellMultiline: { minHeight: 108, alignItems: "flex-start" },
-    textInputControl: { minHeight: 48, flex: 1, paddingVertical: 0, paddingRight: spacing.xs, ...typography.body, color: colors.ink },
+    textInputControl: { minHeight: 48, flex: 1, minWidth: 0, paddingVertical: 0, paddingRight: spacing.xs, ...typography.body, color: colors.ink },
     textInputControlMultiline: { minHeight: 106, paddingTop: spacing.md, paddingBottom: spacing.md, textAlignVertical: "top" },
     clearInputButton: { width: 32, height: 48, alignItems: "center", justifyContent: "center" },
     inputError: { borderColor: colors.danger },

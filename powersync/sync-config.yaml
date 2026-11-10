@@ -24,9 +24,19 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
+      # Pending invitations need the garage name for the in-app inbox, but
+      # they must not expose the garage's vehicles or other member records.
+      - |
+        SELECT * FROM garages
+        WHERE id IN (
+          SELECT membership.garage_id
+          FROM garage_memberships membership
+          WHERE membership.user_id = auth.user_id()
+            AND membership.status = 'pending'
+        )
       - |
         SELECT * FROM garage_memberships
         WHERE garage_id IN (
@@ -44,10 +54,14 @@ streams:
                  AND membership.status = 'active'
                  AND shared_garage.status = 'active'
                  AND shared_garage.kind = 'family'
-                 AND billing.status = 'active'
+                 AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                  AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
              )
         )
+      - |
+        SELECT * FROM garage_memberships
+        WHERE user_id = auth.user_id()
+          AND status = 'pending'
       - |
         SELECT * FROM fleet_billing_accounts
         WHERE garage_id IN (
@@ -69,7 +83,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -86,7 +100,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -103,7 +117,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -120,7 +134,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -137,7 +151,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -154,7 +168,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -171,7 +185,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -188,7 +202,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -205,7 +219,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -222,7 +236,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -239,7 +253,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -256,7 +270,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -273,7 +287,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -290,7 +304,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -307,7 +321,7 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )
       - |
@@ -324,6 +338,6 @@ streams:
                AND membership.status = 'active'
                AND shared_garage.status = 'active'
                AND shared_garage.kind = 'family'
-               AND billing.status = 'active'
+               AND billing.status IN ('active', 'cancelled', 'grace_period', 'billing_issue')
                AND (billing.plan = 'family_monthly' OR billing.plan = 'family_yearly')
            )

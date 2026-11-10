@@ -8,10 +8,37 @@ import {
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-url-polyfill/auto';
+import { logRecoveryDiagnostic } from "../utils/authRecoveryDiagnostics";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
 const powersyncUrl = process.env.EXPO_PUBLIC_POWERSYNC_URL as string;
+
+const isPkceStorageKey = (key: string) => key.includes("-code-verifier");
+
+// Supabase Auth owns this storage. This wrapper only records the lifecycle of
+// PKCE verifier entries in development builds; it never exposes their values.
+const authStorage = {
+  getItem: async (key: string) => {
+    const value = await AsyncStorage.getItem(key);
+    if (isPkceStorageKey(key)) {
+      logRecoveryDiagnostic("pkce_verifier_read", { present: Boolean(value) });
+    }
+    return value;
+  },
+  setItem: async (key: string, value: string) => {
+    if (isPkceStorageKey(key)) {
+      logRecoveryDiagnostic("pkce_verifier_written");
+    }
+    await AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string) => {
+    if (isPkceStorageKey(key)) {
+      logRecoveryDiagnostic("pkce_verifier_removed");
+    }
+    await AsyncStorage.removeItem(key);
+  },
+};
 
 type SupabaseUploadError = Error & {
   code?: string;
@@ -49,7 +76,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     assertConfiguration();
     this.client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        storage: AsyncStorage,
+        storage: authStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,

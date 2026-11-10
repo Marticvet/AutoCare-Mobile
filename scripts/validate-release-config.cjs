@@ -12,27 +12,28 @@ const fail = (message) => {
     process.exitCode = 1;
 };
 
-const isReleaseEnvironment = environment === "testflight" || environment === "preview" || environment === "production";
-const requiresStoreBillingKey = environment === "preview" || environment === "production";
-if (!new Set(["development", "local-release", "testflight", "preview", "production"]).has(environment)) {
-    fail("EXPO_PUBLIC_APP_ENV must be development, local-release, testflight, preview, or production.");
+const isReleaseEnvironment = environment === "apple-sandbox" || environment === "testflight" || environment === "preview" || environment === "production";
+const requiresStoreBillingKey = environment === "apple-sandbox" || environment === "preview" || environment === "production";
+if (!new Set(["development", "local-release", "apple-sandbox", "testflight", "preview", "production"]).has(environment)) {
+    fail("EXPO_PUBLIC_APP_ENV must be development, local-release, apple-sandbox, testflight, preview, or production.");
 }
 
 if (isReleaseEnvironment && testStoreKey) {
-    fail("EXPO_PUBLIC_REVENUECAT_TEST_API_KEY must be empty for TestFlight, preview, and production builds.");
+    fail("EXPO_PUBLIC_REVENUECAT_TEST_API_KEY must be empty for Apple Sandbox, TestFlight, preview, and production builds.");
 }
 
-if (requiresStoreBillingKey && platform) {
-    const name = platform === "ios"
+if (requiresStoreBillingKey && (platform || environment === "apple-sandbox")) {
+    const resolvedPlatform = environment === "apple-sandbox" ? "ios" : platform;
+    const name = resolvedPlatform === "ios"
         ? "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY"
-        : platform === "android"
+        : resolvedPlatform === "android"
             ? "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY"
             : "";
     const key = name ? (process.env[name] || "").trim() : "";
-    const expectedPrefix = platform === "ios" ? "appl_" : "goog_";
+    const expectedPrefix = resolvedPlatform === "ios" ? "appl_" : "goog_";
 
-    if (!name) fail(`Unsupported EAS_BUILD_PLATFORM: ${platform}.`);
-    else if (!key) fail(`${name} is required for a ${environment} ${platform} artifact.`);
+    if (!name) fail(`Unsupported EAS_BUILD_PLATFORM: ${resolvedPlatform}.`);
+    else if (!key) fail(`${name} is required for a ${environment} ${resolvedPlatform} artifact.`);
     else if (key.startsWith("test_")) fail(`${name} must be the platform public SDK key, never a Test Store key.`);
     else if (!key.startsWith(expectedPrefix)) fail(`${name} must start with ${expectedPrefix}.`);
 }

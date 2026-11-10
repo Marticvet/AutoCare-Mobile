@@ -11,15 +11,23 @@ module.exports = ({ config }) => {
         ? "local-release"
         : configuredEnvironment || "development";
     const isLocalReleaseEnvironment = appEnvironment === "local-release";
+    // Apple Sandbox uses the real App Store SDK key against Apple's sandbox
+    // catalog. It is intentionally separate from TestFlight distribution and
+    // from the RevenueCat Test Store development channel.
+    const isAppleSandboxEnvironment = appEnvironment === "apple-sandbox";
     const isDistributionEnvironment = appEnvironment === "testflight"
         || appEnvironment === "preview"
         || appEnvironment === "production";
+    const usesStoreBilling = isAppleSandboxEnvironment || isDistributionEnvironment;
     const revenueCatTestApiKey = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY?.trim() ?? "";
-    if (isDistributionEnvironment && revenueCatTestApiKey) {
-        throw new Error("EXPO_PUBLIC_REVENUECAT_TEST_API_KEY must be empty for TestFlight, preview, and production builds.");
+    if (usesStoreBilling && revenueCatTestApiKey) {
+        throw new Error("EXPO_PUBLIC_REVENUECAT_TEST_API_KEY must be empty for Apple Sandbox, TestFlight, preview, and production builds.");
     }
     const revenueCatIosApiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.trim() ?? "";
     const revenueCatAndroidApiKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY?.trim() ?? "";
+    if (isAppleSandboxEnvironment && !revenueCatIosApiKey.startsWith("appl_")) {
+        throw new Error("EXPO_PUBLIC_REVENUECAT_IOS_API_KEY must be the Apple App Store appl_ public SDK key for apple-sandbox builds.");
+    }
     if (
         isDistributionEnvironment
         && (revenueCatIosApiKey.startsWith("test_") || revenueCatAndroidApiKey.startsWith("test_"))
@@ -45,6 +53,7 @@ module.exports = ({ config }) => {
     // it never writes a key literal into tracked Swift or plist files.
     const includeNativeMapsKey = Boolean(process.env.EAS_BUILD_PLATFORM)
         || appEnvironment === "development"
+        || isAppleSandboxEnvironment
         || isLocalReleaseEnvironment
         || process.env.INCLUDE_NATIVE_MAPS_KEY === "true";
     // Provider credentials and release approval are independent. Social auth is

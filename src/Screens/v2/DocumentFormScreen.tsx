@@ -14,6 +14,7 @@ import { useGarage } from "../../providers/GarageProvider";
 import { captureDocument, deleteRemotePath, deleteStoredDocument, pickDocument, syncPendingDocuments } from "../../services/documentStorage";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { isIsoDate } from "../../utils/tracking";
+import { DOCUMENT_TITLE_MAX_LENGTH, documentTitleFromFileName } from "../../utils/documentTitle";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DocumentForm">;
@@ -90,7 +91,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
                 fileSize: file.fileSize,
                 storagePath: `${dataOwnerId}/${current.vehicleId}/${documentId}-${file.fileName}`,
                 remoteUrl: "",
-                title: current.title || file.fileName.replace(/\.[^.]+$/, ""),
+                title: current.title || documentTitleFromFileName(file.fileName),
             }));
         } catch (error) {
             Alert.alert(t("chooseFile"), (error as Error).message);
@@ -109,7 +110,7 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
                 fileSize: file.fileSize,
                 storagePath: `${dataOwnerId}/${current.vehicleId}/${documentId}-${file.fileName}`,
                 remoteUrl: "",
-                title: current.title || file.fileName.replace(/\.[^.]+$/, ""),
+                title: current.title || documentTitleFromFileName(file.fileName),
             }));
         } catch (error) {
             Alert.alert(t("scanDocument"), (error as Error).message);
@@ -161,7 +162,14 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
             <SectionHeader title={existingId ? t("editDocument") : t("addDocument")} />
             <Card style={styles.form}>
                 <VehicleSelectField vehicles={vehicles} value={draft.vehicleId} onChange={(value) => update("vehicleId", value)} />
-                <FormField label={t("documentTitle")} value={draft.title} onChangeText={(value) => update("title", value)} required />
+                <FormField
+                    label={t("documentTitle")}
+                    value={draft.title}
+                    onChangeText={(value) => update("title", value)}
+                    maxLength={DOCUMENT_TITLE_MAX_LENGTH}
+                    numberOfLines={1}
+                    required
+                />
                 <Text style={styles.label}>{t("documentType")}</Text>
                 <ChoiceChips
                     value={draft.category}
@@ -178,7 +186,17 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
                 <DateField label={t("expirationDate")} value={draft.expirationDate} onChange={(value) => update("expirationDate", value)} hint={t("optional")} />
                 <FormField label={t("notes")} value={draft.notes} onChangeText={(value) => update("notes", value)} multiline />
             </Card>
-            <Button label={draft.fileName ? `${t("replaceFile")}: ${draft.fileName}` : t("chooseFile")} icon="attach-outline" variant="secondary" onPress={choose} />
+            {draft.fileName ? (
+                <Text
+                    style={styles.fileName}
+                    numberOfLines={2}
+                    ellipsizeMode="middle"
+                    accessibilityLabel={draft.fileName}
+                >
+                    {draft.fileName}
+                </Text>
+            ) : null}
+            <Button label={draft.fileName ? t("replaceFile") : t("chooseFile")} icon="attach-outline" variant="secondary" onPress={choose} />
             <Button label={t("scanDocument")} icon="camera-outline" variant="secondary" onPress={scan} />
             <Button label={t("save")} icon="checkmark" onPress={submit} loading={busy} />
             {existingId ? <Button label={t("delete")} icon="trash-outline" variant="danger" onPress={confirmDelete} /> : null}
@@ -189,4 +207,5 @@ export default function DocumentFormScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
     form: { gap: spacing.lg },
     label: { ...typography.label, color: colors.ink, marginBottom: -spacing.sm },
+    fileName: { ...typography.caption, color: colors.inkMuted, paddingHorizontal: spacing.xs },
 });

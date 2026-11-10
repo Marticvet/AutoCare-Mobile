@@ -20,6 +20,7 @@
     "release:doctor": "npx --yes expo-doctor",
     "release:check": "npm run release:config && npm run typecheck && npm test -- --runInBand --watchman=false && npm run lint",
     "ios:release:simulator": "EXPO_PUBLIC_APP_ENV=local-release npx expo run:ios --configuration Release",
+    "ios:apple-sandbox": "EXPO_PUBLIC_APP_ENV=apple-sandbox EXPO_PUBLIC_REVENUECAT_TEST_API_KEY= npx expo run:ios --device",
     "eas-build-pre-install": "node ./scripts/validate-release-config.cjs"
   },
   "jest": {

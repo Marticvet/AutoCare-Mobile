@@ -77,6 +77,29 @@ if (!developmentExtra.googleMapsNative?.ios || !developmentExtra.googleMapsNativ
     fail("development must embed the iOS Google Maps key in Expo config for the native initializer.");
 }
 
+const appleSandbox = resolveConfig({
+    CONFIGURATION: "Debug",
+    EXPO_PUBLIC_APP_ENV: "apple-sandbox",
+    EXPO_PUBLIC_REVENUECAT_TEST_API_KEY: "",
+    EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: "appl_apple_sandbox_public_key",
+});
+if (appleSandbox.status !== 0) fail(appleSandbox.stderr.trim() || "Apple Sandbox config did not resolve.");
+const appleSandboxExtra = JSON.parse(appleSandbox.stdout);
+if (appleSandboxExtra.release?.environment !== "apple-sandbox"
+    || appleSandboxExtra.revenueCat?.testStoreApiKey
+    || appleSandboxExtra.revenueCat?.iosApiKey !== "appl_apple_sandbox_public_key") {
+    fail("Apple Sandbox must use only the Apple App Store public SDK key.");
+}
+
+const leakedTestStoreAppleSandbox = resolveConfig({
+    EXPO_PUBLIC_APP_ENV: "apple-sandbox",
+    EXPO_PUBLIC_REVENUECAT_TEST_API_KEY: "test_must_be_rejected",
+    EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: "appl_apple_sandbox_public_key",
+});
+if (leakedTestStoreAppleSandbox.status === 0 || !leakedTestStoreAppleSandbox.stderr.includes("must be empty")) {
+    fail("Apple Sandbox must reject a Test Store key.");
+}
+
 const previewSocialAuth = resolveConfig({
     EXPO_PUBLIC_APP_ENV: "preview",
     EXPO_PUBLIC_ENABLE_SOCIAL_AUTH: "true",
@@ -123,6 +146,28 @@ const testflightValidation = spawnSync(process.execPath, [path.resolve(__dirname
 });
 if (testflightValidation.status !== 0) {
     fail(testflightValidation.stderr.trim() || "TestFlight release validation failed.");
+}
+
+for (const distributionEnvironment of ["testflight", "preview", "production"]) {
+    const leakedTestStoreConfig = resolveConfig({
+        EXPO_PUBLIC_APP_ENV: distributionEnvironment,
+        EXPO_PUBLIC_REVENUECAT_TEST_API_KEY: "test_must_be_rejected",
+    });
+    if (leakedTestStoreConfig.status === 0 || !leakedTestStoreConfig.stderr.includes("must be empty")) {
+        fail(`${distributionEnvironment} must reject a Test Store key injected by the build environment.`);
+    }
+
+    const leakedTestStorePreinstall = spawnSync(process.execPath, [path.resolve(__dirname, "validate-release-config.cjs")], {
+        env: {
+            ...process.env,
+            EXPO_PUBLIC_APP_ENV: distributionEnvironment,
+            EXPO_PUBLIC_REVENUECAT_TEST_API_KEY: "test_must_be_rejected",
+        },
+        encoding: "utf8",
+    });
+    if (leakedTestStorePreinstall.status === 0 || !leakedTestStorePreinstall.stderr.includes("must be empty")) {
+        fail(`${distributionEnvironment} EAS pre-install validation must reject a Test Store key.`);
+    }
 }
 
 const invalidProduction = resolveConfig({
