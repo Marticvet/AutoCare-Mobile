@@ -1,6 +1,30 @@
 # v1.0 pre-release test report
 
-Audit date: 2026-11-04. Last updated: 2026-11-09. Results reflect commands actually run in this workspace.
+Audit date: 2026-11-04. Last updated: 2026-11-14. Results reflect commands actually run in this workspace.
+
+## Release-hardening acceptance — 2026-11-14
+
+This section records the final local verification of the accumulated Maps, fuel, onboarding, quick-add, subscription, analytics, appearance, responsive-layout, and localization changes. It supplements the historical evidence below and does not replace the still-open physical-device and real-store acceptance cases.
+
+| Check | Result | Verified outcome |
+| --- | --- | --- |
+| Final source gate | Passed | `npm run release:check` passed release configuration validation, TypeScript, 34 Jest suites / 150 tests, and lint with zero errors. The 101 lint warnings are pre-existing inactive/legacy-code findings. |
+| Billing configuration guard | Passed | `npm run release:validate:billing` accepted the development configuration. Existing preview/production safeguards still reject RevenueCat Test Store credentials. |
+| iOS Release simulator | Passed | The existing Release application compiled, installed, and launched on the iPhone 17 Pro Max simulator. Its bundle contains neither the local RevenueCat Test Store credential nor Google Maps artifacts. This is not a signed archive or TestFlight result. |
+| Android native compile | Passed | `:app:assembleDebug` completed successfully with compile/target SDK 36 and min SDK 24. The merged manifest contains the Google Maps metadata with a resolved build-time resource, and the key value was not printed or committed. Runtime map loading and Google Cloud restriction checks remain device/console acceptance. |
+| Android appearance resources | Passed | The native theme uses AppCompat DayNight. A dark native status-bar override was added and included in a successful rebuild, preventing a white status bar beneath light system icons before React Native paints the screen. |
+| iPhone screenshot set | Passed | Six authentic production-UI finals were generated at 1320 x 2868: Dashboard, Vehicles, Expenses, Vehicle Details, Reminders, and Quick Add. Every final PNG is opaque. |
+| iPad screenshot set | Passed | Six authentic production-UI finals were generated at 2064 x 2752: Dashboard, Vehicles, Expenses, Add Fuel, Reminders, and Quick Add. Every final PNG is opaque. |
+| Screenshot privacy/quality review | Passed for the English set | The 12 finals and two contact sheets were visually inspected. They show only the authorized fictional account data, contain no email address, personal registration/VIN, developer overlay, broken layout, or fabricated entitlement. The originals in each `raw/` directory remain unchanged. |
+| Premium screenshot scope | Correctly omitted | Reports, Documents, and Shared Garage were not added to this final set because this local Release configuration intentionally disables billing and no premium/Family entitlement was fabricated. |
+| Localized screenshot scope | Not captured | The application and marketing-copy pipeline support the 11 application locales, but this acceptance set contains English application UI only. Any localized App Store listing that uses localized screenshots needs a separately reviewed native-language capture set. |
+
+### Physical-device and service-dependent acceptance still required
+
+- Test the next signed iOS candidate on physical hardware for MapKit permission states, location denial/reduced accuracy, notifications, authentication recovery/social sign-in, accessibility text sizes, and background/relaunch behavior.
+- Run Android on a representative physical device or emulator and confirm the restricted production Maps key loads tiles, appearance follows light/dark/system, long localized strings remain usable, and the required native modules initialize correctly.
+- Run real StoreKit/RevenueCat sandbox purchase, restore, expiration/refund, entitlement, and webhook acceptance on the signed candidate. No such result is inferred from the local Release simulator or Test Store evidence.
+- Complete the previously documented offline replay, two-device conflict, account-switch isolation, and active/expired/renewed Shared Garage member cases.
 
 ## RevenueCat account-deletion acceptance — 2026-11-06
 

@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { NavigationContainer, DarkTheme, DefaultTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { PropsWithChildren, useEffect, useRef, useState } from "react";
@@ -45,54 +45,74 @@ import TripFormScreen from "./src/Screens/v2/TripFormScreen";
 import ScheduledReportsScreen from "./src/Screens/v2/ScheduledReportsScreen";
 import ChecklistsScreen from "./src/Screens/v2/ChecklistsScreen";
 import ChecklistRunScreen from "./src/Screens/v2/ChecklistRunScreen";
+import OnboardingScreen from "./src/Screens/OnboardingScreen";
+import { completeOnboarding, hasCompletedOnboarding } from "./src/services/onboarding";
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
-
-const navigationTheme = {
-    ...DefaultTheme,
-    colors: {
-        ...DefaultTheme.colors,
-        primary: colors.primary,
-        background: colors.canvas,
-        card: colors.surface,
-        text: colors.ink,
-        border: colors.border,
-        notification: colors.danger,
-    },
-};
 
 export default function App() {
     return (
         <SafeAreaProvider>
             <PowerSyncProvider>
                 <PreferencesProvider>
-                    <AuthProvider>
-                        <ConnectivityProvider>
-                            <GarageProvider>
-                                <SubscriptionProvider>
-                                    <ReminderNotificationProvider>
-                                        <DocumentSyncProvider>
-                                            <StatusBar style="dark" />
-                                            <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-                                                <AppNavigator />
-                                            </NavigationContainer>
-                                        </DocumentSyncProvider>
-                                    </ReminderNotificationProvider>
-                                </SubscriptionProvider>
-                            </GarageProvider>
-                        </ConnectivityProvider>
-                    </AuthProvider>
+                    <ApplicationShell />
                 </PreferencesProvider>
             </PowerSyncProvider>
         </SafeAreaProvider>
     );
 }
 
+function ApplicationShell() {
+    const { resolvedAppearance } = usePreferences();
+    const baseTheme = resolvedAppearance === "dark" ? DarkTheme : DefaultTheme;
+    const navigationTheme = {
+        ...baseTheme,
+        dark: resolvedAppearance === "dark",
+        colors: {
+            ...baseTheme.colors,
+            primary: colors.primary,
+            background: colors.canvas,
+            card: colors.surface,
+            text: colors.ink,
+            border: colors.border,
+            notification: colors.danger,
+        },
+    };
+    return (
+        <AuthProvider>
+            <ConnectivityProvider>
+                <GarageProvider>
+                    <SubscriptionProvider>
+                        <ReminderNotificationProvider>
+                            <DocumentSyncProvider>
+                                <StatusBar style={resolvedAppearance === "dark" ? "light" : "dark"} />
+                                <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+                                    <AppNavigator />
+                                </NavigationContainer>
+                            </DocumentSyncProvider>
+                        </ReminderNotificationProvider>
+                    </SubscriptionProvider>
+                </GarageProvider>
+            </ConnectivityProvider>
+        </AuthProvider>
+    );
+}
+
 function AppNavigator() {
     const { session, loading, isPasswordRecovery } = useAuth();
     const { ready, t } = usePreferences();
+    const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        if (session) return;
+        let active = true;
+        void hasCompletedOnboarding().then((complete) => {
+            if (active) setOnboardingComplete(complete);
+        });
+        return () => { active = false; };
+    }, [session]);
 
     if (loading || !ready) {
         return (
@@ -110,6 +130,19 @@ function AppNavigator() {
                 <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
             </AuthStack.Navigator>
         );
+    }
+
+    if (!session && onboardingComplete === false) {
+        return (
+            <OnboardingScreen onComplete={async () => {
+                await completeOnboarding();
+                setOnboardingComplete(true);
+            }} />
+        );
+    }
+
+    if (!session && onboardingComplete === null) {
+        return <View style={styles.loading}><ActivityIndicator color={colors.primary} size="large" /></View>;
     }
 
     if (!session) {
@@ -247,7 +280,16 @@ function MainTabs() {
                 tabBarStyle: styles.tabBar,
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.inkMuted,
-                tabBarLabelStyle: styles.tabLabel,
+                tabBarLabel: ({ color }) => (
+                    <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.72}
+                        style={[styles.tabLabel, { color }]}
+                    >
+                        {titles[route.name]}
+                    </Text>
+                ),
                 title: titles[route.name],
                 tabBarIcon: ({ color, focused, size }) => (
                     <Ionicons name={icons[route.name][focused ? 1 : 0] as never} color={color} size={size} />
@@ -266,13 +308,13 @@ function MainTabs() {
 const styles = StyleSheet.create({
     loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.lg, backgroundColor: colors.canvas },
     initialSync: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xxl, gap: spacing.md, backgroundColor: colors.canvas },
-    loadingMark: { width: 66, height: 66, borderRadius: 22, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    loadingMark: { width: 66, height: 66, borderRadius: 22, backgroundColor: colors.primaryFill, alignItems: "center", justifyContent: "center" },
     loadingTitle: { ...typography.title, color: colors.ink },
     loadingBody: { ...typography.body, color: colors.inkMuted, textAlign: "center" },
     elapsed: { ...typography.caption, color: colors.inkMuted },
     continueButton: { marginTop: spacing.sm, minHeight: 48, borderRadius: 14, paddingHorizontal: spacing.xl, alignItems: "center", justifyContent: "center", backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primary },
     continueButtonText: { ...typography.bodyStrong, color: colors.primary },
     tabBar: { minHeight: 68, paddingTop: 7, paddingBottom: 8, backgroundColor: colors.surface, borderTopColor: colors.border },
-    tabLabel: { fontSize: 11, fontWeight: "700" },
+    tabLabel: { width: "100%", paddingHorizontal: 2, fontSize: 11, fontWeight: "700", textAlign: "center" },
     modalClose: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: colors.primarySoft },
 });

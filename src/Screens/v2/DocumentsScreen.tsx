@@ -17,7 +17,7 @@ import { useSubscription } from "../../billing/SubscriptionProvider";
 export default function DocumentsScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { isOnline } = useConnectivity();
-    const { t } = usePreferences();
+    const { t, formatDate } = usePreferences();
     const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
     const [scope, setScope] = useState(selectedVehicleId || "all");
     const { data: documents } = useDocuments(dataOwnerId, scope === "all" ? undefined : scope);
@@ -59,7 +59,7 @@ export default function DocumentsScreen() {
                                     icon="document-text-outline"
                                     tone={expired ? "red" : "blue"}
                                     title={document.title ?? document.file_name ?? t("documents")}
-                                    subtitle={`${vehicle?.vehicle_license_plate || t("vehicle")} · ${document.expiration_date ? `${t("expirationDate")}: ${document.expiration_date}` : document.file_name || ""}`}
+                                    subtitle={`${vehicle?.vehicle_license_plate || t("vehicle")} · ${document.expiration_date ? `${t("expirationDate")}: ${formatDate(document.expiration_date)}` : document.file_name || ""}`}
                                     onPress={() => void open(document)}
                                 />
                                 <View style={styles.actions}>

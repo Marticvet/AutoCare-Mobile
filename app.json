@@ -7,13 +7,13 @@
     "icon": "./assets/AutoCareIcon.png",
     "scheme": "autocare",
     "newArchEnabled": true,
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.marticvet.autocare",
       "buildNumber": "1",
       "usesAppleSignIn": true,
-      "userInterfaceStyle": "light",
+      "userInterfaceStyle": "automatic",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "AutoCare Hub accesses your photos so you can store vehicle documents and receipts.",
         "NSLocationWhenInUseUsageDescription": "AutoCare Hub uses your location only when you choose to attach it to an expense or search for nearby services."
@@ -67,7 +67,6 @@
     },
     "plugins": [
       "./plugins/withAndroidMapsKeyPlaceholder",
-      "./plugins/withGoogleMapsIosInitialization",
       [
         "expo-image-picker",
         {

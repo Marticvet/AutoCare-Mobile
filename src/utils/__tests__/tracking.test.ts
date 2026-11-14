@@ -139,6 +139,8 @@ describe("tracking calculations", () => {
         expect(expenseDateRangeForPeriod("week", now)).toEqual({ start: "2026-08-19", end: "2026-08-26" });
         expect(expenseDateRangeForPeriod("month", now)).toEqual({ start: "2026-08-01", end: "2026-08-26" });
         expect(expenseDateRangeForPeriod("year", now)).toEqual({ start: "2026-01-01", end: "2026-08-26" });
+        expect(expenseDateRangeForPeriod("previousMonth", now)).toEqual({ start: "2026-07-01", end: "2026-07-31" });
+        expect(expenseDateRangeForPeriod("previousYear", now)).toEqual({ start: "2025-01-01", end: "2025-12-31" });
         expect(expenseDateRangeForPeriod("all", now)).toEqual({ start: null, end: "2026-08-26" });
     });
 

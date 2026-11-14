@@ -57,15 +57,8 @@ module.exports = ({ config }) => {
         "EXPO_GOOGLE_API_KEY",
         "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
     );
-    const iosGoogleMapsApiKey = googleApiKey(
-        "GOOGLE_MAPS_IOS_API_KEY",
-        "EXPO_GOOGLE_API_KEY",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
-    );
-    // The Google Maps SDK needs its platform-restricted key in every native
-    // binary that renders PROVIDER_GOOGLE, including Debug development builds.
-    // The iOS config plugin reads this from Expo's generated config at runtime;
-    // it never writes a key literal into tracked Swift or plist files.
+    // Android renders PROVIDER_GOOGLE and therefore needs a platform-restricted
+    // native Maps key. iOS deliberately uses MapKit and does not embed one.
     const includeNativeMapsKey =
         Boolean(process.env.EAS_BUILD_PLATFORM) ||
         appEnvironment === "development" ||
@@ -133,13 +126,11 @@ module.exports = ({ config }) => {
                     : revenueCatAndroidApiKey,
             },
             googleMapsNative: {
+                // Native Maps SDK keys are embedded in app binaries by design. Keep this
+                // platform-restricted in Google Cloud; never put the server Places key here.
                 android: Boolean(
                     includeNativeMapsKey && androidGoogleMapsApiKey
                 ),
-                ios: Boolean(includeNativeMapsKey && iosGoogleMapsApiKey),
-                // Native Maps SDK keys are embedded in app binaries by design. Keep this
-                // platform-restricted in Google Cloud; never put the server Places key here.
-                iosApiKey: includeNativeMapsKey ? iosGoogleMapsApiKey : "",
             },
             // These controls contain no provider credentials. Preview and
             // production remain off even if a public flag is accidentally set.

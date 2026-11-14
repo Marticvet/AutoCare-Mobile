@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Linking, StyleSheet, Text, View } from "react-native";
 import { Button, Card, ChoiceChips, Row, Screen, SectionHeader, SelectField } from "../../components/ui";
 import { useReminders } from "../../data/liveQueries";
-import { Currency, DistanceUnit, Language, languageOptions, usePreferences } from "../../i18n/PreferencesProvider";
+import { AppearancePreference, Currency, DistanceUnit, Language, languageOptions, usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { system } from "../../powersync/PowerSync";
 import { useAuth } from "../../providers/AuthProvider";
@@ -20,7 +20,7 @@ import { clearRevenueCatUser, configureRevenueCat } from "../../billing/revenueC
 
 export default function SettingsScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { t, language, locale, currency, distanceUnit, setLanguage, setCurrency, setDistanceUnit } = usePreferences();
+    const { t, language, currency, distanceUnit, appearance, formatDateTime, setLanguage, setCurrency, setDistanceUnit, setAppearance } = usePreferences();
     const { profile, session, userId, logout } = useAuth();
     const { syncState, syncError, lastSyncedAt, pendingUploadCount, hasSynced, retrySync, isOnline } = useConnectivity();
     const { vehicles, dataOwnerId } = useGarage();
@@ -176,6 +176,18 @@ export default function SettingsScreen() {
                 />
             </View>
             <View style={styles.section}>
+                <SectionHeader title={t("appearance")} />
+                <ChoiceChips<AppearancePreference>
+                    value={appearance}
+                    onChange={setAppearance}
+                    options={[
+                        { value: "system", label: t("appearanceSystem") },
+                        { value: "light", label: t("appearanceLight") },
+                        { value: "dark", label: t("appearanceDark") },
+                    ]}
+                />
+            </View>
+            <View style={styles.section}>
                 <SectionHeader title={t("currency")} />
                 <SelectField<Currency>
                     label={t("currency")}
@@ -194,7 +206,7 @@ export default function SettingsScreen() {
                 <Card style={styles.list}>
                     <Row icon={syncState === "synced" ? "cloud-done-outline" : "cloud-offline-outline"} title={t("localFirst")} subtitle={syncError || t("localFirstBody")} tone={syncState === "error" ? "red" : "green"} />
                     <View style={styles.divider} />
-                    <Row icon="time-outline" title={t("lastSynced")} subtitle={lastSyncedAt ? lastSyncedAt.toLocaleString(locale) : t("neverSynced")} />
+                    <Row icon="time-outline" title={t("lastSynced")} subtitle={lastSyncedAt ? formatDateTime(lastSyncedAt) : t("neverSynced")} />
                     <View style={styles.divider} />
                     <Row icon="cloud-upload-outline" title={t("pendingUploads")} subtitle={t("pendingUploadsSummary", { count: pendingUploadCount, state: hasSynced ? t("syncComplete") : t("syncNotComplete") })} tone={pendingUploadCount ? "amber" : "green"} />
                     {syncState === "error" ? (

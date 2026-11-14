@@ -10,7 +10,7 @@ import { colors, radius, spacing, typography } from "../theme/tokens";
 import { isSocialAuthCancellation } from "../utils/socialAuth";
 import { getSocialAuthConfiguration } from "../utils/socialAuthConfig";
 
-type Props = { mode?: "signIn" | "link" };
+type Props = { mode?: "signIn" | "link"; showDivider?: boolean };
 
 async function appleNonce() {
     const bytes = await Crypto.getRandomBytesAsync(32);
@@ -19,7 +19,7 @@ async function appleNonce() {
     return { raw, hashed };
 }
 
-export function SocialAuthButtons({ mode = "signIn" }: Props) {
+export function SocialAuthButtons({ mode = "signIn", showDivider = true }: Props) {
     const { t } = usePreferences();
     const {
         signInWithSocialProvider,
@@ -96,7 +96,7 @@ export function SocialAuthButtons({ mode = "signIn" }: Props) {
 
     return (
         <View style={styles.container}>
-            {!linking ? <Text style={styles.divider}>{t("orContinueWith")}</Text> : <Text style={styles.intro}>{t("linkIdentityIntro")}</Text>}
+            {!linking && showDivider ? <Text style={styles.divider}>{t("orContinueWith")}</Text> : linking ? <Text style={styles.intro}>{t("linkIdentityIntro")}</Text> : null}
             {appleEnabled && appleAvailable ? (
                 <AppleAuthentication.AppleAuthenticationButton
                     buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}

@@ -1,5 +1,7 @@
 #!/usr/bin/env swift
 import AppKit
+import CoreGraphics
+import ImageIO
 
 // Composes an authentic raw simulator PNG into an opaque App Store image.
 // It never changes pixels inside the captured app screen.
@@ -11,7 +13,21 @@ guard args.count == 6, let width = Int(args[4]), let height = Int(args[5]),
 }
 let canvasWidth = CGFloat(width); let canvasHeight = CGFloat(height)
 let size = NSSize(width: canvasWidth, height: canvasHeight)
-guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0), let context = NSGraphicsContext(bitmapImageRep: bitmap) else { exit(1) }
+guard let bitmapContext = CGContext(
+    data: nil,
+    width: width,
+    height: height,
+    bitsPerComponent: 8,
+    bytesPerRow: 0,
+    space: CGColorSpaceCreateDeviceRGB(),
+    bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+) else {
+    fputs("Unable to allocate opaque RGB canvas.\n", stderr); exit(1)
+}
+let context = NSGraphicsContext(cgContext: bitmapContext, flipped: false)
+guard context.cgContext.width == width else {
+    fputs("Unable to create AppKit drawing context.\n", stderr); exit(1)
+}
 NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = context
 NSColor(calibratedRed: 23/255, green: 35/255, blue: 63/255, alpha: 1).setFill()
 NSBezierPath(rect: NSRect(origin: .zero, size: size)).fill()
@@ -30,5 +46,11 @@ let frame = NSRect(x: (CGFloat(width) - drawSize.width) / 2, y: top, width: draw
 NSColor(calibratedWhite: 0, alpha: 0.22).setFill(); NSBezierPath(roundedRect: frame.insetBy(dx: -10, dy: -10), xRadius: 36, yRadius: 36).fill()
 raw.draw(in: frame, from: .zero, operation: .sourceOver, fraction: 1)
 NSGraphicsContext.restoreGraphicsState()
-guard let png = bitmap.representation(using: .png, properties: [:]) else { exit(1) }
-try png.write(to: URL(fileURLWithPath: args[2]))
+guard let image = bitmapContext.makeImage(),
+      let destination = CGImageDestinationCreateWithURL(URL(fileURLWithPath: args[2]) as CFURL, "public.png" as CFString, 1, nil) else {
+    fputs("Unable to encode composed PNG.\n", stderr); exit(1)
+}
+CGImageDestinationAddImage(destination, image, nil)
+guard CGImageDestinationFinalize(destination) else {
+    fputs("Unable to finalize composed PNG.\n", stderr); exit(1)
+}

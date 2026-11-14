@@ -1,0 +1,26 @@
+{
+  "en": ["Your car. Everything in one place.", "All your vehicles. One garage.", "Understand the real cost of driving.", "Every vehicle detail, organized.", "Never lose track of maintenance.", "Add what matters in seconds."],
+  "de": ["Dein Auto. Alles an einem Ort.", "Alle Fahrzeuge. Eine Garage.", "Verstehe die tatsächlichen Fahrtkosten.", "Alle Fahrzeugdetails übersichtlich.", "Behalte Wartungen immer im Blick.", "Wichtiges in Sekunden erfassen."],
+  "bg": ["Твоята кола. Всичко на едно място.", "Всички автомобили. Един гараж.", "Разбери реалната цена на шофирането.", "Всички детайли за автомобила — подредени.", "Не пропускай важна поддръжка.", "Добавяй важното за секунди."],
+  "es": ["Tu coche. Todo en un solo lugar.", "Todos tus vehículos. Un garaje.", "Conoce el coste real de conducir.", "Todos los datos del vehículo, organizados.", "No pierdas de vista el mantenimiento.", "Añade lo importante en segundos."],
+  "fr": ["Votre voiture. Tout au même endroit.", "Tous vos véhicules. Un seul garage.", "Comprenez le coût réel de vos trajets.", "Tous les détails du véhicule, bien organisés.", "Gardez toujours une longueur d’avance.", "Ajoutez l’essentiel en quelques secondes."],
+  "it": ["La tua auto. Tutto in un unico posto.", "Tutti i veicoli. Un solo garage.", "Scopri il vero costo della guida.", "Ogni dettaglio del veicolo, in ordine.", "Non perdere mai di vista la manutenzione.", "Aggiungi ciò che conta in pochi secondi."],
+  "pt": ["O seu carro. Tudo num só lugar.", "Todos os veículos. Uma garagem.", "Conheça o custo real de conduzir.", "Todos os detalhes do veículo, organizados.", "Nunca perca de vista a manutenção.", "Adicione o que importa em segundos."],
+  "pl": ["Twój samochód. Wszystko w jednym miejscu.", "Wszystkie pojazdy. Jeden garaż.", "Poznaj rzeczywisty koszt jazdy.", "Wszystkie dane pojazdu w jednym miejscu.", "Zawsze pamiętaj o przeglądach.", "Dodawaj ważne informacje w kilka sekund."],
+  "nl": ["Je auto. Alles op één plek.", "Al je voertuigen. Eén garage.", "Begrijp de werkelijke rijkosten.", "Alle voertuigdetails overzichtelijk bij elkaar.", "Houd onderhoud altijd in het oog.", "Voeg belangrijke info in seconden toe."],
+  "ro": ["Mașina ta. Totul într-un singur loc.", "Toate vehiculele. Un singur garaj.", "Înțelege costul real al condusului.", "Toate detaliile vehiculului, organizate.", "Nu pierde din vedere întreținerea.", "Adaugă ce contează în câteva secunde."],
+  "cs": ["Vaše auto. Vše na jednom místě.", "Všechna vozidla. Jedna garáž.", "Poznejte skutečné náklady na jízdu.", "Všechny údaje o vozidle přehledně.", "Mějte údržbu vždy pod kontrolou.", "Přidejte důležité údaje během chvilky."],
+  "fuelEntry": {
+    "en": "Track every fill-up with confidence.",
+    "de": "Jeden Tankstopp zuverlässig erfassen.",
+    "bg": "Записвай всяко зареждане с увереност.",
+    "es": "Registra cada repostaje con confianza.",
+    "fr": "Enregistrez chaque plein en toute confiance.",
+    "it": "Registra ogni rifornimento con precisione.",
+    "pt": "Registe cada abastecimento com confiança.",
+    "pl": "Rejestruj każde tankowanie bez obaw.",
+    "nl": "Registreer elke tankbeurt met vertrouwen.",
+    "ro": "Înregistrează fiecare alimentare cu încredere.",
+    "cs": "Zaznamenejte každé tankování s jistotou."
+  }
+}

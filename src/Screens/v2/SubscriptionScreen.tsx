@@ -34,8 +34,6 @@ export default function SubscriptionScreen({ navigation }: Props) {
         entitlement?.expirationDate ?? backendStatus?.expires_at ?? null;
     const willRenew =
         entitlement?.willRenew ?? backendStatus?.will_renew ?? false;
-    const productId =
-        entitlement?.productIdentifier ?? backendStatus?.product_id ?? null;
 
     const restore = async () => {
         const restoredCustomerInfo = await restorePurchases();
@@ -91,7 +89,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
                         </Text>
                     </View>
                 </View>
-                {!isAdmin && expiration ? (
+                {!isAdmin && hasPlus && expiration ? (
                     <Text
                         style={[
                             styles.expiry,
@@ -101,16 +99,6 @@ export default function SubscriptionScreen({ navigation }: Props) {
                         {willRenew
                             ? t("renewsOn", { date: new Date(expiration).toLocaleDateString(locale) })
                             : t("expiresOn", { date: new Date(expiration).toLocaleDateString(locale) })}
-                    </Text>
-                ) : null}
-                {!isAdmin && productId ? (
-                    <Text
-                        style={[
-                            styles.product,
-                            hasPlus && styles.planStatusPlus,
-                        ]}
-                    >
-                        {productId}
                     </Text>
                 ) : null}
             </View>
@@ -144,25 +132,15 @@ export default function SubscriptionScreen({ navigation }: Props) {
                 </Card>
             ) : (
                 <View style={styles.actions}>
-                    {!hasPlus ? (
-                        <Button
-                            label={t("comparePlusPlans")}
-                            icon="sparkles-outline"
-                            onPress={() => navigation.navigate("Paywall")}
-                        />
-                    ) : !isAdmin ? (
+                    {!isAdmin ? (
+                        <Button label={t("viewPlans")} icon="sparkles-outline" onPress={() => navigation.navigate("Paywall")} />
+                    ) : null}
+                    {hasPlus && !isAdmin ? (
                         <Button
                             label={t("manageSubscription")}
                             icon="open-outline"
-                            onPress={() => void manageSubscription()}
-                        />
-                    ) : null}
-                    {!isAdmin && !hasFamily && !hasFleet ? (
-                        <Button
-                            label={t("compareFamilyPlans")}
-                            icon="people-outline"
                             variant="secondary"
-                            onPress={() => navigation.navigate("Paywall", { source: "family" })}
+                            onPress={() => void manageSubscription()}
                         />
                     ) : null}
                     {!isAdmin ? (
@@ -251,7 +229,7 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         padding: spacing.xl,
     },
-    planPlus: { backgroundColor: colors.primary, borderColor: colors.primary },
+    planPlus: { backgroundColor: colors.primaryFill, borderColor: colors.primaryFill },
     planTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.md },
     planCopy: { flexGrow: 1, flexBasis: 190, minWidth: 0 },
     icon: {
@@ -271,11 +249,6 @@ const styles = StyleSheet.create({
         ...typography.caption,
         color: colors.inkMuted,
         marginTop: spacing.lg,
-    },
-    product: {
-        ...typography.caption,
-        color: colors.inkMuted,
-        marginTop: spacing.xs,
     },
     actions: { gap: spacing.sm, marginTop: spacing.lg },
     billingUnavailable: { marginTop: spacing.lg, gap: spacing.xs },

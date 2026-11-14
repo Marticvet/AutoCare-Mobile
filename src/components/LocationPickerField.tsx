@@ -19,7 +19,7 @@ import {
 import MapView, { MapPressEvent, Marker, MarkerDragStartEndEvent, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { captureCurrentLocation, captureDeviceCoordinates, resolveLocationLabel } from "../services/currentLocation";
+import { captureCurrentLocation, resolveLocationLabel } from "../services/currentLocation";
 import {
     autocompletePlaces,
     getPlaceDetails,
@@ -117,7 +117,7 @@ function LocationPickerModal({
     onClear: () => void;
     onConfirm: (location: PickedLocation) => void;
 }) {
-    const { t } = usePreferences();
+    const { t, resolvedAppearance } = usePreferences();
     const permissionMessages = useMemo(() => ({
         disabled: t("locationAccessDisabled"),
         denied: t("locationPermissionDenied"),
@@ -147,7 +147,7 @@ function LocationPickerModal({
     const [predictions, setPredictions] = useState<PlaceSuggestion[]>([]);
     const [searchOrigin, setSearchOrigin] = useState<PlaceOrigin | null>(null);
     const [initialMapRegion, setInitialMapRegion] = useState<Region | null>(
-        initialLocation ? regionFor(initialLocation.latitude, initialLocation.longitude) : null
+        initialLocation ? regionFor(initialLocation.latitude, initialLocation.longitude) : DEFAULT_REGION
     );
     const [searching, setSearching] = useState(false);
     const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -155,6 +155,7 @@ function LocationPickerModal({
     const [locating, setLocating] = useState(false);
     const [resolving, setResolving] = useState(false);
     const [showInstructions, setShowInstructions] = useState(!initialLocation);
+    const [showsUserLocation, setShowsUserLocation] = useState(false);
 
     const centerMap = (latitude: number, longitude: number) => {
         pendingCenterRef.current = { latitude, longitude };
@@ -163,7 +164,6 @@ function LocationPickerModal({
 
     useEffect(() => {
         if (!visible) return;
-        let cancelled = false;
         mapReadyRef.current = false;
         setQuery(initialValue);
         setSelection(initialLocation);
@@ -179,33 +179,17 @@ function LocationPickerModal({
         } else {
             pendingCenterRef.current = null;
             setSearchOrigin(null);
-            setInitialMapRegion(null);
-            setLocating(true);
+            setInitialMapRegion(DEFAULT_REGION);
+            setLocating(false);
         }
+        void Location.getForegroundPermissionsAsync().then((permission) => {
+            setShowsUserLocation(permission.status === "granted");
+        });
         const animateTimer = setTimeout(() => {
             if (initialLocation) centerMap(initialLocation.latitude, initialLocation.longitude);
-            void captureDeviceCoordinates({ allowRecentLocation: true, permissionMessages })
-                .then((current) => {
-                    if (cancelled) return;
-                    setSearchOrigin(current);
-                    if (!initialLocation) {
-                        pendingCenterRef.current = current;
-                        setInitialMapRegion(regionFor(current.latitude, current.longitude));
-                    }
-                })
-                .catch((error) => {
-                    if (!cancelled && !initialLocation) {
-                        setInitialMapRegion(DEFAULT_REGION);
-                        Alert.alert(t("currentLocation"), (error as Error).message);
-                    }
-                })
-                .finally(() => {
-                    if (!cancelled && !initialLocation) setLocating(false);
-                });
         }, 250);
         const instructionTimer = setTimeout(() => setShowInstructions(false), 4500);
         return () => {
-            cancelled = true;
             clearTimeout(animateTimer);
             clearTimeout(instructionTimer);
         };
@@ -299,6 +283,7 @@ function LocationPickerModal({
         Keyboard.dismiss();
         try {
             const current = await captureCurrentLocation(permissionMessages);
+            setShowsUserLocation(true);
             setSearchOrigin(current);
             setSelection(current);
             setQuery(current.label);
@@ -326,17 +311,17 @@ function LocationPickerModal({
             statusBarTranslucent
             onRequestClose={onCancel}
         >
-            <StatusBar style="dark" translucent backgroundColor="transparent" />
+            <StatusBar style={resolvedAppearance === "dark" ? "light" : "dark"} translucent backgroundColor="transparent" />
             <View style={styles.modal}>
                 {initialMapRegion ? (
                     <MapView
                         ref={mapRef}
-                        provider={Platform.OS === "ios" ? PROVIDER_GOOGLE : undefined}
+                        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
                         style={StyleSheet.absoluteFill}
                         initialRegion={initialMapRegion}
                         mapPadding={{ top: safeTop + 142, right: horizontalInset, bottom: mapControlBottom, left: horizontalInset }}
                         onPress={selectFromMap}
-                        showsUserLocation
+                        showsUserLocation={showsUserLocation}
                         showsMyLocationButton={false}
                         showsCompass
                         rotateEnabled
@@ -546,15 +531,15 @@ const styles = StyleSheet.create({
     mapBoot: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.canvas },
     mapBootText: { ...typography.bodyStrong, color: colors.inkMuted },
     topControls: { position: "absolute", left: spacing.md, right: spacing.md, zIndex: 30, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
-    roundControl: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.96)", ...shadow },
+    roundControl: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface, ...shadow },
     controlPressed: { transform: [{ scale: 0.96 }], backgroundColor: colors.primarySoft },
     controlSpacer: { width: 46, height: 46 },
-    titlePill: { minHeight: 44, maxWidth: "68%", paddingHorizontal: spacing.lg, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: "rgba(255,255,255,0.96)", ...shadow },
+    titlePill: { minHeight: 44, maxWidth: "68%", paddingHorizontal: spacing.lg, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.surface, ...shadow },
     floatingTitle: { ...typography.bodyStrong, color: colors.ink },
-    searchPanel: { position: "absolute", left: spacing.md, right: spacing.md, zIndex: 29, borderRadius: radius.lg, backgroundColor: "rgba(255,255,255,0.98)", overflow: "hidden", ...shadow },
+    searchPanel: { position: "absolute", left: spacing.md, right: spacing.md, zIndex: 29, borderRadius: radius.lg, backgroundColor: colors.surface, overflow: "hidden", ...shadow },
     searchRow: { minHeight: 58, paddingHorizontal: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm },
     searchInput: { flex: 1, ...typography.body, color: colors.ink, paddingVertical: spacing.sm },
-    searchSubmit: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary },
+    searchSubmit: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.primaryFill },
     predictions: { maxHeight: 280, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
     prediction: { minHeight: 58, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
     predictionPressed: { backgroundColor: colors.primarySoft },
@@ -563,11 +548,11 @@ const styles = StyleSheet.create({
     suggestionStatus: { minHeight: 40, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
     suggestionStatusText: { ...typography.caption, color: colors.inkMuted },
     suggestionError: { ...typography.caption, color: colors.danger },
-    locateButton: { position: "absolute", right: spacing.md, zIndex: 15, width: 54, height: 54, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", ...shadow },
+    locateButton: { position: "absolute", right: spacing.md, zIndex: 15, width: 54, height: 54, borderRadius: 20, backgroundColor: colors.primaryFill, alignItems: "center", justifyContent: "center", ...shadow },
     locatePressed: { transform: [{ scale: 0.96 }], backgroundColor: colors.primaryDark },
-    instructions: { position: "absolute", left: spacing.md, zIndex: 14, minHeight: 38, maxWidth: "65%", paddingHorizontal: spacing.md, borderRadius: radius.md, flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: "rgba(255,255,255,0.96)", ...shadow },
+    instructions: { position: "absolute", left: spacing.md, zIndex: 14, minHeight: 38, maxWidth: "65%", paddingHorizontal: spacing.md, borderRadius: radius.md, flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.surface, ...shadow },
     instructionsText: { ...typography.caption, color: colors.inkMuted },
-    selectionPanel: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 20, minHeight: 202, paddingTop: spacing.sm, paddingHorizontal: spacing.lg, gap: spacing.sm, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: "rgba(255,255,255,0.99)", ...shadow },
+    selectionPanel: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 20, minHeight: 202, paddingTop: spacing.sm, paddingHorizontal: spacing.lg, gap: spacing.sm, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: colors.surface, ...shadow },
     grabber: { alignSelf: "center", width: 42, height: 5, borderRadius: 3, backgroundColor: colors.borderStrong, marginBottom: spacing.xs },
     selectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     selectionRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: spacing.md },
@@ -577,7 +562,7 @@ const styles = StyleSheet.create({
     selectionValue: { ...typography.bodyStrong, color: colors.ink },
     selectionCoordinates: { ...typography.caption, color: colors.inkMuted },
     clearText: { ...typography.bodyStrong, color: colors.primary },
-    confirmButton: { minHeight: 52, borderRadius: radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.primary },
+    confirmButton: { minHeight: 52, borderRadius: radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.primaryFill },
     confirmDisabled: { opacity: 0.4 },
     confirmPressed: { backgroundColor: colors.primaryDark, transform: [{ scale: 0.99 }] },
     confirmText: { ...typography.bodyStrong, color: colors.white },

@@ -39,7 +39,7 @@ const HISTORY_LABEL_KEYS: Record<string, TranslationKey> = {
 export default function VehicleDetailScreen({ route, navigation }: Props) {
     const { vehicleId } = route.params;
     const { isOnline } = useConnectivity();
-    const { t, formatCurrency, formatDistance } = usePreferences();
+    const { t, formatCurrency, formatDate, formatDistance } = usePreferences();
     const { selectedVehicleId, selectVehicle, dataOwnerId, canWrite } = useGarage();
     const { canCreateDocument } = useSubscription();
     const { data: vehicle, loading } = useVehicle(dataOwnerId, vehicleId);
@@ -56,9 +56,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     const history = useMemo(() => [
         ...expenses.map((entry) => ({ id: `expense-${entry.source}-${entry.id}`, date: entry.date, icon: entry.category === "charging" ? "flash-outline" : "receipt-outline", title: entry.title, subtitle: `${formatCurrency(entry.amount)} · ${historyLabel(entry.category)}`, tone: "blue" as const })),
         ...trips.map((entry) => ({ id: `trip-${entry.id}`, date: String(entry.start_at).slice(0, 10), icon: "navigate-outline", title: entry.title || `${entry.origin || t("tripStart")} → ${entry.destination || t("destination")}`, subtitle: `${formatDistance(Number(entry.distance_km ?? 0))} · ${historyLabel(entry.purpose)}`, tone: "green" as const })),
-        ...reminders.map((entry) => ({ id: `reminder-${entry.id}`, date: entry.completed_at?.slice(0, 10) || entry.due_date || entry.created_at?.slice(0, 10) || "", icon: entry.status === "completed" ? "checkmark-circle-outline" : "notifications-outline", title: entry.title || t("reminder"), subtitle: entry.status === "completed" ? t("completed") : `${t("dueDate")} ${entry.due_date || "—"}`, tone: entry.status === "completed" ? "green" as const : "amber" as const })),
+        ...reminders.map((entry) => ({ id: `reminder-${entry.id}`, date: entry.completed_at?.slice(0, 10) || entry.due_date || entry.created_at?.slice(0, 10) || "", icon: entry.status === "completed" ? "checkmark-circle-outline" : "notifications-outline", title: entry.title || t("reminder"), subtitle: entry.status === "completed" ? t("completed") : `${t("dueDate")} ${entry.due_date ? formatDate(entry.due_date) : "—"}`, tone: entry.status === "completed" ? "green" as const : "amber" as const })),
         ...documents.map((entry) => ({ id: `document-${entry.id}`, date: entry.created_at?.slice(0, 10) || "", icon: "document-outline", title: entry.title || t("documents"), subtitle: entry.category ? historyLabel(entry.category) : t("documents"), tone: "blue" as const })),
-    ].filter((entry) => entry.date).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [documents, expenses, formatCurrency, formatDistance, historyLabel, reminders, t, trips]);
+    ].filter((entry) => entry.date).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [documents, expenses, formatCurrency, formatDate, formatDistance, historyLabel, reminders, t, trips]);
     const addDocument = () => {
         if (!canCreateDocument) {
             navigation.navigate("Paywall", { source: "document" });
@@ -139,7 +139,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
                     <Card style={styles.list}>
                         {history.map((entry, index) => (
                             <View key={entry.id}>
-                                <Row icon={entry.icon} title={entry.title} subtitle={`${entry.date} · ${entry.subtitle}`} tone={entry.tone} />
+                                <Row icon={entry.icon} title={entry.title} subtitle={`${formatDate(entry.date)} · ${entry.subtitle}`} tone={entry.tone} />
                                 {index < history.length - 1 ? <View style={styles.divider} /> : null}
                             </View>
                         ))}

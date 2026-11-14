@@ -4,6 +4,30 @@
 
 **Not ready to submit.** The existing Supabase project has passed authenticated CRUD/RLS and online PowerSync acceptance. RevenueCat Test Store validates all four configured package purchase flows, synchronous entitlement mirrors, and sandbox-only webhook lifecycle processing. The Family-expiry migration and PowerSync configuration are deployed; release remains blocked by their real active/expired/renewed owner-member acceptance, email-confirmation enablement, authenticated offline/conflict acceptance, signed/platform builds, and real-store testing—not by supported-runtime validation or Test Store webhook delivery.
 
+## 2026-11-14 final local release summary
+
+The accumulated release-hardening implementation is locally complete. The final source gate passes, the iOS Release simulator build launches, Android compiles with its Maps placeholder and DayNight resources, and the new focused regression tests pass. No build was uploaded or submitted, no remote configuration was changed, and no production data was modified in this final pass.
+
+The English screenshot deliverables are ready for owner review:
+
+- iPhone: six opaque 1320 x 2868 finals plus a contact sheet under `assets/app-store/screenshots/release-v1/en/iphone/`.
+- iPad: six opaque 2064 x 2752 finals plus a contact sheet under `assets/app-store/screenshots/release-v1/en/ipad/`.
+- The corresponding `raw/` captures are preserved. The compositor now emits opaque PNGs reliably; a compositor failure no longer blocks delivery.
+- The captures use real application screens and authorized fictional data. No premium state, purchase, or Family membership was fabricated. Reports, Documents, and Shared Garage remain outside this capture set.
+
+Confirmed defects fixed during the final review were limited to release scope: the iOS Maps implementation no longer embeds the unused Google Maps native dependency, Android now has a correct dark native status bar, and the screenshot compositor uses a reliable opaque CoreGraphics context. No screen was redesigned for screenshots.
+
+### Remaining release blockers
+
+1. Produce and accept a signed internal/TestFlight candidate, then complete the physical-iPhone MapKit permission, notification, authentication-link, accessibility, and relaunch matrix.
+2. Run an Android device build with the restricted production Maps secret and verify real tile loading, key restrictions, light/dark/system appearance, representative long locales, and native dependency startup.
+3. Complete real Apple StoreKit/RevenueCat sandbox purchase, restore, expiry/refund, entitlement-revocation, and Supabase webhook acceptance on the signed candidate. Existing Test Store evidence is not a substitute.
+4. Complete the outstanding PowerSync offline replay/conflict/account-switch cases and active/expired/renewed Shared Garage member lifecycle acceptance.
+5. Finish the already documented email-confirmation, public legal URL, owner/legal approval, store metadata, and account-deletion scheduler operational checks before submission.
+6. If non-English App Store listings will use localized screenshots, capture and review native-language sets; do not overlay localized marketing text on English application UI.
+
+**Handoff verdict:** the source is conditionally ready to create a new internal signed candidate. It is not yet ready for public App Store submission until the blockers above have real-device/service evidence.
+
 ## RevenueCat account-deletion infrastructure — deployed and accepted
 
 The queue/function workflow is accepted, but automatic scheduler delivery is **not**. A Cloudflare Worker activation attempt produced one authenticated healthy Cron event, then no second event over four expected intervals. Cron was disabled and GitHub Actions remains protected manual fallback. Cloudflare Logs/Issues are enabled, but an operator alert destination and a missed-run heartbeat remain required before automatic retries can be relied upon.

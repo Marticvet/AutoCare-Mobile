@@ -49,12 +49,13 @@ export default function RegisterScreen({ navigation }: any) {
                         <View style={styles.panel}>
                             <Text style={styles.title}>{t("signUp")}</Text>
                             <Text style={styles.subtitle}>{t("authWelcome")}</Text>
+                            <SocialAuthButtons showDivider={false} />
+                            <Text style={styles.emailDivider}>{t("continueWithEmail")}</Text>
                             <FormField label={t("fullName")} value={fullName} onChangeText={setFullName} autoComplete="name" required />
                             <FormField label={t("email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" required />
                             <FormField label={t("password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" hint={t("eightCharactersMinimum")} required />
                             <FormField label={t("confirmPassword")} value={confirmation} onChangeText={setConfirmation} secureTextEntry autoComplete="new-password" required />
                             <Button label={t("signUp")} onPress={submit} loading={busy} />
-                            <SocialAuthButtons />
                             <View style={styles.inline}>
                                 <Text style={styles.footerText}>{t("haveAccount")}</Text>
                                 <Pressable
@@ -80,6 +81,7 @@ const styles = StyleSheet.create({
     panel: { width: "100%", maxWidth: 520, alignSelf: "center", backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
     title: { ...typography.title, color: colors.ink },
     subtitle: { ...typography.body, color: colors.inkMuted },
+    emailDivider: { ...typography.caption, color: colors.inkMuted, textAlign: "center" },
     footerText: { ...typography.body, color: colors.inkMuted },
     footerLink: { ...typography.bodyStrong, color: colors.primary },
     inline: { flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", columnGap: spacing.sm },

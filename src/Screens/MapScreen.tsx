@@ -234,7 +234,7 @@ export default function MapScreen({ route }: any) {
             {/* Map */}
             <MapView
                 ref={mapRef}
-                provider={Platform.OS === "ios" ? PROVIDER_GOOGLE : undefined}
+                provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
                 style={styles.map}
                 initialRegion={{
                     latitude: 51.13,

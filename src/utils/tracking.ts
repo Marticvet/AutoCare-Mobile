@@ -1,5 +1,6 @@
 import { ExpenseRecord, ReminderRecord, ReminderState } from "../data/models";
 import { FuelExpense } from "../powersync/AppSchema";
+import { calculateFuelConsumption } from "./fuel";
 
 export const isoDate = (date = new Date()) => {
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
@@ -86,25 +87,7 @@ export const getReminderState = (
 };
 
 export const calculateFuelEconomy = (rows: FuelExpense[]) => {
-    const logs = rows
-        .filter((row) => row.odometer && row.total_litres && (row.full_tank === "1" || row.full_tank === "true"))
-        .sort((a, b) => (a.odometer ?? 0) - (b.odometer ?? 0));
-
-    if (logs.length < 2) return null;
-
-    let weightedDistance = 0;
-    let consumedLitres = 0;
-    for (let index = 1; index < logs.length; index += 1) {
-        const distance = (logs[index].odometer ?? 0) - (logs[index - 1].odometer ?? 0);
-        if (distance > 0) {
-            weightedDistance += distance;
-            consumedLitres += logs[index].total_litres ?? 0;
-        }
-    }
-
-    return weightedDistance > 0 && consumedLitres > 0
-        ? (consumedLitres / weightedDistance) * 100
-        : null;
+    return calculateFuelConsumption(rows).litresPer100Km;
 };
 
 export const filterExpensesByDays = (expenses: ExpenseRecord[], days: number | null) => {
@@ -115,7 +98,7 @@ export const filterExpensesByDays = (expenses: ExpenseRecord[], days: number | n
     return expenses.filter((expense) => expense.date >= cutoffIso);
 };
 
-export type ExpensePeriod = "week" | "month" | "year" | "all" | "custom";
+export type ExpensePeriod = "week" | "month" | "previousMonth" | "year" | "previousYear" | "all" | "custom";
 
 export type ExpenseDateRange = {
     start: string | null;
@@ -128,6 +111,17 @@ export const expenseDateRangeForPeriod = (
 ): ExpenseDateRange => {
     const end = isoDate(now);
     if (period === "all") return { start: null, end };
+
+    if (period === "previousMonth") {
+        const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1, 12);
+        const next = new Date(now.getFullYear(), now.getMonth(), 1, 12);
+        next.setDate(0);
+        return { start: isoDate(previous), end: isoDate(next) };
+    }
+    if (period === "previousYear") {
+        const year = now.getFullYear() - 1;
+        return { start: `${year}-01-01`, end: `${year}-12-31` };
+    }
 
     const start = new Date(now);
     // "Last 7 days" includes an expense from exactly seven days ago as well

@@ -9,6 +9,10 @@ const schemePath = path.resolve(__dirname, "..", "ios", "AutoCareHub.xcodeproj",
 const appJsonPath = path.resolve(__dirname, "..", "app.json");
 const mapsPluginPath = path.resolve(__dirname, "..", "plugins", "withGoogleMapsIosInitialization.js");
 const appDelegatePath = path.resolve(__dirname, "..", "ios", "AutoCareHub", "AppDelegate.swift");
+const podfilePath = path.resolve(__dirname, "..", "ios", "Podfile");
+const locationPickerPath = path.resolve(__dirname, "..", "src", "components", "LocationPickerField.tsx");
+const mapScreenPath = path.resolve(__dirname, "..", "src", "Screens", "MapScreen.tsx");
+const androidNightStylesPath = path.resolve(__dirname, "..", "android", "app", "src", "main", "res", "values-night", "styles.xml");
 
 function resolveConfig(environment) {
     const source = `const config = require(process.argv[1])({ config: { android: {}, ios: {}, extra: {} } }); process.stdout.write(JSON.stringify(config.extra));`;
@@ -63,7 +67,7 @@ const development = resolveConfig({
     EXPO_PUBLIC_ENABLE_SOCIAL_AUTH: "true",
     EXPO_PUBLIC_ENABLE_GOOGLE_AUTH: "true",
     EXPO_PUBLIC_ENABLE_APPLE_AUTH: "false",
-    GOOGLE_MAPS_IOS_API_KEY: `AIza${"a".repeat(35)}`,
+    GOOGLE_MAPS_ANDROID_API_KEY: `AIza${"a".repeat(35)}`,
 });
 if (development.status !== 0) fail(development.stderr.trim() || "development config did not resolve.");
 const developmentExtra = JSON.parse(development.stdout);
@@ -73,8 +77,11 @@ if (developmentExtra.release?.environment !== "development" || developmentExtra.
 if (developmentExtra.socialAuth?.googleEnabled !== true || developmentExtra.socialAuth?.appleEnabled !== false) {
     fail("development must permit Google-only social auth when explicitly requested.");
 }
-if (!developmentExtra.googleMapsNative?.ios || !developmentExtra.googleMapsNative?.iosApiKey?.startsWith("AIza")) {
-    fail("development must embed the iOS Google Maps key in Expo config for the native initializer.");
+if (!developmentExtra.googleMapsNative?.android) {
+    fail("development must configure the Android Google Maps provider when its restricted key is available.");
+}
+if (developmentExtra.googleMapsNative?.ios || developmentExtra.googleMapsNative?.iosApiKey) {
+    fail("iOS must not embed a Google Maps SDK key because it uses MapKit.");
 }
 
 const appleSandbox = resolveConfig({
@@ -179,24 +186,33 @@ if (invalidProduction.status === 0 || !invalidProduction.stderr.includes("must b
 }
 
 const appPlugins = JSON.parse(fs.readFileSync(appJsonPath, "utf8")).expo.plugins;
-if (!appPlugins.includes("./plugins/withGoogleMapsIosInitialization")) {
-    fail("the Google Maps iOS initialization config plugin must remain enabled.");
+const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf8")).expo;
+if (appJson.userInterfaceStyle !== "automatic" || appJson.ios?.userInterfaceStyle !== "automatic") {
+    fail("Expo and iOS must permit system, light, and dark appearance.");
 }
-const mapsPlugin = fs.readFileSync(mapsPluginPath, "utf8");
-if ((mapsPlugin.match(/GMSServices\.provideAPIKey\(apiKey\)/g) || []).length !== 1) {
-    fail("the iOS Google Maps config plugin must initialize GMSServices exactly once.");
+const androidNightStyles = fs.readFileSync(androidNightStylesPath, "utf8");
+if (!androidNightStyles.includes('name="android:statusBarColor"') || !androidNightStyles.includes("#0D1424")) {
+    fail("Android dark mode must provide a dark native status-bar background.");
+}
+if (appPlugins.includes("./plugins/withGoogleMapsIosInitialization")) {
+    fail("the obsolete Google Maps iOS initialization plugin must stay disabled.");
+}
+if (fs.existsSync(mapsPluginPath)) {
+    fail("the obsolete Google Maps iOS initialization plugin must not be restored.");
 }
 const appDelegate = fs.readFileSync(appDelegatePath, "utf8");
-if ((appDelegate.match(/GMSServices\.provideAPIKey\(apiKey\)/g) || []).length !== 1) {
-    fail("AppDelegate must contain exactly one generated Google Maps initialization call.");
+if (/GoogleMaps|GMSServices|AutoCareGoogleMaps/.test(appDelegate)) {
+    fail("AppDelegate must not initialize the Google Maps SDK on iOS.");
 }
-const mapsInitializerIndex = appDelegate.indexOf("AutoCareGoogleMaps.initialize()");
-const reactNativeFactoryIndex = appDelegate.indexOf("let delegate = ReactNativeDelegate()");
-if (mapsInitializerIndex === -1 || reactNativeFactoryIndex === -1 || mapsInitializerIndex > reactNativeFactoryIndex) {
-    fail("Google Maps must initialize before React Native can mount MapView.");
+const podfile = fs.readFileSync(podfilePath, "utf8");
+if (/react-native-google-maps/.test(podfile)) {
+    fail("the iOS Podfile must not link the Google Maps provider.");
 }
-if (/GMSServices\.provideAPIKey\(\s*\"AIza/.test(appDelegate)) {
-    fail("AppDelegate must not contain a literal Google Maps API key.");
+for (const sourcePath of [locationPickerPath, mapScreenPath]) {
+    const source = fs.readFileSync(sourcePath, "utf8");
+    if (/Platform\.OS\s*===\s*["']ios["']\s*\?\s*PROVIDER_GOOGLE/.test(source)) {
+        fail(`${path.basename(sourcePath)} must use MapKit rather than PROVIDER_GOOGLE on iOS.`);
+    }
 }
 
-console.log("Development, TestFlight, local simulator Release, production billing, and iOS Google Maps initialization are safely configured.");
+console.log("Development, TestFlight, local simulator Release, production billing, Android Google Maps, and iOS MapKit are safely configured.");

@@ -45,6 +45,8 @@ export default function LoginScreen({ navigation }: any) {
 
                         <View style={styles.panel}>
                             <Text style={styles.title}>{t("signIn")}</Text>
+                            <SocialAuthButtons showDivider={false} />
+                            <Text style={styles.emailDivider}>{t("continueWithEmail")}</Text>
                             <FormField
                                 label={t("email")}
                                 value={email}
@@ -72,7 +74,6 @@ export default function LoginScreen({ navigation }: any) {
                                 <Text style={styles.link}>{t("forgotPassword")}</Text>
                             </Pressable>
                             <Button label={t("signIn")} onPress={submit} loading={busy} />
-                            <SocialAuthButtons />
                             <View style={styles.inline}>
                                 <Text style={styles.footerText}>{t("noAccount")}</Text>
                                 <Pressable
@@ -102,6 +103,7 @@ const styles = StyleSheet.create({
     tagline: { ...typography.body, color: "rgba(255,255,255,0.82)", textAlign: "center", maxWidth: 340 },
     panel: { width: "100%", maxWidth: 520, alignSelf: "center", backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
     title: { ...typography.title, color: colors.ink },
+    emailDivider: { ...typography.caption, color: colors.inkMuted, textAlign: "center" },
     link: { ...typography.label, color: colors.primary },
     footerText: { ...typography.body, color: colors.inkMuted },
     footerLink: { ...typography.bodyStrong, color: colors.primary },

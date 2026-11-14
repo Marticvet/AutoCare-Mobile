@@ -1,25 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
-import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, EmptyState, LoadingState, MetricCard, Row, Screen, SectionHeader } from "../../components/ui";
 import { VehicleSelectField } from "../../components/VehicleSelectField";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { useExpenses, useFuelLogs, useReminders } from "../../data/liveQueries";
-import { ExpenseCategory } from "../../data/models";
 import { usePreferences } from "../../i18n/PreferencesProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { useAuth } from "../../providers/AuthProvider";
 import { useGarage } from "../../providers/GarageProvider";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
-import { calculateFuelEconomy, getReminderState, isoDate, totalExpenses } from "../../utils/tracking";
+import { colors, radius, shadow, spacing, typography } from "../../theme/tokens";
+import { calculateFuelConsumption } from "../../utils/fuel";
+import { getReminderState, isoDate, totalExpenses } from "../../utils/tracking";
+import { expenseCategoryPresentation } from "../../utils/expenseCategory";
 
 export default function DashboardScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { profile } = useAuth();
-    const { t, formatCurrency, formatDistance } = usePreferences();
-    const { vehicles, selectedVehicle, selectedVehicleId, selectVehicle, loading, dataOwnerId } = useGarage();
+    const { t, formatCurrency, formatDate, formatDistance, formatNumber } = usePreferences();
+    const { vehicles, selectedVehicle, selectedVehicleId, selectVehicle, loading, dataOwnerId, canWrite } = useGarage();
     const { canCreateDocument } = useSubscription();
     const { data: expenses, loading: expensesLoading } = useExpenses(dataOwnerId);
     const { data: reminders, loading: remindersLoading } = useReminders(dataOwnerId);
@@ -37,7 +38,9 @@ export default function DashboardScreen() {
             }).length,
         [reminders, vehicles]
     );
-    const economy = useMemo(() => calculateFuelEconomy(fuelLogs), [fuelLogs]);
+    const fuelConsumption = useMemo(() => calculateFuelConsumption(fuelLogs), [fuelLogs]);
+    const economy = fuelConsumption.litresPer100Km;
+    const [quickAddVisible, setQuickAddVisible] = useState(false);
     const addDocument = () => {
         if (!canCreateDocument) {
             navigation.navigate("Paywall", { source: "document" });
@@ -53,17 +56,33 @@ export default function DashboardScreen() {
                 <EmptyState
                     icon="car-sport-outline"
                     title={t("noVehicles")}
-                    body={t("noVehiclesBody")}
-                    action={t("addVehicle")}
-                    onAction={() => navigation.navigate("VehicleForm")}
+                    body={canWrite ? t("firstVehicleBody") : t("viewOnlyGarage")}
+                    action={canWrite ? t("addFirstVehicle") : undefined}
+                    onAction={canWrite ? () => navigation.navigate("VehicleForm") : undefined}
                 />
+                {canWrite ? (
+                    <Card style={styles.firstVehicleBenefits}>
+                        <FirstVehicleBenefit icon="receipt-outline" text={t("firstVehicleCosts")} />
+                        <FirstVehicleBenefit icon="notifications-outline" text={t("firstVehicleReminders")} />
+                        <FirstVehicleBenefit icon="documents-outline" text={t("firstVehicleHistory")} />
+                    </Card>
+                ) : null}
             </Screen>
         );
     }
 
     const greetingName = profile?.first_name || profile?.full_name?.split(" ")[0] || "";
+    const openQuickAction = (action: "fuel" | "expense" | "reminder" | "document") => {
+        setQuickAddVisible(false);
+        if (action === "fuel") navigation.navigate("ExpenseForm", { category: "fuel" });
+        if (action === "expense") navigation.navigate("ExpenseForm", { category: "other" });
+        if (action === "reminder") navigation.navigate("ReminderForm");
+        if (action === "document") addDocument();
+    };
+
     return (
-        <Screen>
+        <View style={styles.container}>
+        <Screen contentStyle={styles.screenContent}>
             <View style={styles.hero}>
                 <View style={styles.heroText}>
                     <Text style={styles.eyebrow}>{t("garageOverview")}</Text>
@@ -98,21 +117,9 @@ export default function DashboardScreen() {
                 <MetricCard label={t("totalSpend")} value={formatCurrency(totalExpenses(expenses))} icon="wallet-outline" />
                 <MetricCard label={t("thisMonth")} value={formatCurrency(monthly)} icon="calendar-outline" tone="green" />
                 <MetricCard label={t("overdue")} value={String(overdueCount)} icon="warning-outline" tone={overdueCount ? "red" : "green"} />
-                <MetricCard label={t("fuelEconomy")} value={economy ? `${economy.toFixed(1)} L/100` : "—"} icon="leaf-outline" tone="amber" />
+                <MetricCard label={t("fuelEconomy")} value={economy ? `${formatNumber(economy, 1)} L/100 km` : "—"} icon="leaf-outline" tone="amber" />
             </View>
-
-            <View style={styles.section}>
-                <SectionHeader title={t("quickActions")} />
-                <Card style={styles.actionCard}>
-                    <QuickAction icon="receipt-outline" label={t("addExpense")} onPress={() => navigation.navigate("ExpenseForm", { category: "fuel" })} />
-                    <QuickAction icon="notifications-outline" label={t("addReminder")} onPress={() => navigation.navigate("ReminderForm")} />
-                    <QuickAction
-                        icon="document-attach-outline"
-                        label={t("addDocument")}
-                        onPress={addDocument}
-                    />
-                </Card>
-            </View>
+            {economy === null ? <Text style={styles.metricHint}>{t("fuelConsumptionNeedsData")}</Text> : null}
 
             <View style={styles.section}>
                 <SectionHeader title={t("recentExpenses")} action={t("viewAll")} onAction={() => navigation.navigate("Main", { screen: "Expenses" } as never)} />
@@ -120,9 +127,9 @@ export default function DashboardScreen() {
                     {expenses.slice(0, 4).map((expense, index) => (
                         <View key={`${expense.source}-${expense.id}`}>
                             <Row
-                                icon={expenseIcon(expense.category)}
+                                icon={expenseCategoryPresentation(expense.category).icon}
                                 title={expense.title}
-                                subtitle={`${expense.date} · ${vehicles.find((vehicle) => vehicle.id === expense.vehicle_id)?.vehicle_license_plate ?? ""}`}
+                                subtitle={`${formatDate(expense.date)} · ${vehicles.find((vehicle) => vehicle.id === expense.vehicle_id)?.vehicle_license_plate ?? ""}`}
                                 trailing={<Text style={styles.amount}>{formatCurrency(expense.amount)}</Text>}
                                 onPress={() => navigation.navigate("ExpenseForm", { expenseId: expense.id, source: expense.source })}
                             />
@@ -133,6 +140,31 @@ export default function DashboardScreen() {
                 </Card>
             </View>
         </Screen>
+        <Pressable
+            onPress={() => setQuickAddVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("quickAdd")}
+            style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+        >
+            <Ionicons name="add" size={30} color={colors.white} />
+        </Pressable>
+        <Modal transparent visible={quickAddVisible} animationType="fade" onRequestClose={() => setQuickAddVisible(false)}>
+            <Pressable style={styles.quickOverlay} onPress={() => setQuickAddVisible(false)}>
+                <View style={styles.quickSheet} onStartShouldSetResponder={() => true}>
+                    <View style={styles.quickHeader}>
+                        <Text style={styles.quickTitle}>{t("quickAdd")}</Text>
+                        <Pressable onPress={() => setQuickAddVisible(false)} accessibilityRole="button" accessibilityLabel={t("close")} hitSlop={10}>
+                            <Ionicons name="close" size={24} color={colors.ink} />
+                        </Pressable>
+                    </View>
+                    <QuickAction icon="water-outline" label={t("addFuel")} onPress={() => openQuickAction("fuel")} />
+                    <QuickAction icon="receipt-outline" label={t("addExpense")} onPress={() => openQuickAction("expense")} />
+                    <QuickAction icon="notifications-outline" label={t("addReminder")} onPress={() => openQuickAction("reminder")} />
+                    <QuickAction icon="document-attach-outline" label={t("addDocument")} onPress={() => openQuickAction("document")} />
+                </View>
+            </Pressable>
+        </Modal>
+        </View>
     );
 }
 
@@ -145,11 +177,18 @@ function QuickAction({ icon, label, onPress }: { icon: string; label: string; on
     );
 }
 
-const expenseIcon = (category: ExpenseCategory) => ({ fuel: "water-outline", charging: "flash-outline", service: "construct-outline", insurance: "shield-checkmark-outline", parking: "car-outline", toll: "trail-sign-outline", tax: "document-text-outline", wash: "sparkles-outline", repair: "hammer-outline", other: "receipt-outline" }[category]);
+function FirstVehicleBenefit({ icon, text }: { icon: string; text: string }) {
+    return <View style={styles.firstVehicleBenefit}><Ionicons name={icon as never} size={20} color={colors.primary} /><Text style={styles.firstVehicleBenefitText}>{text}</Text></View>;
+}
 
 const styles = StyleSheet.create({
+    container: { flex: 1 },
+    screenContent: { paddingBottom: 104 },
     centered: { justifyContent: "center" },
-    hero: { minHeight: 128, borderRadius: radius.xl, padding: spacing.xl, backgroundColor: colors.ink, flexDirection: "row", alignItems: "center", justifyContent: "space-between", overflow: "hidden" },
+    firstVehicleBenefits: { width: "100%", maxWidth: 520, alignSelf: "center", gap: spacing.md },
+    firstVehicleBenefit: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    firstVehicleBenefitText: { ...typography.body, color: colors.ink, flex: 1 },
+    hero: { minHeight: 128, borderRadius: radius.xl, padding: spacing.xl, backgroundColor: colors.brandNavy, flexDirection: "row", alignItems: "center", justifyContent: "space-between", overflow: "hidden" },
     heroText: { flex: 1, minWidth: 0, gap: spacing.xs },
     eyebrow: { ...typography.label, color: "rgba(255,255,255,0.68)", textTransform: "uppercase", letterSpacing: 1 },
     heroTitle: { ...typography.title, color: colors.white },
@@ -162,14 +201,19 @@ const styles = StyleSheet.create({
     vehicleName: { ...typography.heading, color: colors.ink },
     vehicleMeta: { ...typography.caption, color: colors.inkMuted },
     metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+    metricHint: { ...typography.caption, color: colors.inkMuted, marginTop: -spacing.sm },
     section: { gap: spacing.md },
-    actionCard: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingVertical: spacing.md },
-    action: { flexGrow: 1, flexBasis: 96, minWidth: 0, alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.xs, paddingVertical: spacing.sm },
+    action: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
     actionIcon: { width: 46, height: 46, borderRadius: 15, backgroundColor: colors.primarySoft, alignItems: "center", justifyContent: "center" },
-    actionLabel: { ...typography.label, color: colors.ink, textAlign: "center" },
+    actionLabel: { ...typography.bodyStrong, color: colors.ink, flex: 1 },
     pressed: { opacity: 0.65 },
     listCard: { paddingVertical: spacing.sm },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 54 },
     amount: { ...typography.bodyStrong, color: colors.ink },
     emptyInline: { ...typography.body, color: colors.inkMuted, textAlign: "center", padding: spacing.xl },
+    fab: { position: "absolute", right: spacing.xl, bottom: spacing.xl, width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: colors.primaryFill, ...shadow, zIndex: 5 },
+    quickOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11, 23, 48, 0.44)", padding: spacing.md },
+    quickSheet: { width: "100%", maxWidth: 560, alignSelf: "center", borderRadius: radius.xl, backgroundColor: colors.surface, padding: spacing.lg, gap: spacing.sm, ...shadow },
+    quickHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: spacing.sm },
+    quickTitle: { ...typography.heading, color: colors.ink },
 });

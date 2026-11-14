@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import type { PurchasesPackage } from "react-native-purchases";
 import { Button, Card, Screen } from "../../components/ui";
 import { ENTITLEMENTS } from "../../billing/entitlements";
+import { annualSavingsPercent } from "../../billing/pricing";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 import { RootStackParamList } from "../../navigation/types";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
@@ -27,7 +28,9 @@ export default function PaywallScreen({ navigation, route }: Props) {
         restorePurchases,
         clearError,
     } = useSubscription();
-    const familyMode = route.params?.source === "family";
+    const [plan, setPlan] = useState<"plus" | "family">(route.params?.source === "family" ? "family" : "plus");
+    const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
+    const familyMode = plan === "family";
     const planLabel = familyMode ? t("family") : "Plus";
     const benefits = [
         ["car-sport-outline", t("moreThanOneVehicle"), t("moreVehiclesBody")],
@@ -45,12 +48,16 @@ export default function PaywallScreen({ navigation, route }: Props) {
         const available = currentOffering?.availablePackages ?? [];
         return available.filter((item) => familyMode ? isFamilyPackage(item) : !isFamilyPackage(item));
     }, [currentOffering, familyMode]);
+    const annualSavings = useMemo(() => annualSavingsPercent(packages), [packages]);
     const [selected, setSelected] = useState<PurchasesPackage | null>(null);
 
     useEffect(() => {
-        if (selected && packages.some((item) => item.identifier === selected.identifier)) return;
-        setSelected(packages.find((item) => /annual|year/i.test(`${item.identifier} ${item.product.identifier}`)) ?? packages[0] ?? null);
-    }, [currentOffering, packages, selected]);
+        const matching = packages.find((item) => {
+            const identity = `${item.packageType} ${item.identifier} ${item.product.identifier}`;
+            return billingPeriod === "yearly" ? /annual|year/i.test(identity) : /month/i.test(identity);
+        }) ?? null;
+        setSelected(matching);
+    }, [billingPeriod, packages]);
 
     const sourceMessage = useMemo(
         () =>
@@ -108,23 +115,6 @@ export default function PaywallScreen({ navigation, route }: Props) {
         );
     }
 
-    if (targetActive) {
-        return (
-            <Screen contentStyle={styles.centered}>
-                <View style={styles.successIcon}>
-                    <Ionicons name="checkmark" color={colors.white} size={34} />
-                </View>
-                <Text style={styles.hero}>{t("planIsActive", { plan: planLabel })}</Text>
-                <Text style={styles.subtitle}>{t("paidFeaturesAllDevices")}</Text>
-                <Button
-                    label={t("continue")}
-                    icon="arrow-forward"
-                    onPress={navigation.goBack}
-                />
-            </Screen>
-        );
-    }
-
     return (
         <Screen>
             <View style={styles.heroMark}>
@@ -133,6 +123,28 @@ export default function PaywallScreen({ navigation, route }: Props) {
             <Text style={styles.eyebrow}>{`AUTOCARE ${planLabel.toLocaleUpperCase()}`}</Text>
             <Text style={styles.hero}>{familyMode ? t("familyHero") : t("plusHero")}</Text>
             <Text style={styles.subtitle}>{sourceMessage}</Text>
+
+            <View style={styles.comparison}>
+                <PlanCard title={t("free")} body={t("coreTrackingOneVehicle")} current={!hasPlus} />
+                <PlanCard title="AutoCare Plus" body={t("moreVehiclesBody")} current={hasPlus && !hasFamily} selected={plan === "plus"} onPress={() => setPlan("plus")} />
+                <PlanCard title="AutoCare Family" body={t("sharedGarageBody")} current={hasFamily} selected={plan === "family"} onPress={() => setPlan("family")} />
+            </View>
+
+            <View style={styles.periodSelector} accessibilityRole="radiogroup">
+                {(["monthly", "yearly"] as const).map((period) => (
+                    <Pressable
+                        key={period}
+                        onPress={() => setBillingPeriod(period)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: billingPeriod === period }}
+                        style={[styles.periodOption, billingPeriod === period && styles.periodOptionActive]}
+                    >
+                        <Text style={[styles.periodText, billingPeriod === period && styles.periodTextActive]}>
+                            {period === "yearly" && annualSavings ? `${t(period)} · ${t("savePercent", { percent: annualSavings })}` : t(period)}
+                        </Text>
+                    </Pressable>
+                ))}
+            </View>
 
             <View style={styles.benefits}>
                 {(familyMode ? familyBenefits : benefits).map(([icon, title, body]) => (
@@ -175,55 +187,37 @@ export default function PaywallScreen({ navigation, route }: Props) {
             ) : null}
 
             <View style={styles.packages}>
-                {packages.map((item) => {
-                    const active = selected?.identifier === item.identifier;
-                    return (
-                        <Pressable
-                            key={item.identifier}
-                            onPress={() => setSelected(item)}
-                            style={[
-                                styles.package,
-                                active && styles.packageActive,
-                            ]}
-                            accessibilityRole="radio"
-                            accessibilityState={{ checked: active }}
-                        >
+                {selected ? (
+                        <View style={[styles.package, styles.packageActive]}>
                             <View
-                                style={[
-                                    styles.radio,
-                                    active && styles.radioActive,
-                                ]}
+                                style={[styles.radio, styles.radioActive]}
                             >
-                                {active ? (
-                                    <View style={styles.radioDot} />
-                                ) : null}
+                                <View style={styles.radioDot} />
                             </View>
                             <View style={styles.packageCopy}>
                                 <Text style={styles.packageTitle}>
-                                    {packageLabel(item, t)}
+                                    {packageLabel(selected, t)}
                                 </Text>
                                 <Text
                                     style={styles.packageDescription}
                                     numberOfLines={2}
                                 >
-                                    {item.product.description ||
-                                        item.product.title}
+                                    {selected.product.description || selected.product.title}
                                 </Text>
                             </View>
                             <View style={styles.price}>
                                 <Text style={styles.priceValue}>
-                                    {item.product.priceString}
+                                    {selected.product.priceString}
                                 </Text>
                                 <Text style={styles.pricePeriod}>
-                                    {periodLabel(item, t)}
+                                    {periodLabel(selected, t)}
                                 </Text>
                             </View>
-                        </Pressable>
-                    );
-                })}
+                        </View>
+                ) : null}
             </View>
 
-            {!loading && configured && packages.length === 0 ? (
+            {!loading && configured && !selected ? (
                 <Card style={styles.notice}>
                     <Text style={styles.noticeTitle}>
                         {t("noOfferingAvailable")}
@@ -236,13 +230,15 @@ export default function PaywallScreen({ navigation, route }: Props) {
 
             <Button
                 label={
-                    selected
+                    targetActive
+                        ? t("currentPlan")
+                        : selected
                         ? t("continueWithPrice", { price: selected.product.priceString })
                         : t("choosePlan")
                 }
                 icon="lock-open-outline"
                 loading={purchasing}
-                disabled={!selected || !configured}
+                disabled={targetActive || !selected || !configured}
                 onPress={() => void buy()}
             />
             <Button
@@ -254,11 +250,45 @@ export default function PaywallScreen({ navigation, route }: Props) {
             <Text style={styles.finePrint}>
                 {t("paymentFinePrint")}
             </Text>
+            <Text style={styles.finePrint}>{t("subscriptionCancellationNotice")}</Text>
+            <View style={styles.legalLinks}>
+                <Pressable accessibilityRole="link" onPress={() => void openLegalLink(process.env.EXPO_PUBLIC_TERMS_URL, t("termsOfService"), t)} hitSlop={8}>
+                    <Text style={styles.legalLink}>{t("termsOfService")}</Text>
+                </Pressable>
+                <Text style={styles.legalSeparator}>·</Text>
+                <Pressable accessibilityRole="link" onPress={() => void openLegalLink(process.env.EXPO_PUBLIC_PRIVACY_URL, t("privacyPolicy"), t)} hitSlop={8}>
+                    <Text style={styles.legalLink}>{t("privacyPolicy")}</Text>
+                </Pressable>
+            </View>
         </Screen>
     );
 }
 
 type Translate = ReturnType<typeof usePreferences>["t"];
+
+function PlanCard({ title, body, current = false, selected = false, onPress }: { title: string; body: string; current?: boolean; selected?: boolean; onPress?: () => void }) {
+    return (
+        <Pressable
+            disabled={!onPress}
+            onPress={onPress}
+            accessibilityRole={onPress ? "radio" : undefined}
+            accessibilityState={onPress ? { checked: selected } : undefined}
+            style={[styles.planCard, selected && styles.planCardSelected]}
+        >
+            <View style={styles.planCardHeader}>
+                <Text style={styles.planCardTitle}>{title}</Text>
+                {current ? <View style={styles.currentBadge}><Text style={styles.currentBadgeText}>✓</Text></View> : null}
+            </View>
+            <Text style={styles.planCardBody}>{body}</Text>
+        </Pressable>
+    );
+}
+
+async function openLegalLink(url: string | undefined, title: string, t: Translate) {
+    if (!url) return Alert.alert(title, t("configureUrl"));
+    if (!(await Linking.canOpenURL(url))) return Alert.alert(title, t("linkOpenFailed"));
+    await Linking.openURL(url);
+}
 
 function packageLabel(item: PurchasesPackage, t: Translate) {
     const identity = `${item.identifier} ${item.product.identifier}`;
@@ -311,6 +341,19 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xl,
     },
     benefits: { gap: spacing.md, marginBottom: spacing.xl },
+    comparison: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.lg },
+    planCard: { flexGrow: 1, flexBasis: 155, minHeight: 112, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm },
+    planCardSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft, borderWidth: 2 },
+    planCardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+    planCardTitle: { ...typography.bodyStrong, color: colors.ink, flex: 1 },
+    planCardBody: { ...typography.caption, color: colors.inkMuted },
+    currentBadge: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.successSoft },
+    currentBadgeText: { ...typography.label, color: colors.success },
+    periodSelector: { flexDirection: "row", borderRadius: radius.lg, backgroundColor: colors.primarySoft, padding: spacing.xs, marginBottom: spacing.lg },
+    periodOption: { flex: 1, minHeight: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+    periodOptionActive: { backgroundColor: colors.surface },
+    periodText: { ...typography.bodyStrong, color: colors.inkMuted },
+    periodTextActive: { color: colors.primary },
     benefit: { flexDirection: "row", alignItems: "center", gap: spacing.md },
     benefitIcon: {
         width: 44,
@@ -389,4 +432,7 @@ const styles = StyleSheet.create({
         textAlign: "center",
         marginTop: spacing.md,
     },
+    legalLinks: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.lg },
+    legalLink: { ...typography.label, color: colors.primary, textDecorationLine: "underline" },
+    legalSeparator: { ...typography.caption, color: colors.inkMuted },
 });

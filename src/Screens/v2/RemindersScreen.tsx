@@ -18,7 +18,7 @@ type Filter = "active" | "completed" | "all";
 
 export default function RemindersScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { t, formatDistance } = usePreferences();
+    const { t, formatDate, formatDistance } = usePreferences();
     const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
     const [scope, setScope] = useState(selectedVehicleId || "all");
     const [filter, setFilter] = useState<Filter>("active");
@@ -65,7 +65,7 @@ export default function RemindersScreen() {
                         const state = getReminderState(reminder, vehicle?.current_mileage ?? 0);
                         const completed = state === "completed";
                         const datedDue = reminder.due_date
-                            ? `${reminder.due_date} · ${reminder.due_time?.slice(0, 5) || "09:00"}`
+                            ? `${formatDate(reminder.due_date)} · ${reminder.due_time?.slice(0, 5) || "09:00"}`
                             : null;
                         const due = [datedDue, reminder.due_mileage ? formatDistance(reminder.due_mileage) : null].filter(Boolean).join(" · ");
                         return (
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     badge_upcoming: { backgroundColor: colors.primarySoft },
     badge_completed: { backgroundColor: colors.successSoft },
     badgeText_overdue: { color: colors.danger },
-    badgeText_dueSoon: { color: "#9A6500" },
+    badgeText_dueSoon: { color: colors.warning },
     badgeText_upcoming: { color: colors.primary },
     badgeText_completed: { color: colors.success },
 });

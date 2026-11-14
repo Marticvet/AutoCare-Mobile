@@ -13,11 +13,13 @@ import { useGarage } from "../../providers/GarageProvider";
 import { exportExpensesCsv } from "../../services/reportExport";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { ExpensePeriod, estimateFuelCo2Kg, expenseDateRangeForPeriod, expenseTrendTotals, filterExpensesByRange, groupExpenseTotals, totalExpenses } from "../../utils/tracking";
+import { calculateReportStatistics } from "../../utils/reportStatistics";
+import { expenseCategoryPresentation } from "../../utils/expenseCategory";
 import { useSubscription } from "../../billing/SubscriptionProvider";
 
 export default function ExpensesScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { t, currency, locale, formatCurrency } = usePreferences();
+    const { t, currency, locale, formatCurrency, formatDate, formatDistance, formatNumber } = usePreferences();
     const { vehicles, selectedVehicleId, dataOwnerId } = useGarage();
     const { canExportReports, canUseAdvancedInsights } = useSubscription();
     const [scope, setScope] = useState(selectedVehicleId || "all");
@@ -43,6 +45,7 @@ export default function ExpensesScreen() {
         [activeRange.end, activeRange.start, categoryExpenses]
     );
     const totals = useMemo(() => groupExpenseTotals(expenses), [expenses]);
+    const statistics = useMemo(() => calculateReportStatistics(expenses), [expenses]);
     const trend = useMemo(
         () => expenseTrendTotals(expenses, activeRange.start, activeRange.end),
         [activeRange.end, activeRange.start, expenses]
@@ -89,7 +92,9 @@ export default function ExpensesScreen() {
                     options={[
                         { value: "week", label: t("periodWeek") },
                         { value: "month", label: t("periodMonth") },
+                        { value: "previousMonth", label: t("previousMonth") },
                         { value: "year", label: t("periodYear") },
+                        { value: "previousYear", label: t("previousYear") },
                         { value: "all", label: t("periodAll") },
                         { value: "custom", label: t("periodCustom") },
                     ]}
@@ -165,23 +170,62 @@ export default function ExpensesScreen() {
                     <View style={styles.section}>
                         <SectionHeader title={t("costByCategory")} />
                         <Card style={styles.categories}>
-                            {Object.entries(totals).sort((a, b) => b[1] - a[1]).map(([key, value]) => (
+                            {Object.entries(totals).sort((a, b) => b[1] - a[1]).map(([key, value]) => {
+                                const presentation = expenseCategoryPresentation(key);
+                                return (
                                 <View key={key} style={styles.categoryRow}>
-                                    <Text style={styles.categoryName}>{t(key as ExpenseCategory)}</Text>
+                                    <Text style={styles.categoryName}>{t(presentation.labelKey)}</Text>
                                     <Text style={styles.categoryAmount}>{formatCurrency(value)}</Text>
                                 </View>
-                            ))}
+                                );
+                            })}
                         </Card>
                     </View>
+                    {canUseAdvancedInsights ? (
+                        <>
+                            <View style={styles.section}>
+                                <SectionHeader title={t("fuelStatistics")} />
+                                <Card style={styles.statGrid}>
+                                    <ReportMetric label={t("totalFillUps")} value={formatNumber(statistics.fuel.fillUps, 0)} />
+                                    <ReportMetric label={t("totalLitres")} value={`${formatNumber(statistics.fuel.litres, 2)} L`} />
+                                    <ReportMetric label={t("averageConsumption")} value={statistics.fuel.consumption === null ? "—" : `${formatNumber(statistics.fuel.consumption, 1)} L/100 km`} />
+                                    <ReportMetric label={t("bestConsumption")} value={statistics.fuel.bestConsumption === null ? "—" : `${formatNumber(statistics.fuel.bestConsumption, 1)} L/100 km`} />
+                                    <ReportMetric label={t("worstConsumption")} value={statistics.fuel.worstConsumption === null ? "—" : `${formatNumber(statistics.fuel.worstConsumption, 1)} L/100 km`} />
+                                    <ReportMetric label={t("effectiveFuelPrice")} value={statistics.fuel.effectivePrice === null ? "—" : `${formatCurrency(statistics.fuel.effectivePrice)} / L`} />
+                                    <ReportMetric label={t("fuelPriceRange")} value={statistics.fuel.lowestPrice === null || statistics.fuel.highestPrice === null ? "—" : `${formatCurrency(statistics.fuel.lowestPrice)} – ${formatCurrency(statistics.fuel.highestPrice)}`} />
+                                    <ReportMetric label={t("fillQuantityRange")} value={statistics.fuel.smallestFill === null || statistics.fuel.largestFill === null ? "—" : `${formatNumber(statistics.fuel.smallestFill, 1)} – ${formatNumber(statistics.fuel.largestFill, 1)} L`} />
+                                </Card>
+                            </View>
+                            <View style={styles.section}>
+                                <SectionHeader title={t("costStatistics")} />
+                                <Card style={styles.statGrid}>
+                                    <ReportMetric label={t("fuelCosts")} value={formatCurrency(statistics.costs.fuel)} />
+                                    <ReportMetric label={t("maintenanceCosts")} value={formatCurrency(statistics.costs.service)} />
+                                    <ReportMetric label={t("repairCosts")} value={formatCurrency(statistics.costs.repair)} />
+                                    <ReportMetric label={t("insuranceCosts")} value={formatCurrency(statistics.costs.insurance)} />
+                                    <ReportMetric label={t("otherCosts")} value={formatCurrency(statistics.costs.other)} />
+                                    <ReportMetric label={t("expenseRange")} value={statistics.costs.lowest === null || statistics.costs.highest === null ? "—" : `${formatCurrency(statistics.costs.lowest)} – ${formatCurrency(statistics.costs.highest)}`} />
+                                </Card>
+                            </View>
+                            <View style={styles.section}>
+                                <SectionHeader title={t("distanceStatistics")} />
+                                <Card style={styles.statGrid}>
+                                    <ReportMetric label={t("latestOdometer")} value={statistics.distance.latestOdometer === null ? "—" : formatDistance(statistics.distance.latestOdometer)} />
+                                    <ReportMetric label={t("recordedDistance")} value={formatDistance(statistics.distance.recorded)} />
+                                    <ReportMetric label={t("averageDailyDistance")} value={statistics.distance.averageDaily === null ? "—" : formatDistance(statistics.distance.averageDaily)} />
+                                </Card>
+                            </View>
+                        </>
+                    ) : null}
                     <View style={styles.section}>
                         <SectionHeader title={t("recentExpenses")} />
                         <Card style={styles.list}>
                             {expenses.map((expense, index) => (
                                 <View key={`${expense.source}-${expense.id}`}>
                                     <Row
-                                        icon={expenseIcon(expense.category)}
+                                        icon={expenseCategoryPresentation(expense.category).icon}
                                         title={expense.title}
-                                        subtitle={`${expense.date} · ${vehicles.find((vehicle) => vehicle.id === expense.vehicle_id)?.vehicle_license_plate || t("vehicle")}`}
+                                        subtitle={`${formatDate(expense.date)} · ${vehicles.find((vehicle) => vehicle.id === expense.vehicle_id)?.vehicle_license_plate || t("vehicle")}`}
                                         trailing={<Text style={styles.rowAmount}>{formatCurrency(expense.amount)}</Text>}
                                         onPress={() => navigation.navigate("ExpenseForm", { expenseId: expense.id, source: expense.source })}
                                     />
@@ -284,19 +328,26 @@ function TrendMetric({ label, value }: { label: string; value: string }) {
     );
 }
 
+function ReportMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <View style={styles.reportMetric}>
+            <Text style={styles.reportMetricLabel}>{label}</Text>
+            <Text adjustsFontSizeToFit numberOfLines={1} style={styles.reportMetricValue}>{value}</Text>
+        </View>
+    );
+}
+
 const compactValue = (value: number) => value >= 1_000_000
     ? `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m`
     : value >= 1_000
         ? `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`
         : String(Math.round(value));
 
-const expenseIcon = (category: ExpenseCategory) => ({ fuel: "water-outline", charging: "flash-outline", service: "construct-outline", insurance: "shield-checkmark-outline", parking: "car-outline", toll: "trail-sign-outline", tax: "document-text-outline", wash: "sparkles-outline", repair: "hammer-outline", other: "receipt-outline" }[category]);
-
 const styles = StyleSheet.create({
     filters: { gap: spacing.md },
     dateColumns: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
     dateColumn: { flexGrow: 1, flexBasis: 210, minWidth: 0 },
-    summary: { backgroundColor: colors.ink, gap: spacing.md },
+    summary: { backgroundColor: colors.brandNavy, gap: spacing.md },
     summaryTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: spacing.lg },
     summaryCopy: { flex: 1, minWidth: 0 },
     exportButton: { flexShrink: 0, marginRight: spacing.sm },
@@ -316,6 +367,10 @@ const styles = StyleSheet.create({
     trendMetricLabel: { ...typography.caption, fontSize: 10, color: colors.inkMuted },
     trendMetricValue: { ...typography.label, color: colors.ink },
     categories: { gap: spacing.md },
+    statGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+    reportMetric: { flexGrow: 1, flexBasis: 145, minWidth: 0, borderRadius: 14, backgroundColor: colors.canvas, padding: spacing.md, gap: spacing.xs },
+    reportMetricLabel: { ...typography.caption, color: colors.inkMuted },
+    reportMetricValue: { ...typography.bodyStrong, color: colors.ink },
     categoryRow: { flexDirection: "row", justifyContent: "space-between", gap: spacing.lg },
     categoryName: { ...typography.body, color: colors.ink, textTransform: "capitalize", flex: 1, minWidth: 0 },
     categoryAmount: { ...typography.bodyStrong, color: colors.ink, flexShrink: 0 },

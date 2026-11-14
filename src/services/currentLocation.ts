@@ -14,6 +14,9 @@ export type LocationPermissionMessages = {
 };
 
 async function requireForegroundLocationPermission(messages: LocationPermissionMessages) {
+    if (!(await Location.hasServicesEnabledAsync())) {
+        throw new Error(messages.disabled);
+    }
     let permission = await Location.getForegroundPermissionsAsync();
     if (permission.status === "granted") return;
     if (!permission.canAskAgain) {

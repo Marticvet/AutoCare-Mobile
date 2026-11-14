@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     section: { gap: spacing.md },
     profileCard: { gap: spacing.md },
     profileHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-    avatar: { width: 58, height: 58, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary },
+    avatar: { width: 58, height: 58, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.primaryFill },
     avatarText: { ...typography.title, color: colors.white },
     profileText: { flex: 1, minWidth: 0, gap: 2 },
     profileName: { ...typography.heading, color: colors.ink },

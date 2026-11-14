@@ -17,6 +17,7 @@ import { useGarage } from "../../providers/GarageProvider";
 import { captureDocument, deleteStoredDocument, pickDocument, syncPendingDocuments } from "../../services/documentStorage";
 import { recognizeReceipt } from "../../services/receiptOcr";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { FuelEntryField, updateFuelEntry } from "../../utils/fuel";
 import { isIsoDate, isoDate, isoTime, toNumber } from "../../utils/tracking";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ExpenseForm">;
@@ -31,6 +32,7 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
     const persistedId = route.params?.expenseId;
     const expenseId = useRef(persistedId ?? uuid()).current;
     const receiptId = useRef(uuid()).current;
+    const fuelEntryOrder = useRef<FuelEntryField[]>([]);
     const initialCategory = route.params?.category ?? "fuel";
     const [draft, setDraft] = useState<ExpenseDraft>({
         id: expenseId,
@@ -112,6 +114,8 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
             .then((loaded) => {
                 if (!loaded) return;
                 const convert = (value: string) => distanceUnit === "mi" && value ? String(Math.round(toNumber(value) * 0.621371)) : value;
+                fuelEntryOrder.current = (["litres", "pricePerLitre", "amount"] as FuelEntryField[])
+                    .filter((field) => Boolean(loaded[field]));
                 setDraft({
                     ...loaded,
                     odometer: convert(loaded.odometer),
@@ -135,6 +139,19 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
 
     const update = <K extends keyof ExpenseDraft>(key: K, value: ExpenseDraft[K]) =>
         setDraft((current) => ({ ...current, [key]: value }));
+
+    const updateFuelValue = (field: FuelEntryField, value: string) => {
+        setDraft((current) => {
+            const result = updateFuelEntry(
+                { litres: current.litres, amount: current.amount, pricePerLitre: current.pricePerLitre },
+                fuelEntryOrder.current,
+                field,
+                value
+            );
+            fuelEntryOrder.current = result.explicitOrder;
+            return { ...current, ...result.values };
+        });
+    };
 
     const submit = async () => {
         if (!canWrite) {
@@ -305,12 +322,17 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
 
                 {draft.category === "fuel" ? (
                     <>
-                        <View style={styles.columns}>
-                            <View style={styles.column}><FormField label={t("litres")} value={draft.litres} onChangeText={(value) => update("litres", value)} keyboardType="decimal-pad" required /></View>
-                            <View style={styles.column}><FormField label={t("pricePerLitre")} value={draft.pricePerLitre} onChangeText={(value) => update("pricePerLitre", value)} keyboardType="decimal-pad" /></View>
-                        </View>
+                        <FormField label={t("litres")} value={draft.litres} onChangeText={(value) => updateFuelValue("litres", value)} keyboardType="decimal-pad" required />
+                        <FormField label={t("totalCost")} value={draft.amount} onChangeText={(value) => updateFuelValue("amount", value)} keyboardType="decimal-pad" required />
+                        <FormField label={t("pricePerLitre")} value={draft.pricePerLitre} onChangeText={(value) => updateFuelValue("pricePerLitre", value)} keyboardType="decimal-pad" />
                         <PresetOrCustomField label={t("fuelType")} value={draft.fuelType} onChange={(value) => update("fuelType", value)} options={fuelTypes} placeholder={t("selectFuelType")} required />
-                        <View style={styles.switchRow}><Text style={styles.switchLabel}>{t("fullTank")}</Text><Switch value={draft.fullTank} onValueChange={(value) => update("fullTank", value)} trackColor={{ true: colors.primary }} /></View>
+                        <View style={styles.switchRow}>
+                            <View style={styles.switchCopy}>
+                                <Text style={styles.switchLabel}>{t("fullTank")}</Text>
+                                <Text style={styles.switchHint}>{t("fullTankHint")}</Text>
+                            </View>
+                            <Switch value={draft.fullTank} onValueChange={(value) => update("fullTank", value)} trackColor={{ true: colors.primary }} />
+                        </View>
                     </>
                 ) : null}
 
@@ -344,7 +366,9 @@ export default function ExpenseFormScreen({ route, navigation }: Props) {
                 ) : null}
                 {!["fuel", "service", "insurance"].includes(draft.category) ? <FormField label={t("title")} value={draft.title} onChangeText={(value) => update("title", value)} required /> : null}
 
-                <FormField label={t("amount")} value={draft.amount} onChangeText={(value) => update("amount", value)} keyboardType="decimal-pad" hint={draft.category === "fuel" ? `${t("optional")} — ${t("litres")} × ${t("pricePerLitre")}` : draft.category === "charging" ? t("chargingAmountHint") : undefined} required={!['fuel', 'charging'].includes(draft.category)} />
+                {draft.category !== "fuel" ? (
+                    <FormField label={t("amount")} value={draft.amount} onChangeText={(value) => update("amount", value)} keyboardType="decimal-pad" hint={draft.category === "charging" ? t("chargingAmountHint") : undefined} required={draft.category !== "charging"} />
+                ) : null}
                 {draft.category !== "insurance" ? (
                     <View style={styles.columns}>
                         <View style={styles.column}><DateField label={t("date")} value={draft.date} onChange={(value) => update("date", value)} required /></View>
@@ -412,7 +436,9 @@ const styles = StyleSheet.create({
     columns: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
     column: { flexGrow: 1, flexBasis: 210, minWidth: 0 },
     label: { ...typography.label, color: colors.ink, marginBottom: -spacing.sm },
-    switchRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    switchRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+    switchCopy: { flex: 1, minWidth: 0, gap: spacing.xs },
     switchLabel: { ...typography.bodyStrong, color: colors.ink },
+    switchHint: { ...typography.caption, color: colors.inkMuted },
     receiptActions: { gap: spacing.sm },
 });
