@@ -1,4 +1,3 @@
-
 {
   "cli": {
     "version": ">= 23.2.0",
@@ -49,6 +48,13 @@
       },
       "autoIncrement": true,
       "credentialsSource": "remote"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6832072586"
+      }
     }
   }
 }
